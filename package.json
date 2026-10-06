@@ -1,0 +1,37 @@
+{
+  "name": "marketplace-contabilidad",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Módulo de Contabilidad del marketplace (arquitectura hexagonal)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:api": "npm run dev -w @contabilidad/api",
+    "dev:web": "npm run dev -w @contabilidad/web",
+    "build": "npm run build --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "npm run test --workspaces --if-present",
+    "test:integration": "npm run test:integration -w @contabilidad/api",
+    "db:create": "npm run db:create -w @contabilidad/api",
+    "db:migrate": "npm run db:migrate -w @contabilidad/api"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.20.0",
+    "eslint": "^9.20.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.15.0",
+    "prettier": "^3.5.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.24.0",
+    "vitest": "^5.0.3"
+  }
+}

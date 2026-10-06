@@ -1,0 +1,1047 @@
+================================================================================
+ MARKETPLACE - MÓDULO DE CONTABILIDAD
+ PLAN DE DESARROLLO POR FASES
+================================================================================
+ Versión ............ 1.0
+ Fecha .............. 05/10/2026
+ Fuentes ............ docs/Documentacion_Modulo_Contabilidad.docx (v1.0)
+                      docs/F01_Historias_Usuario_Corregido.xlsx (Formato 01 v1.0)
+ Stack recomendado .. React (Vite + TypeScript) | Node.js + Express (TypeScript)
+                      | PostgreSQL | API REST | Arquitectura hexagonal
+                      (puertos y adaptadores)
+ Equipo ............. Equipo de contabilidad
+================================================================================
+
+
+CONTENIDO
+---------
+ 1. Propósito y alcance
+ 2. Resumen del análisis de la documentación
+ 3. Stack tecnológico recomendado
+ 4. Arquitectura hexagonal propuesta
+ 5. Estrategia de integración futura con el marketplace
+ 6. Convenciones transversales
+ 7. Plan por fases
+      Fase 0 - Definiciones y contratos
+      Fase 1 - Fundaciones técnicas (Sprint 0)
+      Fase 2 - Sprint 1: Registro contable básico
+      Fase 3 - Sprint 2: Conciliación, ajustes y reporte
+      Fase 4 - Sprint 3: Consulta, exportación y control
+      Fase 5 - Endurecimiento y preparación para integración
+      Fase 6 - Integración con el marketplace completo
+ 8. Cronograma resumen
+ 9. Modelo de datos detallado (PostgreSQL)
+10. Catálogo de endpoints REST
+11. Estructura del frontend (React)
+12. Estrategia de pruebas y Definición de Terminado
+13. Riesgos y mitigaciones
+14. Decisiones pendientes (checklist)
+15. Matriz de trazabilidad HU -> fase -> tablas -> endpoints -> pantallas
+
+
+================================================================================
+ 1. PROPÓSITO Y ALCANCE
+================================================================================
+
+Propósito
+  Definir, por fases ejecutables, cómo construir el Módulo de Contabilidad del
+  marketplace a partir de las historias de usuario del Formato 01 y del diseño
+  técnico propuesto en la documentación, de forma que el módulo pueda
+  desarrollarse y probarse de manera independiente y, en el futuro, conectarse
+  al marketplace completo sin reescribir su núcleo de negocio.
+
+Alcance funcional (incluido)
+  - HU-CON-01  Registrar automáticamente una venta confirmada ........ Must   5 pts
+  - HU-CON-02  Calcular la comisión del marketplace por venta ........ Must   5 pts
+  - HU-CON-03  Registrar valores pendientes de pago a vendedores ..... Must   5 pts
+  - HU-CON-04  Conciliar pagos recibidos contra órdenes .............. Must   8 pts
+  - HU-CON-05  Reporte de ingresos y comisiones por periodo .......... Should 5 pts
+  - HU-CON-06  Ajustes por devoluciones o cancelaciones .............. Should 5 pts
+  - HU-CON-07  Estado financiero de cuentas de vendedores ............ Could  3 pts
+  - HU-CON-08  Exportar información contable a Excel ................. Could  3 pts
+  Historias sugeridas por la revisión (hallazgos H-03, H-04, H-11), que este
+  plan incorpora:
+  - HU-CON-09  Configurar el porcentaje de comisión .................. Must   3 pts
+  - HU-CON-10  Registrar el pago realizado a un vendedor ............. Must   3 pts
+  - HU-CON-11  Consultar la auditoría de movimientos ................. Should 3 pts
+  Total planeado: 39 pts (originales) + 9 pts (sugeridas) = 48 pts.
+
+Fuera de alcance (Won't Have, a confirmar con el contador - hallazgos H-09/H-10)
+  - Facturación electrónica ante la DIAN.
+  - Liquidación y presentación de impuestos (IVA, ReteFuente, ReteIVA, ReteICA).
+  - Nómina.
+  - Contabilidad general completa (balances y estados financieros oficiales).
+  - Procesamiento de pagos (pertenece al módulo de Pagos).
+
+
+================================================================================
+ 2. RESUMEN DEL ANÁLISIS DE LA DOCUMENTACIÓN
+================================================================================
+
+2.1 Objetivo del módulo
+  Que cada transacción del marketplace quede registrada contablemente de forma
+  automática, trazable y sin duplicados: ingresos por comisión, obligaciones
+  con vendedores y estado de conciliación de pagos recibidos.
+
+2.2 Actores
+  - Contador (usuario principal) ............ HU-CON-01 a 07, 10
+  - Administrador financiero ................ HU-CON-08, 09, 11
+  - Módulo de Órdenes (sistema) ............. eventos confirmada/cancelada/devuelta
+  - Módulo de Pagos / pasarela (sistema) .... pagos recibidos para conciliar
+  - Módulo de Vendedores (sistema) .......... datos maestros del vendedor
+  - Administración / Configuración .......... usuarios y roles (y % comisión si
+                                              no se gestiona en este módulo)
+
+2.3 Flujo funcional
+  Órdenes confirma orden -> Contabilidad registra venta (01) -> calcula
+  comisión y neto (02) -> genera cuenta por pagar al vendedor (03) -> los pagos
+  recibidos se concilian contra órdenes (04) -> devoluciones/cancelaciones
+  generan ajustes de reverso (06) -> el contador consulta reportes (05), estado
+  por vendedor (07) y exporta (08).
+
+2.4 Dependencias entre historias (orden obligatorio)
+  02 <- 01 | 03 <- 02 | 04 <- 01 + módulo Pagos | 05 <- 01, 02, (06)
+  06 <- 01, 02, 03 | 07 <- 03, 04, 06 | 08 <- 05
+  Recomendación del documento: en el Sprint 2 desarrollar HU-CON-06 antes o en
+  paralelo con HU-CON-05 para que el reporte incluya ajustes desde el inicio.
+
+2.5 Hallazgos que impactan el desarrollo y cómo los resuelve este plan
+  H-03  No hay HU para configurar el % de comisión ......... HU-CON-09 en Fase 2.
+  H-04  No hay HU para registrar pago al vendedor .......... HU-CON-10 en Fase 4.
+  H-05  "Periodo" no definido .............................. Decisión en Fase 0;
+                                                             value object Periodo.
+  H-06  Ajustes ambiguos (parciales, reverso comisión) ..... Reglas fijadas en
+                                                             Fase 0, implementadas
+                                                             en Fase 3.
+  H-07  Columnas de Excel no definidas ..................... Se fijan en Fase 0
+                                                             (propuesta del docx).
+  H-08  Sin duración, fechas ni velocidad de sprints ....... Sprints de 2 semanas,
+                                                             velocidad se mide en
+                                                             Sprint 1.
+  H-09  Impuestos no definidos ............................. Won't Have explícito
+                                                             salvo decisión distinta.
+  H-11  Sin permisos/auditoría ............................. Transversal desde
+                                                             Fase 1 + HU-CON-11.
+  H-12  Órdenes multi-vendedor ............................. Una línea contable por
+                                                             vendedor (Fase 2).
+  H-13  Carga desbalanceada 15/18/6 ........................ Nueva carga 18/18/12.
+  H-14  HU-CON-04 muy grande y dependiente de Pagos ........ Se divide en 04a/04b
+                                                             y contrato temprano.
+  H-15  Objetivo Sprint 2 incompleto ....................... "Conciliación, ajustes
+                                                             y reporte de ingresos".
+  H-16  Sin riesgos/dependencias ........................... Secciones 13 y 14.
+  H-01, H-02 (formato del F01) ............................. Actualizar el Excel en
+                                                             Fase 0.
+
+
+================================================================================
+ 3. STACK TECNOLÓGICO RECOMENDADO
+================================================================================
+
+Backend
+  - Node.js 20 LTS + TypeScript (las interfaces de TypeScript hacen explícitos
+    los puertos de la arquitectura hexagonal; si el equipo prefiere JavaScript
+    puro, usar JSDoc + clases abstractas, la estructura se mantiene igual).
+  - Express 4/5 como adaptador HTTP (solo vive en la capa de infraestructura).
+  - Zod para validación de entrada (DTOs) y contratos compartidos.
+  - decimal.js para aritmética monetaria (NUNCA number/float para dinero).
+  - pg (node-postgres) con SQL explícito, o Knex como query builder.
+    Se desaconseja un ORM que filtre al dominio (si se usa Prisma/TypeORM,
+    debe quedar encerrado en los adaptadores de persistencia).
+  - node-pg-migrate (o Knex migrations) para migraciones versionadas.
+  - pino para logs estructurados (JSON) con correlation-id.
+  - ExcelJS para generación de .xlsx (HU-CON-08).
+  - OpenAPI 3 (swagger-ui-express) como contrato publicado de la API.
+  - helmet, cors, express-rate-limit para seguridad básica.
+
+Base de datos
+  - PostgreSQL 16, esquema propio "contabilidad".
+  - NUMERIC(18,2) para valores monetarios, NUMERIC(7,4) para porcentajes.
+  - Restricciones UNIQUE, CHECK y FK como segunda línea de defensa.
+
+Frontend
+  - React 18 + Vite + TypeScript.
+  - React Router (rutas bajo /contabilidad), TanStack Query (estado servidor),
+    React Hook Form + Zod (formularios), una librería de componentes
+    (MUI o Ant Design; elegir la que use el marketplace si ya existe).
+  - Tablas con filtros y paginación (TanStack Table o el DataGrid de la librería).
+
+Calidad y operación
+  - Vitest (o Jest) + Supertest para pruebas unitarias e integración HTTP.
+  - Testcontainers (PostgreSQL real en pruebas de integración).
+  - Playwright para E2E del frontend.
+  - ESLint + Prettier + husky/lint-staged; eslint-plugin-boundaries o
+    dependency-cruiser para impedir dependencias prohibidas entre capas.
+  - Docker + Docker Compose (api, web, postgres) para desarrollo local.
+  - GitHub Actions: lint, typecheck, test, build en cada PR.
+  - Monorepo con npm workspaces o pnpm workspaces.
+
+
+================================================================================
+ 4. ARQUITECTURA HEXAGONAL PROPUESTA
+================================================================================
+
+4.1 Principios
+  - El DOMINIO (reglas contables) no conoce Express, PostgreSQL, React ni otros
+    módulos del marketplace. Es TypeScript puro y 100 % testeable en memoria.
+  - La APLICACIÓN orquesta casos de uso y define PUERTOS (interfaces) para todo
+    lo externo: repositorios, módulos vecinos, reloj, autenticación, eventos,
+    exportación.
+  - La INFRAESTRUCTURA implementa ADAPTADORES de esos puertos (Express,
+    PostgreSQL, HTTP clients, mocks, ExcelJS).
+  - Las dependencias apuntan siempre hacia adentro:
+        infrastructure -> application -> domain
+  - Un "composition root" (bootstrap) cablea adaptadores con casos de uso
+    según configuración (variables de entorno).
+
+4.2 Diagrama lógico
+
+        [React Web]   [Módulo Órdenes]   [Módulo Pagos]   [Marketplace Shell]
+             |               |                 |                  |
+     ------- Adaptadores de ENTRADA (driving) -------------------------
+       HTTP/Express REST    Consumidor de eventos (webhook / broker)
+             |               |
+     ------------------ PUERTOS DE ENTRADA (casos de uso) -------------
+       RegistrarVentaConfirmada, ConfigurarComision, RegistrarAjuste,
+       ConciliarPago, RegistrarPagoVendedor, ConsultarReporteIngresos,
+       ConsultarEstadoVendedor, ExportarExcel, ConsultarAuditoria ...
+             |
+     --------------------------- DOMINIO ------------------------------
+       VentaContable, Comision, CuentaPorPagar, PagoVendedor,
+       PagoRecibido, Conciliacion, AjusteContable, ConfiguracionComision
+       Value objects: Money, Porcentaje, Periodo, NumeroOrden, VendedorId
+       Servicios de dominio: CalculadoraComision, PoliticaAjuste,
+       PoliticaConciliacion (tolerancia)
+             |
+     ------------------ PUERTOS DE SALIDA (driven) --------------------
+       Repositorios, UnitOfWork, SellersGateway, OrdersGateway,
+       PaymentsGateway, CommissionConfigProvider, AuthContext, Clock,
+       EventPublisher (outbox), AuditLogger, SpreadsheetExporter
+             |
+     ------- Adaptadores de SALIDA ------------------------------------
+       PostgreSQL (pg)   HTTP clients / mocks   ExcelJS   Outbox relay
+
+4.3 Estructura de carpetas (monorepo)
+
+  marketplace_contabilidad/
+  ├── apps/
+  │   ├── api/
+  │   │   ├── src/
+  │   │   │   ├── domain/
+  │   │   │   │   ├── shared/          Money.ts, Porcentaje.ts, Periodo.ts,
+  │   │   │   │   │                    DomainError.ts, Result.ts
+  │   │   │   │   ├── ventas/          VentaContable.ts, Comision.ts,
+  │   │   │   │   │                    CalculadoraComision.ts
+  │   │   │   │   ├── comisiones/      ConfiguracionComision.ts
+  │   │   │   │   ├── cuentas-por-pagar/ CuentaPorPagar.ts, PagoVendedor.ts
+  │   │   │   │   ├── conciliacion/    PagoRecibido.ts, Conciliacion.ts,
+  │   │   │   │   │                    PoliticaConciliacion.ts
+  │   │   │   │   └── ajustes/         AjusteContable.ts, PoliticaAjuste.ts
+  │   │   │   ├── application/
+  │   │   │   │   ├── ports/
+  │   │   │   │   │   ├── in/          (interfaces de casos de uso)
+  │   │   │   │   │   └── out/         VentaRepository.ts, UnitOfWork.ts,
+  │   │   │   │   │                    SellersGateway.ts, PaymentsGateway.ts,
+  │   │   │   │   │                    OrdersGateway.ts, AuthContext.ts,
+  │   │   │   │   │                    Clock.ts, EventPublisher.ts,
+  │   │   │   │   │                    AuditLogger.ts, SpreadsheetExporter.ts
+  │   │   │   │   ├── use-cases/       un archivo por caso de uso
+  │   │   │   │   ├── queries/         reportes y consultas de solo lectura
+  │   │   │   │   │                    (CQRS liviano: puertos de lectura)
+  │   │   │   │   └── dto/
+  │   │   │   ├── infrastructure/
+  │   │   │   │   ├── http/
+  │   │   │   │   │   ├── express/     app.ts, server.ts
+  │   │   │   │   │   ├── routes/      un router por recurso
+  │   │   │   │   │   ├── controllers/
+  │   │   │   │   │   └── middlewares/ auth, roles, validate, errorHandler,
+  │   │   │   │   │                    correlationId
+  │   │   │   │   ├── persistence/
+  │   │   │   │   │   └── postgres/    pool.ts, PgUnitOfWork.ts, Pg*Repository.ts,
+  │   │   │   │   │                    queries/*.sql
+  │   │   │   │   ├── integration/
+  │   │   │   │   │   ├── orders/      MockOrdersGateway, HttpOrdersGateway
+  │   │   │   │   │   ├── sellers/     MockSellersGateway, HttpSellersGateway
+  │   │   │   │   │   ├── payments/    MockPaymentsGateway, CsvPaymentsImporter,
+  │   │   │   │   │   │                HttpPaymentsGateway
+  │   │   │   │   │   ├── auth/        MockAuthContext, JwtAuthContext
+  │   │   │   │   │   └── events/      InboxProcessor, OutboxRelay
+  │   │   │   │   ├── export/          ExcelJsExporter.ts
+  │   │   │   │   └── config/          env.ts (validado con Zod)
+  │   │   │   └── bootstrap/           container.ts (composition root), main.ts
+  │   │   ├── migrations/
+  │   │   ├── test/                    unit/, integration/, contract/, fixtures/
+  │   │   └── package.json
+  │   └── web/
+  │       ├── src/
+  │       │   ├── app/                 router, providers, layout
+  │       │   ├── features/            ventas/, comisiones/, cuentas-por-pagar/,
+  │       │   │                        conciliacion/, ajustes/, reportes/,
+  │       │   │                        vendedores/, exportacion/, auditoria/
+  │       │   ├── shared/              api-client, auth, ui, formatters (COP)
+  │       │   └── module.tsx           punto de montaje exportable
+  │       └── package.json
+  ├── packages/
+  │   └── contracts/                   esquemas Zod, tipos DTO, tipos de eventos,
+  │                                    openapi.yaml (compartido api <-> web y con
+  │                                    otros equipos)
+  ├── docker-compose.yml
+  ├── .github/workflows/ci.yml
+  └── docs/
+
+4.4 Reglas de dependencia (verificadas en CI)
+  - domain/ no importa nada fuera de domain/ (ni librerías de infraestructura;
+    decimal.js se permite encapsulado en Money).
+  - application/ importa solo domain/ y sus propios puertos.
+  - infrastructure/ puede importar application/ y domain/.
+  - Ningún controller accede a repositorios directamente: siempre vía caso de uso.
+  - El frontend solo conoce packages/contracts y la API REST.
+
+
+================================================================================
+ 5. ESTRATEGIA DE INTEGRACIÓN FUTURA CON EL MARKETPLACE
+================================================================================
+
+Objetivo: que conectar el módulo al marketplace sea "cambiar adaptadores y
+configuración", no modificar el dominio ni los casos de uso.
+
+5.1 Adaptadores intercambiables por configuración
+  INTEGRATION_MODE = mock | http | events
+  - mock   : desarrollo y pruebas aisladas (simuladores de Órdenes, Pagos,
+             Vendedores y autenticación).
+  - http   : llamadas REST a los otros módulos + webhooks entrantes.
+  - events : consumo/publicación en un broker (RabbitMQ, Kafka, Redis Streams o
+             el que defina el marketplace) mediante un adaptador nuevo; el
+             dominio no cambia.
+  AUTH_MODE = mock | jwt   (jwt valida el token emitido por el marketplace)
+
+5.2 Contratos de integración (en packages/contracts, versionados)
+  Entrantes:
+  - orden.confirmada  { eventId, numeroOrden, fecha, estado, comprador?,
+                        lineas: [{ vendedorId, valorBruto, categoriaId? }],
+                        moneda: "COP", version }
+  - orden.cancelada   { eventId, numeroOrden, fecha, motivo, lineas[] }
+  - orden.devuelta    { eventId, numeroOrden, fecha, motivo,
+                        lineas: [{ vendedorId, valorDevuelto }] }
+  - pago.recibido     { eventId, referenciaPasarela, fecha, valor, origen,
+                        ordenes?: [numeroOrden] }
+  Consultas salientes:
+  - Vendedores: GET /vendedores/{id} -> { id, razonSocial, nit, datosPago }
+  Salientes (publicados por contabilidad vía outbox):
+  - contabilidad.venta.registrada, contabilidad.ajuste.registrado,
+    contabilidad.pago-vendedor.registrado, contabilidad.conciliacion.cerrada
+
+5.3 Idempotencia y confiabilidad
+  - Tabla inbox: guarda eventId procesados; un evento repetido responde 200
+    "ya procesado" sin efectos (criterio HU-CON-01).
+  - UNIQUE (numero_orden, vendedor_id) en venta_contable como segunda barrera.
+  - Tabla outbox: los eventos salientes se escriben en la misma transacción que
+    el cambio de negocio y un relay los publica (garantiza consistencia).
+  - Eventos ignorados (estado != confirmada) se registran en evento_ignorado.
+
+5.4 Despliegue flexible
+  - Opción A (servicio independiente): la API corre como microservicio con su
+    propia base o su propio esquema; el API Gateway del marketplace enruta
+    /api/v1/contabilidad/*.
+  - Opción B (módulo en monolito modular): el router Express se monta dentro de
+    la app del marketplace (app.use('/api/v1/contabilidad', contabilidadRouter))
+    reutilizando el mismo composition root. Por eso container.ts expone una
+    función createContabilidadModule(config) que devuelve { router, consumers }.
+  - Esquema PostgreSQL "contabilidad" aislado: funciona igual en BD dedicada o
+    compartida. Nunca hacer JOIN contra tablas de otros módulos; los datos
+    externos se obtienen por puerto o se copian como snapshot (p. ej. nombre
+    del vendedor al momento de la venta).
+
+5.5 Frontend integrable
+  - apps/web expone module.tsx con <ContabilidadModule basePath="/contabilidad"
+    apiBaseUrl=... authProvider=... />, de modo que el shell del marketplace lo
+    monte como ruta (o como micro-frontend vía Module Federation si el
+    marketplace lo adopta).
+  - Sin estado global acoplado: el token/usuario llega por props/contexto.
+
+
+================================================================================
+ 6. CONVENCIONES TRANSVERSALES
+================================================================================
+
+  Dinero ........... Value object Money (decimal.js), NUMERIC(18,2) en BD,
+                     moneda COP, redondeo HALF_UP a 2 decimales (confirmar con
+                     contador). Invariante: bruto = comisión + neto.
+                     En JSON los montos viajan como string ("100000.00").
+  Porcentajes ...... Value object Porcentaje, NUMERIC(7,4), rango 0-100.
+  Inmutabilidad .... Ventas, comisiones y pagos no se editan ni borran; las
+                     correcciones son ajustes de reverso (HU-CON-06).
+  Auditoría ........ Todo comando registra en "auditoria" (usuario, acción,
+                     entidad, valores antes/después, fecha, correlationId).
+  Roles ............ CONTADOR, ADMIN_FINANCIERO, SISTEMA (eventos entre
+                     módulos, autenticado con API key/token de servicio).
+  Errores .......... Formato único (RFC 7807 problem+json):
+                     { type, title, status, detail, code, correlationId }
+                     Códigos de dominio: ORDEN_NO_CONFIRMADA, ORDEN_DUPLICADA,
+                     ORDEN_INEXISTENTE, AJUSTE_EXCEDE_SALDO, etc.
+  API .............. Prefijo /api/v1/contabilidad, kebab-case en rutas,
+                     camelCase en JSON, paginación ?page=&size=, fechas ISO 8601,
+                     zona horaria America/Bogota para cortes de periodo.
+  Git .............. Ramas main / dev / feature/HU-CON-XX-descripcion;
+                     PR con revisión obligatoria (DoD); commits convencionales.
+  Configuración .... Variables de entorno validadas al arrancar (env.ts).
+
+
+================================================================================
+ 7. PLAN POR FASES
+================================================================================
+
+Supuestos: sprints de 2 semanas; velocidad inicial estimada 18 pts/sprint
+(se recalibra al cierre del Sprint 1); equipo con perfiles backend, frontend
+y un rol Contador disponible para validaciones.
+
+--------------------------------------------------------------------------------
+ FASE 0 - DEFINICIONES Y CONTRATOS                       (pre-sprint, 1 semana)
+--------------------------------------------------------------------------------
+Objetivo
+  Cerrar las ambigüedades del Formato 01 y los contratos con otros equipos
+  antes de escribir código de negocio.
+
+Actividades
+  0.1 Sesión con el contador para decidir:
+      - Regla de redondeo (HALF_UP 2 decimales) y moneda única COP.
+      - Alcance del % de comisión: global / por vendedor / por categoría, con
+        vigencias (H-03). Recomendación: global con vigencia, extensible a
+        vendedor/categoría (prioridad: vendedor > categoría > global).
+      - Periodicidad de liquidación y fecha de corte (H-05).
+        Recomendación: quincenal (1-15, 16-fin de mes).
+      - Reglas de ajustes (H-06): reverso proporcional de comisión y neto,
+        devoluciones parciales permitidas, saldo a favor del marketplace si el
+        vendedor ya fue pagado, ¿se devuelve la comisión en devoluciones?
+      - Tolerancia de conciliación (p. ej. +/- $100 o 0) y tratamiento de
+        costos de pasarela (HU-CON-04).
+      - Columnas definitivas del Excel (H-07): fecha, número de orden,
+        vendedor, valor bruto, % comisión, comisión, valor neto, estado de
+        pago, estado de conciliación, ajustes.
+      - Impuestos y facturación (H-09): confirmar Won't Have (H-10).
+      - Si se implementan asientos de partida doble y códigos PUC (sección 7.4
+        del docx) o se deja para una fase posterior.
+  0.2 Con el equipo de Órdenes: contrato de eventos orden.confirmada /
+      cancelada / devuelta, incluyendo órdenes multi-vendedor (H-12) y eventId.
+  0.3 Con el equipo de Vendedores: API de datos maestros.
+  0.4 Con el equipo de Pagos: formato del pago recibido (API o archivo CSV).
+  0.5 Con Administración: modelo de usuarios, roles y emisión de JWT.
+  0.6 Actualizar el F01 (H-01, H-02, H-08, H-15): equipo, responsables con
+      nombre, duración/fechas de sprints, objetivo del Sprint 2, nuevas HU
+      09/10/11 y nueva distribución de carga.
+  0.7 Registrar decisiones como ADR (docs/adr/0001-arquitectura-hexagonal.md,
+      0002-dinero-decimal.md, 0003-idempotencia-inbox.md, etc.).
+
+Entregables
+  - Contratos JSON Schema/Zod en borrador (packages/contracts).
+  - Documento de reglas de negocio cerradas (actualización del docx).
+  - F01 actualizado y ADRs iniciales.
+
+Criterio de salida
+  - Checklist de la sección 14 resuelto al menos para los ítems de Sprint 1.
+
+--------------------------------------------------------------------------------
+ FASE 1 - FUNDACIONES TÉCNICAS (SPRINT 0)                       (1 - 2 semanas)
+--------------------------------------------------------------------------------
+Objetivo
+  Dejar el esqueleto hexagonal, la infraestructura local y la canalización de
+  calidad funcionando, para que los sprints de negocio solo agreguen valor.
+
+Backend
+  1.1 Monorepo (workspaces): apps/api, apps/web, packages/contracts.
+  1.2 Configuración TypeScript estricta, ESLint, Prettier, reglas de capas
+      (eslint-plugin-boundaries / dependency-cruiser).
+  1.3 Express: app.ts con helmet, cors, json, correlationId, logger pino,
+      errorHandler (problem+json), healthcheck GET /api/v1/contabilidad/health.
+  1.4 env.ts con Zod (DATABASE_URL, INTEGRATION_MODE, AUTH_MODE, JWT_*, etc.).
+  1.5 Composition root (bootstrap/container.ts) con createContabilidadModule().
+  1.6 Puertos base: UnitOfWork, Clock, AuthContext, AuditLogger, EventPublisher.
+  1.7 Adaptadores base: PgUnitOfWork (transacciones), SystemClock,
+      MockAuthContext (usuarios semilla CONTADOR y ADMIN_FINANCIERO),
+      PgAuditLogger, PgOutboxPublisher.
+  1.8 Middlewares authenticate y requireRole(...roles).
+  1.9 Dominio compartido: Money, Porcentaje, Periodo, DomainError, con pruebas
+      unitarias exhaustivas (suma, resta, multiplicación por %, redondeo,
+      igualdad, negativos).
+  1.10 OpenAPI base publicado en /api/v1/contabilidad/docs.
+
+Base de datos
+  1.11 docker-compose con PostgreSQL 16 (+ pgAdmin opcional).
+  1.12 Migración 001: CREATE SCHEMA contabilidad; tablas auditoria, inbox,
+       outbox, evento_ignorado.
+  1.13 Script de seeds para desarrollo.
+
+Frontend
+  1.14 Vite + React + TS, router, TanStack Query, librería UI.
+  1.15 Layout del módulo (menú lateral por feature), login mock con selección
+       de rol, guardas de ruta por rol, api-client con manejo de errores
+       problem+json, formateador de moneda COP y fechas.
+  1.16 module.tsx exportable (montaje con basePath).
+
+Calidad
+  1.17 Vitest + Supertest + Testcontainers configurados.
+  1.18 GitHub Actions: install, lint, typecheck, test, build (api y web).
+  1.19 Plantilla de PR con checklist del DoD.
+
+Entregables
+  - `docker compose up` levanta api + web + postgres; health OK; CI verde.
+Criterio de salida
+  - Un caso de uso "dummy" atraviesa todas las capas con prueba de integración.
+
+--------------------------------------------------------------------------------
+ FASE 2 - SPRINT 1: REGISTRO CONTABLE BÁSICO                  (2 sem, 18 pts)
+--------------------------------------------------------------------------------
+Objetivo
+  Las ventas confirmadas se registran automáticamente, con su comisión, y el
+  saldo pendiente por vendedor es visible.
+
+Historias: HU-CON-09 (3), HU-CON-01 (5), HU-CON-02 (5), HU-CON-03 (5)
+Orden de trabajo: 09 -> 01 -> 02 -> 03
+
+HU-CON-09  Configurar el porcentaje de comisión (Must, 3 pts)
+  Dominio .... ConfiguracionComision { porcentaje, alcance (GLOBAL|VENDEDOR|
+               CATEGORIA), referenciaId?, vigenteDesde, vigenteHasta? }.
+               Regla: no se solapan vigencias para el mismo alcance/referencia;
+               al crear una nueva se cierra la anterior.
+  Aplicación . ConfigurarComisionUseCase, ObtenerComisionVigenteQuery;
+               puerto CommissionConfigProvider (permite que mañana el % lo
+               provea el módulo de Administración sin tocar el dominio).
+  BD ......... configuracion_comision.
+  API ........ GET  /comisiones/configuracion
+               PUT  /comisiones/configuracion   (ADMIN_FINANCIERO)
+  Web ........ Pantalla "Configuración de comisión" con historial de vigencias.
+  Pruebas .... no solapamiento; vigencia correcta por fecha; auditoría creada.
+
+HU-CON-01  Registrar automáticamente una venta confirmada (Must, 5 pts)
+  Dominio .... VentaContable (numeroOrden, vendedorId, fecha, valorBruto,
+               estadoOrigen). Solo acepta estado CONFIRMADA.
+  Aplicación . RegistrarVentaConfirmadaUseCase:
+               1) verificar inbox (eventId) -> si existe, devolver "procesado";
+               2) validar estado == confirmada, si no -> evento_ignorado;
+               3) por cada línea/vendedor (H-12) crear VentaContable;
+               4) invocar cálculo de comisión (HU-CON-02) y cuenta por pagar
+                  (HU-CON-03) en la MISMA transacción (UnitOfWork);
+               5) registrar inbox, auditoría y outbox
+                  (contabilidad.venta.registrada).
+  BD ......... venta_contable con UNIQUE (numero_orden, vendedor_id).
+  API ........ POST /eventos/orden-confirmada  (rol SISTEMA)
+               GET  /ventas?desde=&hasta=&vendedorId=&page=&size=
+  Integración  MockOrdersGateway + script/endpoint de simulación que emite
+               órdenes de prueba (riesgo "retraso del módulo de Órdenes").
+  Web ........ Listado de ventas registradas con filtros.
+  Pruebas .... (docx) orden nueva se registra; evento repetido no duplica y
+               responde procesado; orden "pendiente" no se registra; orden
+               multi-vendedor genera N líneas; concurrencia: dos eventos
+               simultáneos iguales -> un solo registro (UNIQUE).
+
+HU-CON-02  Calcular la comisión por cada venta (Must, 5 pts)
+  Dominio .... CalculadoraComision: comision = round(bruto x %); neto =
+               bruto - comision (el neto se obtiene por resta para garantizar
+               bruto = comision + neto). Comision guarda porcentajeAplicado
+               (snapshot).
+  Aplicación . Integrado en RegistrarVentaConfirmada; consulta de detalle.
+  BD ......... comision (venta_id UNIQUE FK, porcentaje_aplicado,
+               valor_comision, valor_neto) + CHECK bruto = comision + neto
+               (vía trigger o validación en vista).
+  API ........ GET /ventas/{id}  (muestra bruto, % aplicado, comisión, neto)
+  Web ........ Detalle de venta con desglose bruto / comisión / neto.
+  Pruebas .... $100.000 al 10 % -> 10.000 / 90.000; cambio de 10 % a 12 % no
+               altera ventas previas; valores con decimales cumplen redondeo y
+               cuadre; pruebas basadas en propiedades (fast-check) para el
+               invariante.
+
+HU-CON-03  Registrar valores pendientes de pago a vendedores (Must, 5 pts)
+  Dominio .... CuentaPorPagar { vendedorId, ventaId, periodo, valor, saldo,
+               estado PENDIENTE|PAGADA|PARCIAL }. Periodo calculado con la
+               regla de liquidación decidida en Fase 0.
+  Aplicación . GenerarCuentaPorPagar (dentro del registro de venta);
+               ListarCuentasPorPagarQuery; ResumenSaldoVendedorQuery.
+  Integración  SellersGateway (mock) para nombre/razón social del vendedor
+               (snapshot en la consulta o caché).
+  BD ......... cuenta_por_pagar; índices (vendedor_id, periodo, estado).
+  API ........ GET /cuentas-por-pagar?vendedorId=&periodo=&estado=
+               GET /cuentas-por-pagar/resumen?periodo=  (saldo por vendedor)
+  Web ........ Pantalla "Cuentas por pagar": resumen por vendedor y periodo,
+               detalle de cuentas, filtro por estado.
+  Pruebas .... dos ventas netas de 90.000 y 45.000 -> saldo 135.000.
+
+Entregables del sprint
+  - Flujo completo evento -> venta -> comisión -> cuenta por pagar, visible en
+    la web, con simulador de Órdenes.
+  - Contratos con Órdenes y Vendedores firmados (v1).
+Criterio de salida
+  - Criterios de aceptación del F01 de 01, 02, 03 y 09 validados por el
+    Contador con datos de ejemplo; demo del sprint.
+
+--------------------------------------------------------------------------------
+ FASE 3 - SPRINT 2: CONCILIACIÓN, AJUSTES Y REPORTE           (2 sem, 18 pts)
+--------------------------------------------------------------------------------
+Objetivo (H-15)
+  "Conciliación, ajustes y reporte de ingresos": los pagos recibidos se
+  concilian contra órdenes, las devoluciones/cancelaciones ajustan saldos y el
+  contador obtiene el reporte por periodo.
+
+Historias: HU-CON-06 (5), HU-CON-04a (5), HU-CON-04b (3), HU-CON-05 (5)
+Orden de trabajo: 06 (en paralelo con 04a) -> 04b -> 05
+
+HU-CON-06  Ajustes por devoluciones o cancelaciones (Should, 5 pts)
+  Dominio .... AjusteContable { ventaId, tipo DEVOLUCION|CANCELACION, motivo,
+               fecha, valor, comisionRevertida, netoRevertido, usuario }.
+               PoliticaAjuste:
+               - solo sobre ventas existentes;
+               - valor <= bruto - ajustes previos (devoluciones parciales);
+               - reverso proporcional: comisionRevertida = round(valor x %
+                 aplicado); netoRevertido = valor - comisionRevertida;
+               - si la cuenta por pagar ya está PAGADA -> genera saldo a favor
+                 del marketplace (cuenta por pagar negativa / nota débito que
+                 se descuenta en la siguiente liquidación);
+               - nunca edita el registro original.
+  Aplicación . RegistrarAjusteUseCase (manual, por el contador) y
+               ProcesarOrdenCanceladaDevueltaUseCase (desde eventos).
+  BD ......... ajuste_contable; actualización de saldo en cuenta_por_pagar.
+  API ........ POST /ajustes   (CONTADOR)
+               GET  /ajustes?ventaId=&desde=&hasta=
+               POST /eventos/orden-cancelada, /eventos/orden-devuelta (SISTEMA)
+  Web ........ Formulario de ajuste desde el detalle de la venta; historial.
+  Pruebas .... orden inexistente rechazada; devolución total de 100.000 al
+               10 % -> comisión -10.000 y saldo -90.000; ajuste mayor al valor
+               rechazado; parcial + parcial no excede total; ajuste sobre
+               cuenta pagada genera saldo a favor.
+
+HU-CON-04a Relacionar pago recibido con órdenes (Must, 5 pts)
+  Dominio .... PagoRecibido { referenciaPasarela (UNIQUE), fecha, valor,
+               origen }. Conciliacion + ConciliacionDetalle (M:N; una orden
+               puede pagarse en partes).
+  Aplicación . RegistrarPagoRecibidoUseCase (desde evento pago.recibido o
+               importación CSV), ConciliarPagoUseCase (asociar órdenes y
+               valorAplicado).
+  Integración  PaymentsGateway: MockPaymentsGateway + CsvPaymentsImporter;
+               HttpPaymentsGateway cuando Pagos exponga su API.
+  BD ......... pago_recibido, conciliacion, conciliacion_detalle.
+  API ........ POST /eventos/pago-recibido  (SISTEMA)
+               POST /pagos-recibidos/importar (CSV, CONTADOR)
+               GET  /pagos-recibidos?estado=
+               POST /conciliaciones
+  Web ........ Bandeja de pagos recibidos; asistente de conciliación
+               (seleccionar pago -> buscar órdenes -> asignar valores).
+
+HU-CON-04b Gestión de diferencias y estado de conciliación (Must, 3 pts)
+  Dominio .... PoliticaConciliacion: diferencia = valorPago - suma(valor
+               aplicado); |diferencia| <= tolerancia -> CONCILIADA; si no ->
+               PENDIENTE con diferencia visible. Registra usuario y fecha.
+  API ........ GET /conciliaciones?estado=&desde=&hasta=
+               GET /conciliaciones/{id}
+  Web ........ Lista de conciliaciones con semáforo y diferencia.
+  Pruebas .... pago 150.000 vs órdenes 100.000 + 50.000 -> CONCILIADA;
+               pago 95.000 vs orden 100.000 -> diferencia -5.000, PENDIENTE;
+               tolerancia aplicada correctamente.
+
+HU-CON-05  Reporte de ingresos y comisiones por periodo (Should, 5 pts)
+  Aplicación . ReporteIngresosQuery (puerto de lectura) que suma ventas,
+               comisiones y netos del rango y descuenta ajustes del rango.
+               Esta misma query será reutilizada por HU-CON-08.
+  BD ......... consulta SQL optimizada (índices por fecha); opcionalmente una
+               vista v_movimientos_contables.
+  API ........ GET /reportes/ingresos?desde=&hasta=&vendedorId=&categoriaId=
+               Respuesta: totales + detalle paginado + bloque "control"
+               (sum ventas = sum comisiones + sum netos).
+  Web ........ Pantalla de reporte con selector de rango, tarjetas de totales,
+               tabla de detalle y gráfico simple por día/semana.
+  Pruebas .... rango con 3 ventas conocidas -> totales exactos; rango vacío ->
+               ceros sin error; incluye ajustes del rango.
+
+Entregables del sprint
+  - Conciliación operativa (mock/CSV de Pagos), ajustes con reverso, reporte.
+  - Contrato con Pagos firmado (v1).
+Criterio de salida
+  - Criterios del F01 de 04, 05, 06 validados por el Contador.
+
+--------------------------------------------------------------------------------
+ FASE 4 - SPRINT 3: CONSULTA, EXPORTACIÓN Y CONTROL           (2 sem, 12 pts)
+--------------------------------------------------------------------------------
+Objetivo
+  Cerrar el ciclo de cuentas por pagar (pago al vendedor), consultar estado por
+  vendedor, exportar a Excel y consultar la auditoría.
+
+Historias: HU-CON-10 (3), HU-CON-07 (3), HU-CON-08 (3), HU-CON-11 (3)
+(Si la velocidad del Sprint 1 lo permite, HU-CON-10 puede adelantarse al
+ Sprint 2; el estado "pagado" solo se necesita en la primera liquidación.)
+
+HU-CON-10  Registrar pago realizado a un vendedor (Must, 3 pts)
+  Dominio .... PagoVendedor { vendedorId, fecha, valor, referencia, soporte }.
+               Aplica el pago a cuentas pendientes (FIFO por periodo),
+               descontando saldos a favor del marketplace; cambia estado a
+               PAGADA o PARCIAL. No permite pagar más del saldo.
+  BD ......... pago_vendedor, pago_vendedor_detalle (cuenta aplicada, valor).
+  API ........ POST /pagos-vendedor   (CONTADOR)
+               GET  /pagos-vendedor?vendedorId=&desde=&hasta=
+  Web ........ Desde "Cuentas por pagar": acción "Registrar pago" con soporte.
+  Pruebas .... pago de 90.000 deja cuenta PAGADA y saldo 45.000 (docx).
+
+HU-CON-07  Estado financiero por vendedor (Could, 3 pts)
+  Aplicación . EstadoVendedorQuery: total vendido, comisión, ajustes, pagado,
+               pendiente; regla de control:
+               vendido - comisión - ajustes(neto) = pagado + pendiente.
+  API ........ GET /vendedores/{id}/estado?desde=&hasta=
+  Web ........ Ficha del vendedor con totales y movimientos por periodo.
+  Pruebas .... vendedor con movimientos en dos meses, filtro de un mes ->
+               solo ese mes; regla de control cumple.
+  Nota ....... Dejar preparado el permiso VENDEDOR (solo su propio estado)
+               para cuando el marketplace lo requiera.
+
+HU-CON-08  Exportar información contable a Excel (Could, 3 pts)
+  Aplicación . ExportarExcelUseCase reutiliza ReporteIngresosQuery (mismos
+               números que en pantalla) y SpreadsheetExporter (puerto).
+  Infra ...... ExcelJsExporter: celdas numéricas (no texto), formato moneda,
+               encabezados, fila de totales, hoja de metadatos (rango, fecha
+               de generación, usuario). Streaming para periodos grandes.
+  API ........ GET /exportaciones/excel?desde=&hasta=  (ADMIN_FINANCIERO,
+               CONTADOR) -> application/vnd.openxmlformats-...sheet
+  Web ........ Botón "Exportar a Excel" en el reporte.
+  Pruebas .... suma de la columna "valor bruto" del archivo = total del
+               reporte en pantalla (prueba automática leyendo el xlsx).
+
+HU-CON-11  Consultar auditoría de movimientos (Should, 3 pts)
+  Aplicación . ConsultarAuditoriaQuery con filtros (entidad, usuario, fechas).
+  API ........ GET /auditoria?entidad=&usuario=&desde=&hasta=  (ADMIN_FINANCIERO)
+  Web ........ Pantalla de auditoría con diff antes/después.
+
+Entregables del sprint
+  - Todas las HU del backlog implementadas y validadas.
+Criterio de salida
+  - Criterios del F01 de 07 y 08 (y 10, 11) validados; prueba de cuadre global.
+
+--------------------------------------------------------------------------------
+ FASE 5 - ENDURECIMIENTO Y PREPARACIÓN PARA INTEGRACIÓN        (1 sprint, 2 sem)
+--------------------------------------------------------------------------------
+Objetivo
+  Dejar el módulo listo para producción e integración con los demás equipos.
+
+Actividades
+  5.1 Pruebas de cuadre contable automatizadas: reporte = exportación = suma de
+      transacciones; estado de vendedor cuadra con cuentas por pagar.
+  5.2 Pruebas de contrato (consumer-driven, p. ej. Pact o validación de
+      esquemas Zod/JSON Schema) con Órdenes, Pagos y Vendedores.
+  5.3 Rendimiento: dataset de prueba (p. ej. 200.000 ventas), reporte y
+      exportación mensual < 5 s; índices, EXPLAIN ANALYZE, paginación.
+  5.4 Seguridad: revisión OWASP API Top 10, validación de entradas, rate
+      limiting, HTTPS/TLS, secretos fuera del repo, logs sin datos sensibles,
+      principio de mínimo privilegio en el usuario de BD.
+  5.5 Resiliencia: reintentos y dead-letter para eventos, relay de outbox,
+      health/readiness checks, manejo de cierre ordenado.
+  5.6 Observabilidad: logs estructurados, métricas (prom-client), trazas
+      (OpenTelemetry opcional).
+  5.7 Documentación: OpenAPI final, README de despliegue, guía de
+      integración para otros equipos, manual de usuario del contador.
+  5.8 (Opcional, si se aprobó en Fase 0) Asientos de partida doble con PUC:
+      tablas cuenta_contable, asiento, asiento_linea; generación automática
+      por evento según la tabla 7.4 del docx; validación débito = crédito.
+  5.9 Pruebas E2E Playwright de los flujos principales.
+
+Criterio de salida
+  - Checklist de producción completo; cero defectos críticos abiertos.
+
+--------------------------------------------------------------------------------
+ FASE 6 - INTEGRACIÓN CON EL MARKETPLACE COMPLETO        (según calendario global)
+--------------------------------------------------------------------------------
+Objetivo
+  Conectar el módulo a los módulos reales sin modificar dominio ni casos de uso.
+
+Actividades
+  6.1 Activar adaptadores reales: HttpOrdersGateway / consumidor de eventos,
+      HttpSellersGateway, HttpPaymentsGateway (INTEGRATION_MODE=http|events).
+  6.2 Si el marketplace usa broker: implementar BrokerEventConsumer y
+      BrokerEventPublisher (nuevos adaptadores de los mismos puertos).
+  6.3 Autenticación: AUTH_MODE=jwt con las claves/JWKS del marketplace; mapear
+      roles del marketplace a CONTADOR / ADMIN_FINANCIERO.
+  6.4 Despliegue según opción elegida (sección 5.4): microservicio detrás del
+      API Gateway o montaje del router en el monolito modular.
+  6.5 Frontend: montar <ContabilidadModule/> en el shell del marketplace
+      (ruta /contabilidad o Module Federation); unificar tema visual.
+  6.6 Migraciones en el ambiente compartido (esquema contabilidad).
+  6.7 Carga inicial / migración de datos históricos si aplica.
+  6.8 Staging: pruebas E2E cruzadas (orden real -> venta contable -> pago ->
+      conciliación -> liquidación al vendedor).
+  6.9 Monitoreo, alertas y plan de rollback; salida a producción.
+
+Criterio de salida
+  - Flujo extremo a extremo verificado en staging con los módulos reales y
+    aprobado por el Contador y el Product Owner del marketplace.
+
+
+================================================================================
+ 8. CRONOGRAMA RESUMEN
+================================================================================
+
+ Fase | Sprint      | Historias                         | Puntos | Semanas
+ -----+-------------+-----------------------------------+--------+--------
+  0   | Pre-sprint  | Decisiones y contratos            |   -    |   1
+  1   | Sprint 0    | Fundaciones técnicas              |   -    |  1-2
+  2   | Sprint 1    | HU-CON-09, 01, 02, 03             |   18   |   2
+  3   | Sprint 2    | HU-CON-06, 04a, 04b, 05           |   18   |   2
+  4   | Sprint 3    | HU-CON-10, 07, 08, 11             |   12   |   2
+  5   | Sprint 4    | Endurecimiento / producción       |   -    |   2
+  6   | Global      | Integración con marketplace       |   -    | según
+      |             |                                   |        | plan global
+ -----+-------------+-----------------------------------+--------+--------
+      | TOTAL       | 11 HU                             |   48   | ~10-11
+
+ Hitos
+  M1  Fin Fase 1 : esqueleto + CI verde.
+  M2  Fin Sprint 1: ventas, comisiones y cuentas por pagar (MVP contable).
+  M3  Fin Sprint 2: conciliación, ajustes y reporte (Must completo).
+  M4  Fin Sprint 3: backlog completo.
+  M5  Fin Fase 5 : listo para integración.
+  M6  Fin Fase 6 : en producción integrado al marketplace.
+
+
+================================================================================
+ 9. MODELO DE DATOS DETALLADO (POSTGRESQL, ESQUEMA "contabilidad")
+================================================================================
+Convenciones: PK id UUID (gen_random_uuid()), creado_en TIMESTAMPTZ DEFAULT
+now(), dinero NUMERIC(18,2), porcentaje NUMERIC(7,4). Sin DELETE/UPDATE sobre
+registros contables (solo estados y saldos de cuenta_por_pagar/conciliacion).
+
+configuracion_comision                                         (HU-CON-09/02)
+  id, porcentaje NUMERIC(7,4) CHECK (0..100), alcance VARCHAR CHECK IN
+  ('GLOBAL','VENDEDOR','CATEGORIA'), referencia_id VARCHAR NULL,
+  vigente_desde TIMESTAMPTZ, vigente_hasta TIMESTAMPTZ NULL, creado_por,
+  creado_en.  Restricción de no solapamiento (EXCLUDE USING gist con
+  tstzrange) por (alcance, referencia_id).
+
+venta_contable                                                 (HU-CON-01)
+  id, numero_orden VARCHAR NOT NULL, vendedor_id VARCHAR NOT NULL,
+  fecha TIMESTAMPTZ, valor_bruto NUMERIC(18,2) CHECK > 0, estado_origen,
+  categoria_id NULL, event_id, creado_en.
+  UNIQUE (numero_orden, vendedor_id). Índices: (fecha), (vendedor_id, fecha).
+
+comision                                                       (HU-CON-02)
+  id, venta_id FK UNIQUE, configuracion_id FK, porcentaje_aplicado,
+  valor_comision, valor_neto, creado_en.
+
+cuenta_por_pagar                                               (HU-CON-03)
+  id, vendedor_id, venta_id FK NULL, ajuste_id FK NULL, periodo VARCHAR
+  (p. ej. '2026-10-Q1'), valor NUMERIC(18,2), saldo NUMERIC(18,2),
+  estado CHECK IN ('PENDIENTE','PARCIAL','PAGADA','SALDO_A_FAVOR'),
+  creado_en, actualizado_en. Índice (vendedor_id, periodo, estado).
+
+pago_vendedor / pago_vendedor_detalle                          (HU-CON-10)
+  pago_vendedor: id, vendedor_id, fecha, valor, referencia UNIQUE, soporte_url,
+  registrado_por, creado_en.
+  pago_vendedor_detalle: id, pago_vendedor_id FK, cuenta_por_pagar_id FK,
+  valor_aplicado.
+
+pago_recibido                                                  (HU-CON-04)
+  id, referencia_pasarela UNIQUE, fecha, valor, origen ('API','CSV','MANUAL'),
+  event_id NULL, creado_en.
+
+conciliacion                                                   (HU-CON-04)
+  id, pago_recibido_id FK, valor_pago, valor_ordenes, diferencia,
+  estado CHECK IN ('CONCILIADA','PENDIENTE'), usuario, fecha, creado_en.
+
+conciliacion_detalle                                           (HU-CON-04)
+  id, conciliacion_id FK, venta_id FK, valor_aplicado.
+
+ajuste_contable                                                (HU-CON-06)
+  id, venta_id FK, tipo CHECK IN ('DEVOLUCION','CANCELACION'), motivo, fecha,
+  valor, comision_revertida, neto_revertido, origen ('MANUAL','EVENTO'),
+  event_id NULL, usuario, creado_en.
+
+auditoria                                                      (Transversal/11)
+  id, entidad, entidad_id, accion, usuario, fecha, valores_anteriores JSONB,
+  valores_nuevos JSONB, correlation_id. Índices (entidad, entidad_id), (fecha).
+
+inbox            id, event_id UNIQUE, tipo, payload JSONB, procesado_en.
+outbox           id, tipo, payload JSONB, creado_en, publicado_en NULL, intentos.
+evento_ignorado  id, event_id, tipo, motivo, payload JSONB, creado_en.
+
+(Opcional Fase 5) cuenta_contable (codigo_puc, nombre, naturaleza),
+asiento (id, fecha, origen, referencia), asiento_linea (asiento_id,
+cuenta_id, debito, credito) con CHECK sum(debito) = sum(credito).
+
+Reportes (05), estado por vendedor (07) y exportación (08) son consultas; no
+requieren tablas propias (opcional: vistas o vistas materializadas si el
+rendimiento lo exige).
+
+
+================================================================================
+ 10. CATÁLOGO DE ENDPOINTS REST  (prefijo /api/v1/contabilidad)
+================================================================================
+
+ Método | Ruta                                   | Rol              | HU
+ -------+----------------------------------------+------------------+--------
+ GET    | /health                                | público          | -
+ GET    | /docs                                  | autenticado      | -
+ POST   | /eventos/orden-confirmada              | SISTEMA          | 01,02,03
+ POST   | /eventos/orden-cancelada               | SISTEMA          | 06
+ POST   | /eventos/orden-devuelta                | SISTEMA          | 06
+ POST   | /eventos/pago-recibido                 | SISTEMA          | 04
+ GET    | /ventas                                | CONTADOR         | 01
+ GET    | /ventas/{id}                           | CONTADOR         | 01,02
+ GET    | /comisiones/configuracion              | CONTADOR, ADMIN  | 09,02
+ PUT    | /comisiones/configuracion              | ADMIN_FINANCIERO | 09
+ GET    | /cuentas-por-pagar                     | CONTADOR         | 03
+ GET    | /cuentas-por-pagar/resumen             | CONTADOR         | 03
+ POST   | /pagos-vendedor                        | CONTADOR         | 10
+ GET    | /pagos-vendedor                        | CONTADOR         | 10
+ POST   | /pagos-recibidos/importar              | CONTADOR         | 04
+ GET    | /pagos-recibidos                       | CONTADOR         | 04
+ POST   | /conciliaciones                        | CONTADOR         | 04
+ GET    | /conciliaciones                        | CONTADOR         | 04
+ GET    | /conciliaciones/{id}                   | CONTADOR         | 04
+ POST   | /ajustes                               | CONTADOR         | 06
+ GET    | /ajustes                               | CONTADOR         | 06
+ GET    | /reportes/ingresos                     | CONTADOR, ADMIN  | 05
+ GET    | /vendedores/{id}/estado                | CONTADOR, ADMIN  | 07
+ GET    | /exportaciones/excel                   | CONTADOR, ADMIN  | 08
+ GET    | /auditoria                             | ADMIN_FINANCIERO | 11
+
+ Notas
+  - Los 10 endpoints del docx (sección 7.3) se conservan; se agregan los de
+    eventos de cancelación/devolución/pago, consulta de ventas, importación de
+    pagos y auditoría.
+  - Los endpoints /eventos/* son el adaptador webhook; con un broker se
+    reemplazan por consumidores que llaman a los mismos casos de uso.
+  - POST de comandos aceptan cabecera Idempotency-Key.
+
+
+================================================================================
+ 11. ESTRUCTURA DEL FRONTEND (REACT)
+================================================================================
+
+ Ruta (basePath /contabilidad)     | Pantalla                          | HU
+ ----------------------------------+-----------------------------------+------
+ /                                  | Tablero (totales del periodo)     | 05
+ /ventas, /ventas/:id               | Ventas y detalle con desglose     | 01,02
+ /configuracion/comision            | Configuración de comisión         | 09
+ /cuentas-por-pagar                 | Saldos por vendedor y periodo     | 03,10
+ /pagos-recibidos                   | Bandeja de pagos recibidos        | 04
+ /conciliaciones, /conciliaciones/:id| Conciliación y diferencias       | 04
+ /ajustes                           | Ajustes y formulario              | 06
+ /reportes/ingresos                 | Reporte + exportar a Excel        | 05,08
+ /vendedores/:id                    | Estado financiero del vendedor    | 07
+ /auditoria                         | Auditoría de movimientos          | 11
+
+ Cada feature contiene: api.ts (hooks TanStack Query), components/, pages/,
+ schemas.ts (reutilizando packages/contracts). Montos siempre formateados
+ desde string decimal (Intl.NumberFormat 'es-CO', COP), nunca operados con
+ number en el cliente.
+
+
+================================================================================
+ 12. ESTRATEGIA DE PRUEBAS Y DEFINICIÓN DE TERMINADO
+================================================================================
+
+12.1 Pirámide de pruebas
+  Unitarias (dominio, >= 90 % cobertura): Money, Porcentaje, Periodo,
+    CalculadoraComision, PoliticaAjuste, PoliticaConciliacion, casos de uso
+    con puertos en memoria (fakes).
+  Integración (Testcontainers + Supertest): repositorios PostgreSQL,
+    transacciones, UNIQUE/idempotencia, endpoints con auth y roles.
+  Contrato: esquemas de eventos y APIs con Órdenes, Pagos, Vendedores.
+  Aceptación: escenarios Dado/Cuando/Entonces de la sección 3 del docx,
+    automatizados uno a uno.
+  Cuadre contable: reporte = exportación = suma de transacciones;
+    bruto = comisión + neto; vendido - comisión - ajustes = pagado + pendiente.
+  E2E (Playwright): flujos principales por rol.
+
+12.2 Definición de Terminado (DoD)
+  [ ] Cumple todos los criterios de aceptación del Formato 01.
+  [ ] PR revisado y aprobado por al menos otro integrante.
+  [ ] Pruebas unitarias de reglas y pruebas de los escenarios del docx.
+  [ ] Pruebas de integración con el módulo dependiente (o su mock/contrato)
+      pasan en CI.
+  [ ] Valores validados por el rol Contador con datos de ejemplo.
+  [ ] OpenAPI y documentación actualizados.
+  [ ] Sin violaciones de reglas de capas (lint de arquitectura).
+  [ ] Auditoría registrada para los comandos nuevos.
+
+
+================================================================================
+ 13. RIESGOS Y MITIGACIONES
+================================================================================
+
+ Riesgo                                       | Prob. | Imp.  | Mitigación
+ ---------------------------------------------+-------+-------+----------------
+ Retraso de Órdenes en exponer el evento      | Media | Alto  | Contrato en
+                                              |       |       | Fase 0; mock y
+                                              |       |       | simulador.
+ Formato de pagos de la pasarela cambiante    | Media | Alto  | Contrato antes
+                                              |       |       | del Sprint 2;
+                                              |       |       | importador CSV.
+ Errores de redondeo que descuadren reportes  | Media | Medio | Money/decimal,
+                                              |       |       | regla única,
+                                              |       |       | pruebas de cuadre.
+ Reglas contables/tributarias no definidas    | Alta  | Alto  | Fase 0 con el
+                                              |       |       | contador; ADRs.
+ Sobrecarga del Sprint 2                      | Media | Medio | HU-04 dividida;
+                                              |       |       | HU-10 a Sprint 3.
+ Acoplamiento accidental al marketplace       | Media | Alto  | Hexagonal +
+                                              |       |       | lint de capas;
+                                              |       |       | esquema propio.
+ Deriva de contratos entre equipos            | Media | Medio | packages/contracts
+                                              |       |       | versionado +
+                                              |       |       | pruebas de contrato.
+ Eventos duplicados o perdidos                | Media | Alto  | inbox/outbox,
+                                              |       |       | reintentos, DLQ.
+ Stack del marketplace distinto al elegido    | Baja  | Medio | Alinear en Fase 0;
+                                              |       |       | adaptadores HTTP
+                                              |       |       | aíslan diferencias.
+
+
+================================================================================
+ 14. DECISIONES PENDIENTES (CHECKLIST)
+================================================================================
+
+ Antes del Sprint 1
+  [ ] Regla de redondeo y moneda.
+  [ ] Alcance del % de comisión (global/vendedor/categoría) y quién lo
+      configura (este módulo vs. Administración).
+  [ ] Periodicidad de liquidación y fecha de corte.
+  [ ] Contrato de evento orden.confirmada (incluye multi-vendedor, eventId).
+  [ ] API de Vendedores.
+  [ ] Modelo de autenticación/roles y emisión de tokens.
+  [ ] Duración de sprints, fechas y responsables con nombre por HU.
+  [ ] Confirmar TypeScript y gestor de paquetes (npm/pnpm).
+ Antes del Sprint 2
+  [ ] Contrato pago.recibido / formato CSV de la pasarela.
+  [ ] Tolerancia de conciliación y tratamiento de costos de pasarela.
+  [ ] Reglas de ajustes: parcial, reverso de comisión, vendedor ya pagado.
+  [ ] Eventos orden.cancelada / orden.devuelta.
+ Antes del Sprint 3
+  [ ] Columnas definitivas del Excel.
+  [ ] ¿El vendedor verá su propio estado financiero?
+ Antes de Fase 5/6
+  [ ] Impuestos y facturación: Won't Have confirmado.
+  [ ] Asientos de partida doble y códigos PUC: sí/no.
+  [ ] Modelo de despliegue: microservicio vs. monolito modular; broker de
+      eventos del marketplace.
+
+
+================================================================================
+ 15. MATRIZ DE TRAZABILIDAD
+================================================================================
+
+ HU        | Fase/Sprint | Tablas                              | Endpoints              | Pantallas
+ ----------+-------------+-------------------------------------+------------------------+------------------------
+ HU-CON-01 | F2 / S1     | venta_contable, inbox,              | POST eventos/orden-    | /ventas
+           |             | evento_ignorado                     | confirmada; GET ventas |
+ HU-CON-02 | F2 / S1     | comision, configuracion_comision    | GET ventas/{id}        | /ventas/:id
+ HU-CON-03 | F2 / S1     | cuenta_por_pagar                    | GET cuentas-por-pagar  | /cuentas-por-pagar
+ HU-CON-09 | F2 / S1     | configuracion_comision              | GET/PUT comisiones/    | /configuracion/comision
+           |             |                                     | configuracion          |
+ HU-CON-04 | F3 / S2     | pago_recibido, conciliacion,        | POST eventos/pago-     | /pagos-recibidos,
+           |             | conciliacion_detalle                | recibido; pagos-       | /conciliaciones
+           |             |                                     | recibidos; conciliac.  |
+ HU-CON-05 | F3 / S2     | (consulta)                          | GET reportes/ingresos  | /reportes/ingresos, /
+ HU-CON-06 | F3 / S2     | ajuste_contable, cuenta_por_pagar   | POST/GET ajustes;      | /ajustes
+           |             |                                     | eventos cancel./devol. |
+ HU-CON-10 | F4 / S3     | pago_vendedor, pago_vendedor_detalle| POST/GET pagos-vendedor| /cuentas-por-pagar
+ HU-CON-07 | F4 / S3     | (consulta)                          | GET vendedores/{id}/   | /vendedores/:id
+           |             |                                     | estado                 |
+ HU-CON-08 | F4 / S3     | (consulta = HU-CON-05)              | GET exportaciones/excel| /reportes/ingresos
+ HU-CON-11 | F4 / S3     | auditoria                           | GET auditoria          | /auditoria
+
+================================================================================
+ FIN DEL DOCUMENTO
+================================================================================
