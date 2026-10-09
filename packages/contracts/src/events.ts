@@ -2,8 +2,9 @@ import { z } from 'zod';
 import { fechaIsoSchema, monedaSchema, montoPositivoSchema } from './common';
 
 /**
- * Contratos de eventos entrantes (BORRADOR v1 - Fase 0).
- * Deben acordarse con los equipos de Órdenes y Pagos (ver docs/fase0/contratos-integracion.md).
+ * Contratos de eventos entrantes, v1 (ver docs/fase0/contratos-integracion.md).
+ * Eventos de Órdenes: v1 congelada el 2026-10-08, con los supuestos S-01..S-03.
+ * pago.recibido: borrador; se cierra con el equipo de Pagos antes del Sprint 2.
  */
 
 const baseEvento = {
@@ -25,8 +26,13 @@ export const ordenConfirmadaSchema = z.object({
   fecha: fechaIsoSchema,
   estado: z.string().min(1),
   moneda: monedaSchema,
-  /** Una línea por vendedor: las órdenes multi-vendedor se liquidan por separado (H-12). */
-  lineas: z.array(lineaOrdenSchema).min(1),
+  /** Una línea por vendedor: las órdenes multi-vendedor se liquidan por separado (H-12, D-05). */
+  lineas: z
+    .array(lineaOrdenSchema)
+    .min(1)
+    .refine((lineas) => new Set(lineas.map((l) => l.vendedorId)).size === lineas.length, {
+      message: 'Cada vendedor debe aparecer una sola vez por orden',
+    }),
 });
 export type OrdenConfirmadaEvent = z.infer<typeof ordenConfirmadaSchema>;
 

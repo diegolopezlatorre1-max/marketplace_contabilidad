@@ -34,6 +34,17 @@ describe('contratos de eventos', () => {
     expect(ordenConfirmadaSchema.safeParse({ ...ordenValida, lineas: [] }).success).toBe(false);
   });
 
+  it('rechaza un vendedor repetido en la misma orden (D-05)', () => {
+    const repetido = {
+      ...ordenValida,
+      lineas: [
+        { vendedorId: 'V-1', valorBruto: '100.00' },
+        { vendedorId: 'V-1', valorBruto: '50.00' },
+      ],
+    };
+    expect(ordenConfirmadaSchema.safeParse(repetido).success).toBe(false);
+  });
+
   it('acepta un pago recibido sin órdenes asociadas', () => {
     const pago = {
       eventId: 'evt-p1',

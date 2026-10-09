@@ -993,16 +993,21 @@ rendimiento lo exige).
  14. DECISIONES PENDIENTES (CHECKLIST)
 ================================================================================
 
- Antes del Sprint 1
-  [ ] Regla de redondeo y moneda.
-  [ ] Alcance del % de comisión (global/vendedor/categoría) y quién lo
-      configura (este módulo vs. Administración).
-  [ ] Periodicidad de liquidación y fecha de corte.
-  [ ] Contrato de evento orden.confirmada (incluye multi-vendedor, eventId).
-  [ ] API de Vendedores.
-  [ ] Modelo de autenticación/roles y emisión de tokens.
-  [ ] Duración de sprints, fechas y responsables con nombre por HU.
-  [ ] Confirmar TypeScript y gestor de paquetes (npm/pnpm).
+ Antes del Sprint 1   (cerrado el 2026-10-08, ver docs/fase0/decisiones.md)
+  [x] Regla de redondeo y moneda: COP, HALF_UP 2 decimales (D-01, D-02).
+  [x] Alcance del % de comisión (global/vendedor/categoría) y quién lo
+      configura (este módulo vs. Administración): global con vigencias,
+      lo configura ADMIN_FINANCIERO en este módulo (D-04).
+  [x] Periodicidad de liquidación y fecha de corte: quincenal (D-03).
+  [x] Contrato de evento orden.confirmada (incluye multi-vendedor, eventId):
+      v1 congelada con supuestos S-01..S-03.
+  [x] API de Vendedores: v1 congelada con supuestos S-04, S-05.
+  [x] Modelo de autenticación/roles y emisión de tokens: v1 con supuestos
+      S-06..S-08; mock hasta la Fase 6.
+  [x] Duración de sprints, fechas y responsables con nombre por HU:
+      fechas definidas (Sprint 1: 2026-10-12 a 2026-10-23); Sprint 1:
+      HU-CON-09 y 01 Carlos, HU-CON-02 y 03 Diego (docs/sprint1).
+  [x] Confirmar TypeScript y gestor de paquetes: TypeScript + npm workspaces.
  Antes del Sprint 2
   [ ] Contrato pago.recibido / formato CSV de la pasarela.
   [ ] Tolerancia de conciliación y tratamiento de costos de pasarela.
