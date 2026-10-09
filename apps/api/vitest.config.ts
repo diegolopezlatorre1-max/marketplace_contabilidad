@@ -15,6 +15,7 @@ export default defineConfig({
           name: 'integration',
           include: ['test/integration/**/*.test.ts'],
           environment: 'node',
+          globalSetup: ['test/integration/globalSetup.ts'],
           setupFiles: ['test/integration/setup.ts'],
           // Las pruebas de integración comparten una BD real: se ejecutan en serie.
           fileParallelism: false,

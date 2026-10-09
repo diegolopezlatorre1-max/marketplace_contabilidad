@@ -1,7 +1,8 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: { main: 'src/bootstrap/main.ts' },
+  // migrate y seed se empaquetan para ejecutarse sin tsx (contenedor Docker).
+  entry: { main: 'src/bootstrap/main.ts', migrate: 'scripts/migrate.ts', seed: 'scripts/seed.ts' },
   format: ['esm'],
   target: 'node20',
   platform: 'node',

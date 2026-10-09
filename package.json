@@ -21,8 +21,10 @@
     "format:check": "prettier --check .",
     "test": "npm run test --workspaces --if-present",
     "test:integration": "npm run test:integration -w @contabilidad/api",
+    "test:integration:docker": "npm run test:integration:docker -w @contabilidad/api",
     "db:create": "npm run db:create -w @contabilidad/api",
-    "db:migrate": "npm run db:migrate -w @contabilidad/api"
+    "db:migrate": "npm run db:migrate -w @contabilidad/api",
+    "db:seed": "npm run db:seed -w @contabilidad/api"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",

@@ -24,7 +24,9 @@ try {
       : 'La base de datos ya está al día.',
   );
 } catch (error) {
-  console.error((error as Error).message);
+  // Un fallo de conexión llega como AggregateError sin mensaje: se muestra el código.
+  const e = error as NodeJS.ErrnoException;
+  console.error(e.message || e.code || String(e));
   process.exitCode = 1;
 } finally {
   await pool.end();

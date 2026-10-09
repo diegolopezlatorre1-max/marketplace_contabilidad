@@ -1,5 +1,7 @@
-# Alternativa a PostgreSQL instalado localmente (para quien use Docker).
-# Uso: docker compose up -d   -> luego npm run db:create && npm run db:migrate
+# Entorno completo de desarrollo: PostgreSQL + API + web.
+# Uso: docker compose up --build   -> web en http://localhost:8080, API en http://localhost:3000
+# Solo la base de datos (para usar npm run dev:*): docker compose up -d postgres
+# Si ya hay un PostgreSQL local en 5432: POSTGRES_PORT=5433 docker compose up
 services:
   postgres:
     image: postgres:16
@@ -8,13 +10,47 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: marketplace_contabilidad
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U postgres']
       interval: 5s
       retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      LOG_LEVEL: info
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/marketplace_contabilidad
+      INTEGRATION_MODE: mock
+      AUTH_MODE: mock
+      CORS_ORIGINS: http://localhost:8080
+    # Aplica migraciones y seeds de desarrollo antes de iniciar.
+    command: sh -c "node dist/migrate.js && node dist/seed.js && node dist/main.js"
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/api/v1/contabilidad/health || exit 1']
+      interval: 10s
+      retries: 10
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - '8080:80'
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   pgdata:
