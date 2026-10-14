@@ -1,0 +1,287 @@
+.cp-panel {
+  --cp-ink: var(--ct-text, #172b4d);
+  --cp-muted: var(--ct-muted, #64748b);
+  --cp-border: var(--ct-border, #e2e8f0);
+  --cp-surface: var(--ct-surface, #fff);
+  --cp-primary: #23415f;
+  --cp-primary-hover: #18334f;
+  --cp-soft: #f3f6f9;
+  --cp-shadow: 0 10px 28px rgb(15 23 42 / 5%);
+
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 36px 28px;
+  color: var(--cp-ink);
+}
+
+.cp-header {
+  margin-bottom: 28px;
+}
+
+.cp-header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.7rem, 3vw, 2.1rem);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.cp-header p {
+  margin: 0;
+  color: var(--cp-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.cp-barra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 18px;
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  background: var(--cp-surface);
+  box-shadow: var(--cp-shadow);
+}
+
+.cp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--cp-border);
+  border-radius: 9px;
+  background: var(--cp-soft);
+}
+
+.cp-tabs button {
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cp-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 550;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.cp-tabs button:hover:not([aria-pressed='true']) {
+  color: var(--cp-ink);
+  background: rgb(255 255 255 / 65%);
+}
+
+.cp-tabs button[aria-pressed='true'] {
+  background: var(--cp-surface);
+  color: var(--cp-primary);
+  box-shadow: 0 1px 3px rgb(15 23 42 / 12%);
+}
+
+.cp-filtro {
+  display: flex;
+  min-width: 150px;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--cp-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+}
+
+.cp-filtro select {
+  min-height: 44px;
+  padding: 0 36px 0 12px;
+  border: 1px solid var(--cp-border);
+  border-radius: 7px;
+  background: var(--cp-surface);
+  color: var(--cp-ink);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.92rem;
+}
+
+.cp-tabs button:focus-visible,
+.cp-filtro select:focus-visible {
+  outline: 3px solid rgb(35 65 95 / 28%);
+  outline-offset: 2px;
+}
+
+.cp-scroll {
+  overflow-x: auto;
+  border: 1px solid var(--cp-border);
+  border-radius: 12px;
+  background: var(--cp-surface);
+  box-shadow: var(--cp-shadow);
+}
+
+.cp-tabla {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.92rem;
+}
+
+.cp-tabla th,
+.cp-tabla td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--cp-border);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.cp-tabla thead th {
+  background: var(--cp-soft);
+  color: var(--cp-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+.cp-tabla tbody tr {
+  transition: background-color 120ms ease;
+}
+
+.cp-tabla tbody tr:hover {
+  background: var(--cp-soft);
+}
+
+.cp-tabla tbody td {
+  color: var(--cp-ink);
+  line-height: 1.45;
+}
+
+.cp-tabla tfoot td {
+  border-bottom: 0;
+  background: var(--cp-soft);
+  color: var(--cp-ink);
+  font-weight: 700;
+}
+
+.cp-num {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  line-height: 1.2;
+}
+
+.cp-badge--pendiente {
+  background: #fff3d6;
+  color: #805500;
+}
+
+.cp-badge--pagado {
+  background: #e0f2e9;
+  color: #17613b;
+}
+
+.cp-vacio {
+  margin: 0;
+  padding: 44px 24px;
+  border: 1px dashed var(--cp-border);
+  border-radius: 12px;
+  background: var(--cp-surface);
+  color: var(--cp-muted);
+  text-align: center;
+  line-height: 1.6;
+}
+
+.cp-error {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border: 1px solid #f2caca;
+  border-radius: 8px;
+  background: #fff1f1;
+  color: #8d2525;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  .cp-panel {
+    --cp-primary: #b9d2eb;
+    --cp-primary-hover: #d4e5f5;
+    --cp-soft: #263548;
+    --cp-shadow: 0 10px 28px rgb(0 0 0 / 14%);
+  }
+
+  .cp-tabs button:hover:not([aria-pressed='true']) {
+    background: rgb(255 255 255 / 6%);
+  }
+
+  .cp-tabs button[aria-pressed='true'] {
+    box-shadow: 0 1px 3px rgb(0 0 0 / 28%);
+  }
+
+  .cp-tabs button:focus-visible,
+  .cp-filtro select:focus-visible {
+    outline-color: rgb(185 210 235 / 45%);
+  }
+
+  .cp-badge--pendiente {
+    background: #493a1b;
+    color: #f3d58d;
+  }
+
+  .cp-badge--pagado {
+    background: #1d4031;
+    color: #a9e0c1;
+  }
+
+  .cp-error {
+    border-color: #693535;
+    background: #3a2427;
+    color: #ffc1c1;
+  }
+}
+
+@media (max-width: 640px) {
+  .cp-panel {
+    padding: 24px 16px;
+  }
+
+  .cp-header {
+    margin-bottom: 22px;
+  }
+
+  .cp-barra {
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .cp-tabs {
+    width: 100%;
+  }
+
+  .cp-tabs button {
+    flex: 1;
+    padding-inline: 10px;
+  }
+
+  .cp-filtro {
+    flex: 1 1 140px;
+  }
+
+  .cp-tabla {
+    min-width: 680px;
+  }
+
+  .cp-tabla th,
+  .cp-tabla td {
+    padding: 12px;
+  }
+}
