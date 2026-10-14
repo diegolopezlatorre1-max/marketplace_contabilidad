@@ -59,9 +59,7 @@ describe('CuentaPorPagar', () => {
 
   it('rechaza una venta de otro vendedor', () => {
     const c = CuentaPorPagar.abrir('V-1', Q1);
-    expect(() => c.acumular(comision('ORD-1', '1000', 'V-2'), VENTA_Q1)).toThrow(
-      InvalidValueError,
-    );
+    expect(() => c.acumular(comision('ORD-1', '1000', 'V-2'), VENTA_Q1)).toThrow(InvalidValueError);
   });
 
   it('rechaza una venta de otra quincena', () => {
