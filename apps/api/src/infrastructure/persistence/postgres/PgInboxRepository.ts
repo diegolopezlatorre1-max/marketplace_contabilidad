@@ -4,6 +4,11 @@ import type { Queryable } from './pool';
 export class PgInboxRepository implements InboxRepository {
   constructor(private readonly db: Queryable) {}
 
+  /** Bloqueo consultivo de PostgreSQL que se libera solo al terminar la transacción. */
+  async bloquear(clave: string): Promise<void> {
+    await this.db.query('SELECT pg_advisory_xact_lock(hashtextextended($1, 0))', [clave]);
+  }
+
   async yaProcesado(eventId: string): Promise<boolean> {
     const { rowCount } = await this.db.query(
       `SELECT 1 FROM contabilidad.inbox WHERE event_id = $1`,

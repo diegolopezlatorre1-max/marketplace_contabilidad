@@ -38,21 +38,21 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
-| T-07 | `VentaContable` (solo acepta estado CONFIRMADA). Pruebas unitarias. | Dominio | ⬜ |
-| T-08 | Migración `003_venta_contable.sql` con UNIQUE (numero_orden, vendedor_id) y `PgVentaContableRepository`. | BD / Infra | ⬜ |
-| T-09 | `RegistrarVentaConfirmadaUseCase`: inbox → validar estado (si no, `evento_ignorado`) → una venta por línea/vendedor → comisión y cuenta por pagar (puertos de Diego) en la misma UoW → auditoría y outbox `contabilidad.venta.registrada`. | Aplicación | ⬜ |
-| T-10 | `POST /eventos/orden-confirmada` (rol SISTEMA) y `GET /ventas?desde=&hasta=&vendedorId=&page=&size=`. | API | ⬜ |
-| T-11 | `MockOrdersGateway` y simulador de órdenes (script `npm run simular:orden`). | Integración | ⬜ |
-| T-12 | Pantalla `/ventas`: listado con filtros. | Web | ⬜ |
-| T-13 | Pruebas: orden nueva se registra; evento repetido → YA_PROCESADO; orden "pendiente" → IGNORADO; multi-vendedor → N ventas; dos eventos simultáneos → un solo registro. | Pruebas | ⬜ |
+| T-07 | `VentaContable` (solo acepta estado CONFIRMADA). Pruebas unitarias. | Dominio | ✅ |
+| T-08 | Migración `003_venta_contable.sql` con UNIQUE (numero_orden, vendedor_id) y `PgVentaContableRepository`. | BD / Infra | ✅ |
+| T-09 | `RegistrarVentaConfirmadaUseCase`: inbox → validar estado (si no, `evento_ignorado`) → una venta por línea/vendedor → comisión y cuenta por pagar (puertos de Diego) en la misma UoW → auditoría y outbox `contabilidad.venta.registrada`. | Aplicación | ✅ |
+| T-10 | `POST /eventos/orden-confirmada` (rol SISTEMA) y `GET /ventas?desde=&hasta=&vendedorId=&page=&size=`. | API | ✅ |
+| T-11 | `MockOrdersGateway` y simulador de órdenes (script `npm run simular:orden`). | Integración | ✅ |
+| T-12 | Pantalla `/ventas`: listado con filtros. La pantalla está en la interfaz (datos simulados); falta conectarla a `GET /ventas`. | Web | ⬜ |
+| T-13 | Pruebas: orden nueva se registra; evento repetido → YA_PROCESADO; orden "pendiente" → IGNORADO; multi-vendedor → N ventas; dos eventos simultáneos → un solo registro. | Pruebas | ✅ |
 
 ### HU-CON-02 — Diego
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
 | T-14 | `CalculadoraComision`: comisión = round(bruto × %), neto = bruto − comisión; guarda el % aplicado. Pruebas con `fast-check` (bruto = comisión + neto). | Dominio | ⬜ |
-| T-15 | Migración `004_comision.sql` (venta_id UNIQUE FK) con CHECK bruto = comisión + neto. | BD | ⬜ |
-| T-16 | `PgComisionRepository` y su uso dentro de T-09 (en pareja con Carlos). | Infra | ⬜ |
+| T-15 | Migración `004_comision.sql` (venta_id UNIQUE FK) con CHECK bruto = comisión + neto. Hecho por Carlos con la HU-CON-01. | BD | ✅ |
+| T-16 | `PgComisionRepository` y su uso dentro de T-09 (en pareja con Carlos). Hecho por Carlos con la HU-CON-01. | Infra | ✅ |
 | T-17 | `GET /ventas/{id}`: bruto, % aplicado, comisión y neto. DTO en contracts. | API | ⬜ |
 | T-18 | Pantalla `/ventas/:id` con el desglose. | Web | ⬜ |
 | T-19 | Pruebas: $100.000 al 10 % → 10.000 / 90.000; cambiar de 10 % a 12 % no altera ventas previas; valores con decimales cuadran. | Pruebas | ⬜ |
@@ -62,8 +62,8 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
 | T-20 | `CuentaPorPagar` (PENDIENTE / PARCIAL / PAGADA) con el periodo quincenal de `Periodo.ts`. Pruebas unitarias. | Dominio | ⬜ |
-| T-21 | Migración `005_cuenta_por_pagar.sql` con índices (vendedor_id, periodo, estado). | BD | ⬜ |
-| T-22 | `GenerarCuentaPorPagar` (llamado desde T-09), `ListarCuentasPorPagarQuery` y `ResumenSaldoVendedorQuery`. | Aplicación | ⬜ |
+| T-21 | Migración `005_cuenta_por_pagar.sql` con índices (vendedor_id, periodo, estado). Hecho por Carlos con la HU-CON-01. | BD | ✅ |
+| T-22 | `GenerarCuentaPorPagar` (llamado desde T-09), `ListarCuentasPorPagarQuery` y `ResumenSaldoVendedorQuery`. Generación hecha por Carlos con la HU-CON-01; faltan las consultas. | Aplicación | 🔄 |
 | T-23 | Puerto `SellersGateway` y adaptador mock (nombre / razón social del vendedor). | Integración | ⬜ |
 | T-24 | `GET /cuentas-por-pagar?vendedorId=&periodo=&estado=` y `GET /cuentas-por-pagar/resumen?periodo=`. | API | ⬜ |
 | T-25 | Pantalla `/cuentas-por-pagar`: resumen por vendedor y periodo, detalle y filtro por estado. | Web | ⬜ |

@@ -74,3 +74,31 @@ describe('CuentaPorPagar', () => {
     expect(() => c.registrarPago(Money.CERO)).toThrow(InvalidValueError);
   });
 });
+
+describe('CuentaPorPagar.reconstituir', () => {
+  it('retoma totales y órdenes persistidos y sigue acumulando', () => {
+    const c = CuentaPorPagar.reconstituir({
+      vendedorId: 'V-1',
+      periodo: Q1,
+      totalNeto: Money.of('90000'),
+      pagado: Money.of('0'),
+      ordenes: ['ORD-1'],
+    });
+    expect(() => c.acumular(comision('ORD-1', '100000'), VENTA_Q1)).toThrow(InvalidValueError);
+    c.acumular(comision('ORD-2', '50000'), VENTA_Q1);
+    expect(c.valorTotalNeto.toString()).toBe('135000.00');
+    expect(c.valorPagado.toString()).toBe('0.00');
+  });
+
+  it('rechaza un pagado mayor al total', () => {
+    expect(() =>
+      CuentaPorPagar.reconstituir({
+        vendedorId: 'V-1',
+        periodo: Q1,
+        totalNeto: Money.of('100'),
+        pagado: Money.of('101'),
+        ordenes: [],
+      }),
+    ).toThrow(InvalidValueError);
+  });
+});
