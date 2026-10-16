@@ -165,6 +165,11 @@
   font-weight: 700;
 }
 
+.cp-tabla .cp-envolver {
+  min-width: 90px;
+  white-space: normal;
+}
+
 .cp-num {
   text-align: right !important;
   font-variant-numeric: tabular-nums;
@@ -324,6 +329,21 @@
 .cp-form .cp-error {
   flex-basis: 100%;
   margin: 0;
+}
+
+.cp-badge--neutro {
+  background: var(--cp-soft);
+  color: var(--cp-muted);
+}
+
+.cp-boton--chico {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+
+.cp-fila-orden {
+  margin-top: 8px;
 }
 
 /* ---- Documentación de la API ---- */

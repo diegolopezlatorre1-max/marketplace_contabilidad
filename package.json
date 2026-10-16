@@ -25,7 +25,8 @@
     "db:create": "npm run db:create -w @contabilidad/api",
     "db:migrate": "npm run db:migrate -w @contabilidad/api",
     "db:seed": "npm run db:seed -w @contabilidad/api",
-    "simular:orden": "npm run simular:orden -w @contabilidad/api --"
+    "simular:orden": "npm run simular:orden -w @contabilidad/api --",
+    "simular:pago": "npm run simular:pago -w @contabilidad/api --"
   },
   "devDependencies": {
     "@eslint/js": "^9.20.0",

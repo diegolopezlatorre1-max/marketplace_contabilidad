@@ -3,7 +3,15 @@ import { pino } from 'pino';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { ConciliarPagoUseCase } from '../../../src/application/commands/ConciliarPagoUseCase';
 import { ConfigurarComisionUseCase } from '../../../src/application/commands/ConfigurarComisionUseCase';
+import { ImportarPagosRecibidosUseCase } from '../../../src/application/commands/ImportarPagosRecibidosUseCase';
+import { RegistrarPagoRecibidoUseCase } from '../../../src/application/commands/RegistrarPagoRecibidoUseCase';
+import {
+  ListarConciliacionesQuery,
+  ListarPagosRecibidosQuery,
+  ObtenerConciliacionQuery,
+} from '../../../src/application/queries/ConciliacionQueries';
 import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ConfiguracionComisionRepository } from '../../../src/application/ports/out/ConfiguracionComisionRepository';
 import type { UnitOfWork } from '../../../src/application/ports/out/UnitOfWork';
@@ -53,10 +61,16 @@ function app(dbOk = true) {
       listarPeriodos: new ListarPeriodosQuery(base.repos.ventas),
       listarCuentasPorPagar: new ListarCuentasPorPagarQuery(base.repos.cuentasPorPagar, vendedores),
       resumenSaldoVendedor: new ResumenSaldoVendedorQuery(base.repos.cuentasPorPagar, vendedores),
+      listarPagos: new ListarPagosRecibidosQuery(base.repos.pagosRecibidos),
+      listarConciliaciones: new ListarConciliacionesQuery(base.repos.conciliaciones),
+      obtenerConciliacion: new ObtenerConciliacionQuery(base.repos.conciliaciones),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
       registrarVenta: new RegistrarVentaConfirmadaUseCase(base.uow, reloj),
+      registrarPago: new RegistrarPagoRecibidoUseCase(base.uow, reloj),
+      importarPagos: new ImportarPagosRecibidosUseCase(base.uow, reloj),
+      conciliarPago: new ConciliarPagoUseCase(base.uow, reloj),
     },
   });
   return express().use('/api/v1/contabilidad', router);
@@ -136,6 +150,11 @@ describe('Router del módulo', () => {
         '/ventas/{id}',
         '/periodos',
         '/cuentas-por-pagar',
+        '/eventos/pago-recibido',
+        '/pagos-recibidos',
+        '/pagos-recibidos/importar',
+        '/conciliaciones',
+        '/conciliaciones/{id}',
         '/cuentas-por-pagar/resumen',
       ]),
     );
@@ -368,6 +387,154 @@ describe('Rutas de ventas', () => {
       .get('/api/v1/contabilidad/ventas')
       .set('authorization', 'Bearer mock-sistema');
     expect(sistema.status).toBe(403);
+  });
+});
+
+describe('Rutas de conciliación', () => {
+  const BASE = '/api/v1/contabilidad';
+  const orden = {
+    eventId: 'evt-o1',
+    version: 1,
+    ocurridoEn: '2026-10-05T10:00:00-05:00',
+    tipo: 'orden.confirmada',
+    numeroOrden: 'ORD-1',
+    fecha: '2026-10-05T09:58:00-05:00',
+    estado: 'CONFIRMADA',
+    moneda: 'COP',
+    lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+  };
+  const pago = {
+    eventId: 'evt-p1',
+    version: 1,
+    ocurridoEn: '2026-10-16T10:00:00-05:00',
+    tipo: 'pago.recibido',
+    referenciaPasarela: 'PSE-1',
+    fecha: '2026-10-16T10:00:00-05:00',
+    valor: '95000.00',
+    moneda: 'COP',
+    origen: 'API',
+  };
+  const como = (servidor: ReturnType<typeof app>, token: string) => ({
+    get: (url: string) =>
+      request(servidor)
+        .get(BASE + url)
+        .set('authorization', `Bearer ${token}`),
+    post: (url: string, body: object) =>
+      request(servidor)
+        .post(BASE + url)
+        .set('authorization', `Bearer ${token}`)
+        .send(body),
+  });
+
+  it('POST /eventos/pago-recibido es del rol SISTEMA y valida el contrato', async () => {
+    const servidor = app();
+    expect(
+      (await como(servidor, 'mock-contador').post('/eventos/pago-recibido', pago)).status,
+    ).toBe(403);
+    const invalido = await como(servidor, 'mock-sistema').post('/eventos/pago-recibido', {
+      ...pago,
+      valor: 95000,
+    });
+    expect(invalido.status).toBe(400);
+    const ok = await como(servidor, 'mock-sistema').post('/eventos/pago-recibido', pago);
+    expect(ok.status).toBe(201);
+    expect(ok.body).toMatchObject({ resultado: 'PROCESADO', estado: 'SIN_CONCILIAR' });
+    const repetido = await como(servidor, 'mock-sistema').post('/eventos/pago-recibido', pago);
+    expect([repetido.status, repetido.body.resultado]).toEqual([200, 'YA_PROCESADO']);
+    const otraVez = await como(servidor, 'mock-sistema').post('/eventos/pago-recibido', {
+      ...pago,
+      eventId: 'evt-p2',
+    });
+    expect([otraVez.status, otraVez.body.code]).toEqual([409, 'REFERENCIA_DUPLICADA']);
+  });
+
+  it('el contador concilia un pago y consulta el resultado', async () => {
+    const servidor = app();
+    await como(servidor, 'mock-sistema').post('/eventos/orden-confirmada', orden);
+    const { body: registrado } = await como(servidor, 'mock-sistema').post(
+      '/eventos/pago-recibido',
+      pago,
+    );
+    const contador = como(servidor, 'mock-contador');
+
+    const bandeja = await contador.get('/pagos-recibidos?estado=SIN_CONCILIAR');
+    expect(bandeja.body.map((p: { id: string }) => p.id)).toEqual([registrado.pagoId]);
+
+    expect(
+      (
+        await como(servidor, 'mock-sistema').post('/conciliaciones', {
+          pagoId: registrado.pagoId,
+          ordenes: [{ numeroOrden: 'ORD-1' }],
+        })
+      ).status,
+    ).toBe(403);
+    const conciliada = await contador.post('/conciliaciones', {
+      pagoId: registrado.pagoId,
+      ordenes: [{ numeroOrden: 'ORD-1' }],
+    });
+    expect(conciliada.status).toBe(201);
+    expect(conciliada.body).toMatchObject({ estado: 'PENDIENTE', diferencia: '-5000.00' });
+
+    const detalle = await contador.get(`/conciliaciones/${conciliada.body.id}`);
+    expect(detalle.body.detalles).toEqual([
+      { numeroOrden: 'ORD-1', valorOrden: '100000.00', valorAplicado: '100000.00' },
+    ]);
+    expect((await contador.get('/conciliaciones?estado=PENDIENTE')).body).toHaveLength(1);
+    expect((await contador.get('/pagos-recibidos?estado=PENDIENTE')).body).toHaveLength(1);
+    const duplicada = await contador.post('/conciliaciones', {
+      pagoId: registrado.pagoId,
+      ordenes: [{ numeroOrden: 'ORD-1' }],
+    });
+    expect([duplicada.status, duplicada.body.code]).toEqual([409, 'CONCILIACION_DUPLICADA']);
+  });
+
+  it('responde 404 / 400 / 422 según el error', async () => {
+    const servidor = app();
+    const contador = como(servidor, 'mock-contador');
+    expect((await contador.get('/conciliaciones/no-es-uuid')).status).toBe(400);
+    expect(
+      (await contador.get('/conciliaciones/00000000-0000-4000-8000-000000000000')).status,
+    ).toBe(404);
+    const sinPago = await contador.post('/conciliaciones', {
+      pagoId: '00000000-0000-4000-8000-000000000000',
+      ordenes: [{ numeroOrden: 'ORD-1' }],
+    });
+    expect([sinPago.status, sinPago.body.code]).toEqual([404, 'PAGO_INEXISTENTE']);
+    const { body: registrado } = await como(servidor, 'mock-sistema').post(
+      '/eventos/pago-recibido',
+      pago,
+    );
+    const sinOrden = await contador.post('/conciliaciones', {
+      pagoId: registrado.pagoId,
+      ordenes: [{ numeroOrden: 'ORD-X' }],
+    });
+    expect([sinOrden.status, sinOrden.body.code]).toEqual([404, 'ORDEN_INEXISTENTE']);
+    expect(
+      (await contador.post('/conciliaciones', { pagoId: registrado.pagoId, ordenes: [] })).status,
+    ).toBe(400);
+  });
+
+  it('POST /pagos-recibidos/importar lee el CSV y devuelve el resultado por fila', async () => {
+    const servidor = app();
+    const csv = [
+      'referencia,fecha,valor,ordenes',
+      'CSV-1,2026-10-16,1000.00,',
+      'CSV-1,2026-10-16,5.00,',
+      'CSV-3,ayer,1,',
+    ].join('\n');
+    const importar = (token: string, body: string, tipo = 'text/csv') =>
+      request(servidor)
+        .post(`${BASE}/pagos-recibidos/importar`)
+        .set('authorization', `Bearer ${token}`)
+        .set('content-type', tipo)
+        .send(body);
+
+    expect((await importar('mock-sistema', csv)).status).toBe(403);
+    const res = await importar('mock-contador', csv);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ importados: 1, duplicados: 1, errores: 1 });
+    expect((await importar('mock-contador', ['a,b,c', '1,2,3'].join('\n'))).status).toBe(400);
+    expect((await importar('mock-contador', '{}', 'application/json')).status).toBe(400);
   });
 });
 

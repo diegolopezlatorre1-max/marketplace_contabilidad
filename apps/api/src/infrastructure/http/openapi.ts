@@ -61,6 +61,12 @@ export function buildOpenApi(version: string) {
         name: 'Cuentas por pagar',
         description: 'Saldos a pagar a cada vendedor por quincena (HU-CON-03).',
       },
+      {
+        name: 'Conciliación',
+        description:
+          'Pagos recibidos de la pasarela y su conciliación contra órdenes; la diferencia ' +
+          'decide el estado CONCILIADA o PENDIENTE (HU-CON-04).',
+      },
     ],
     components: {
       securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } },
@@ -225,6 +231,139 @@ export function buildOpenApi(version: string) {
             valorPagado: { type: 'string', example: '0.00' },
             saldoPendiente: { type: 'string', example: '135000.00' },
             estado: { type: 'string', enum: ['PENDIENTE', 'PAGADO'] },
+          },
+        },
+        PagoRecibido: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            referenciaPasarela: { type: 'string', example: 'PSE-889' },
+            fecha: { type: 'string', format: 'date-time' },
+            fechaContable: { type: 'string', format: 'date' },
+            valor: { type: 'string', example: '150000.00' },
+            origen: { type: 'string', enum: ['API', 'CSV', 'MANUAL'] },
+            ordenesInformadas: { type: 'array', items: { type: 'string' } },
+            estado: { type: 'string', enum: ['SIN_CONCILIAR', 'CONCILIADO', 'PENDIENTE'] },
+            conciliacionId: { type: 'string', format: 'uuid', nullable: true },
+            diferencia: { type: 'string', nullable: true, example: '0.00' },
+          },
+        },
+        PagoRecibidoEvento: {
+          type: 'object',
+          description: 'Evento pago.recibido v1 (docs/fase0/contratos-integracion.md)',
+          required: [
+            'eventId',
+            'version',
+            'ocurridoEn',
+            'tipo',
+            'referenciaPasarela',
+            'fecha',
+            'valor',
+            'moneda',
+            'origen',
+          ],
+          properties: {
+            eventId: { type: 'string', example: 'evt-p1' },
+            version: { type: 'integer', enum: [1] },
+            ocurridoEn: { type: 'string', format: 'date-time' },
+            tipo: { type: 'string', enum: ['pago.recibido'] },
+            referenciaPasarela: { type: 'string', example: 'PSE-889' },
+            fecha: { type: 'string', format: 'date-time', example: '2026-10-16T10:00:00-05:00' },
+            valor: { type: 'string', example: '150000.00' },
+            moneda: { type: 'string', enum: ['COP'] },
+            origen: { type: 'string', enum: ['API', 'CSV', 'MANUAL'] },
+            ordenes: {
+              type: 'array',
+              items: { type: 'string', example: 'ORD-1001' },
+              description: 'Opcional: si viene, el pago se concilia automáticamente',
+            },
+          },
+        },
+        PagoRecibidoProcesado: {
+          type: 'object',
+          properties: {
+            eventId: { type: 'string' },
+            resultado: { type: 'string', enum: ['PROCESADO', 'YA_PROCESADO'] },
+            pagoId: { type: 'string', format: 'uuid' },
+            estado: { type: 'string', enum: ['SIN_CONCILIAR', 'CONCILIADO', 'PENDIENTE'] },
+            detalle: {
+              type: 'string',
+              description: 'Por qué no se concilió automáticamente (si aplica)',
+            },
+          },
+        },
+        ConciliarPago: {
+          type: 'object',
+          required: ['pagoId', 'ordenes'],
+          properties: {
+            pagoId: { type: 'string', format: 'uuid' },
+            ordenes: {
+              type: 'array',
+              minItems: 1,
+              items: {
+                type: 'object',
+                required: ['numeroOrden'],
+                properties: {
+                  numeroOrden: { type: 'string', example: 'ORD-1001' },
+                  valorAplicado: {
+                    type: 'string',
+                    example: '100000.00',
+                    description: 'Opcional: por defecto, el saldo pendiente de la orden',
+                  },
+                },
+              },
+            },
+          },
+        },
+        Conciliacion: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            pagoId: { type: 'string', format: 'uuid' },
+            referenciaPasarela: { type: 'string' },
+            fechaPago: { type: 'string', format: 'date-time' },
+            valorPago: { type: 'string', example: '95000.00' },
+            valorAplicado: { type: 'string', example: '100000.00' },
+            diferencia: {
+              type: 'string',
+              example: '-5000.00',
+              description: 'valorPago - valorAplicado',
+            },
+            estado: { type: 'string', enum: ['CONCILIADA', 'PENDIENTE'] },
+            usuario: { type: 'string' },
+            fecha: { type: 'string', format: 'date-time' },
+            detalles: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  numeroOrden: { type: 'string' },
+                  valorOrden: { type: 'string' },
+                  valorAplicado: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        ImportacionPagos: {
+          type: 'object',
+          properties: {
+            importados: { type: 'integer' },
+            duplicados: { type: 'integer' },
+            errores: { type: 'integer' },
+            filas: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  linea: { type: 'integer' },
+                  referencia: { type: 'string' },
+                  resultado: { type: 'string', enum: ['IMPORTADO', 'DUPLICADO', 'ERROR'] },
+                  estado: { type: 'string', enum: ['SIN_CONCILIAR', 'CONCILIADO', 'PENDIENTE'] },
+                  detalle: { type: 'string' },
+                },
+              },
+            },
           },
         },
         PaginaVentas: {
@@ -520,6 +659,203 @@ export function buildOpenApi(version: string) {
             '400': problema('Periodo inválido'),
             '401': problema('No autenticado'),
             '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/eventos/pago-recibido': {
+        post: {
+          tags: ['Conciliación'],
+          summary: 'Registra un pago recibido de la pasarela (HU-CON-04)',
+          description:
+            'Webhook del módulo de Pagos (rol SISTEMA). Idempotente por eventId; la misma ' +
+            'referencia con otro eventId responde 409. Si trae órdenes, se concilia automáticamente.',
+          security: [{ bearer: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/PagoRecibidoEvento' } },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'PROCESADO',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PagoRecibidoProcesado' },
+                },
+              },
+            },
+            '200': {
+              description: 'YA_PROCESADO (evento repetido)',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PagoRecibidoProcesado' },
+                },
+              },
+            },
+            '400': problema('El evento no cumple el contrato v1'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol SISTEMA'),
+            '409': problema('REFERENCIA_DUPLICADA: ya existe un pago con esa referencia'),
+          },
+        },
+      },
+      '/pagos-recibidos/importar': {
+        post: {
+          tags: ['Conciliación'],
+          summary: 'Importa pagos recibidos desde un CSV de la pasarela',
+          description:
+            'Columnas: referencia,fecha,valor,ordenes (órdenes separadas por ";"; fecha ' +
+            'AAAA-MM-DD o ISO 8601). Cada fila se registra por separado.',
+          security: [{ bearer: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'text/csv': {
+                schema: { type: 'string' },
+                example:
+                  'referencia,fecha,valor,ordenes\nPSE-900,2026-10-16,150000.00,ORD-1001;ORD-1002',
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Resultado por fila',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ImportacionPagos' } },
+              },
+            },
+            '400': problema('CSV inválido (encabezado o archivo vacío)'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR'),
+          },
+        },
+      },
+      '/pagos-recibidos': {
+        get: {
+          tags: ['Conciliación'],
+          summary: 'Bandeja de pagos recibidos con su estado de conciliación',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'estado',
+              in: 'query',
+              schema: { type: 'string', enum: ['SIN_CONCILIAR', 'CONCILIADO', 'PENDIENTE'] },
+            },
+            {
+              name: 'desde',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha contable inicial del pago (inclusive)',
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha contable final del pago (inclusive)',
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Pagos, del más reciente al más antiguo',
+              content: {
+                'application/json': {
+                  schema: { type: 'array', items: { $ref: '#/components/schemas/PagoRecibido' } },
+                },
+              },
+            },
+            '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/conciliaciones': {
+        post: {
+          tags: ['Conciliación'],
+          summary: 'Concilia un pago recibido contra una o varias órdenes',
+          description:
+            'Diferencia = valor del pago - valor aplicado. Con tolerancia 0 (D-08): sin diferencia ' +
+            'queda CONCILIADA; con diferencia, PENDIENTE. Lo aplicado a una orden no puede superar su valor.',
+          security: [{ bearer: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/ConciliarPago' } },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Conciliación registrada',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/Conciliacion' } },
+              },
+            },
+            '400': problema('Datos inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR'),
+            '404': problema('PAGO_INEXISTENTE u ORDEN_INEXISTENTE'),
+            '409': problema('CONCILIACION_DUPLICADA: el pago ya está conciliado'),
+            '422': problema('APLICADO_EXCEDE_SALDO: se aplica más que el saldo de la orden'),
+          },
+        },
+        get: {
+          tags: ['Conciliación'],
+          summary: 'Conciliaciones con su diferencia (semáforo CONCILIADA / PENDIENTE)',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'estado',
+              in: 'query',
+              schema: { type: 'string', enum: ['CONCILIADA', 'PENDIENTE'] },
+            },
+            {
+              name: 'desde',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha contable inicial del pago (inclusive)',
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha contable final del pago (inclusive)',
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Conciliaciones, de la más reciente a la más antigua',
+              content: {
+                'application/json': {
+                  schema: { type: 'array', items: { $ref: '#/components/schemas/Conciliacion' } },
+                },
+              },
+            },
+            '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/conciliaciones/{id}': {
+        get: {
+          tags: ['Conciliación'],
+          summary: 'Detalle de una conciliación con sus órdenes',
+          security: [{ bearer: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            '200': {
+              description: 'Conciliación',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/Conciliacion' } },
+              },
+            },
+            '400': problema('Identificador inválido'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '404': problema('No existe la conciliación'),
           },
         },
       },

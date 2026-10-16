@@ -41,6 +41,7 @@ const MENU = [
   '/contabilidad/ventas',
   '/contabilidad/configuracion/comision',
   '/contabilidad/cuentas-por-pagar',
+  '/contabilidad/conciliaciones',
   '/contabilidad/documentacion-api',
 ];
 

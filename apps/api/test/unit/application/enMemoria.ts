@@ -18,6 +18,16 @@ import {
 import { CuentaPorPagar } from '../../../src/domain/cuentaPorPagar/cuentaPorPagar';
 import { Money, Porcentaje, type Periodo } from '../../../src/domain/shared';
 import type { VentaContable } from '../../../src/domain/venta/VentaContable';
+import type {
+  ConciliacionRepository,
+  ConciliacionResumen,
+} from '../../../src/application/ports/out/ConciliacionRepository';
+import type {
+  PagoRecibidoRepository,
+  PagoRecibidoResumen,
+} from '../../../src/application/ports/out/PagoRecibidoRepository';
+import type { Conciliacion } from '../../../src/domain/conciliacion/Conciliacion';
+import type { PagoRecibido } from '../../../src/domain/conciliacion/PagoRecibido';
 
 /** Estado de una "base de datos" en memoria para probar casos de uso sin PostgreSQL. */
 export interface DatosEnMemoria {
@@ -29,6 +39,8 @@ export interface DatosEnMemoria {
   ventas: Array<{ venta: VentaContable; eventId: string }>;
   comisiones: Array<{ ventaId: string; comision: ComisionVenta }>;
   cuentas: Array<{ vendedorId: string; periodo: string; totalNeto: Money; pagado: Money }>;
+  pagos: Array<{ pago: PagoRecibido; registradoPor: string }>;
+  conciliaciones: Conciliacion[];
 }
 
 function vacio(): DatosEnMemoria {
@@ -41,6 +53,8 @@ function vacio(): DatosEnMemoria {
     ventas: [],
     comisiones: [],
     cuentas: [],
+    pagos: [],
+    conciliaciones: [],
   };
 }
 
@@ -101,7 +115,67 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
       [...new Set(db.datos.ventas.map(({ venta }) => venta.periodo.codigo))].sort().reverse(),
   };
 
+  const resumen = (c: Conciliacion): ConciliacionResumen => ({
+    ...c.toJSON(),
+    fechaPago: c.pago.fecha.toISOString(),
+  });
+  const enRango = (fecha: string, f: { desde?: string | undefined; hasta?: string | undefined }) =>
+    (!f.desde || fecha >= f.desde) && (!f.hasta || fecha <= f.hasta);
+
+  const pagosRecibidos: PagoRecibidoRepository = {
+    existeReferencia: async (ref) =>
+      db.datos.pagos.some(({ pago }) => pago.referenciaPasarela === ref),
+    guardar: async (pago, registradoPor) => void db.datos.pagos.push({ pago, registradoPor }),
+    obtenerParaConciliar: async (id) =>
+      db.datos.pagos.find(({ pago }) => pago.id === id)?.pago ?? null,
+    listar: async (f) =>
+      db.datos.pagos
+        .map(({ pago }): PagoRecibidoResumen => {
+          const c = db.datos.conciliaciones.find((x) => x.pago.id === pago.id);
+          return {
+            ...pago.toJSON(),
+            estado: !c ? 'SIN_CONCILIAR' : c.estado === 'CONCILIADA' ? 'CONCILIADO' : 'PENDIENTE',
+            conciliacionId: c?.id ?? null,
+            diferencia: c?.diferencia.toString() ?? null,
+          };
+        })
+        .filter((p) => (!f.estado || p.estado === f.estado) && enRango(p.fechaContable, f))
+        .sort((a, b) => b.fecha.localeCompare(a.fecha)),
+  };
+
+  const conciliaciones: ConciliacionRepository = {
+    existeParaPago: async (pagoId) => db.datos.conciliaciones.some((c) => c.pago.id === pagoId),
+    ordenesPorConciliar: async (numeros) =>
+      numeros
+        .map((numeroOrden) => {
+          const ventas = db.datos.ventas.filter(({ venta }) => venta.numeroOrden === numeroOrden);
+          const aplicado = db.datos.conciliaciones.flatMap((c) =>
+            c.detalles.filter((d) => d.numeroOrden === numeroOrden).map((d) => d.valorAplicado),
+          );
+          return {
+            numeroOrden,
+            valorOrden: Money.sum(ventas.map(({ venta }) => venta.valorBruto)),
+            valorYaAplicado: Money.sum(aplicado),
+            existe: ventas.length > 0,
+          };
+        })
+        .filter((o) => o.existe)
+        .map(({ existe: _existe, ...o }) => o),
+    guardar: async (c) => void db.datos.conciliaciones.push(c),
+    listar: async (f) =>
+      db.datos.conciliaciones
+        .filter((c) => (!f.estado || c.estado === f.estado) && enRango(c.pago.fechaContable, f))
+        .map(resumen)
+        .reverse(),
+    obtener: async (id) => {
+      const c = db.datos.conciliaciones.find((x) => x.id === id);
+      return c ? resumen(c) : null;
+    },
+  };
+
   return {
+    pagosRecibidos,
+    conciliaciones,
     auditoria: { registrar: async (r) => void db.datos.auditoria.push(r) },
     outbox: { publicar: async (e) => void db.datos.outbox.push(e) },
     inbox: {

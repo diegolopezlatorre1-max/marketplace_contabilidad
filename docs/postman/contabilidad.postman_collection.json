@@ -1220,6 +1220,788 @@
           ]
         }
       ]
+    },
+    {
+      "name": "5. HU-CON-04 Conciliación",
+      "item": [
+        {
+          "name": "Orden A de 100.000 (para pago exacto)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoOrdenA}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{ordenA}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [{ \"vendedorId\": \"{{vendedorConc}}\", \"valorBruto\": \"100000.00\" }]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = Date.now();",
+                  "pm.collectionVariables.set('sufijoConc', s);",
+                  "pm.collectionVariables.set('ahoraIso', new Date().toISOString());",
+                  "pm.collectionVariables.set('eventoOrdenA', 'evt-pm-oa-' + s);",
+                  "pm.collectionVariables.set('ordenA', 'ORD-PM-A-' + s);",
+                  "pm.collectionVariables.set('vendedorConc', 'V-PM-C-' + s);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago exacto con la orden -> 201 CONCILIADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/pago-recibido",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "pago-recibido"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoPagoA}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"pago.recibido\",\n  \"referenciaPasarela\": \"{{referenciaA}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"valor\": \"100000.00\",\n  \"moneda\": \"COP\",\n  \"origen\": \"API\",\n  \"ordenes\": [\"{{ordenA}}\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = pm.collectionVariables.get('sufijoConc');",
+                  "pm.collectionVariables.set('eventoPagoA', 'evt-pm-pa-' + s);",
+                  "pm.collectionVariables.set('referenciaA', 'PSE-PM-A-' + s);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Se concilia automáticamente', () => pm.expect(pm.response.json().estado).to.eql('CONCILIADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mismo evento de pago otra vez -> 200 YA_PROCESADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/pago-recibido",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "pago-recibido"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoPagoA}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"pago.recibido\",\n  \"referenciaPasarela\": \"{{referenciaA}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"valor\": \"100000.00\",\n  \"moneda\": \"COP\",\n  \"origen\": \"API\",\n  \"ordenes\": [\"{{ordenA}}\"]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Resultado YA_PROCESADO', () => pm.expect(pm.response.json().resultado).to.eql('YA_PROCESADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Misma referencia con otro eventId -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/pago-recibido",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "pago-recibido"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoPagoA}}-otro\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"pago.recibido\",\n  \"referenciaPasarela\": \"{{referenciaA}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"valor\": \"100000.00\",\n  \"moneda\": \"COP\",\n  \"origen\": \"API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Código REFERENCIA_DUPLICADA', () => pm.expect(pm.response.json().code).to.eql('REFERENCIA_DUPLICADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Orden B de 100.000 (para pago con diferencia)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoOrdenB}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{ordenB}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [{ \"vendedorId\": \"{{vendedorConc}}\", \"valorBruto\": \"100000.00\" }]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = pm.collectionVariables.get('sufijoConc');",
+                  "pm.collectionVariables.set('eventoOrdenB', 'evt-pm-ob-' + s);",
+                  "pm.collectionVariables.set('ordenB', 'ORD-PM-B-' + s);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago de 95.000 sin órdenes -> SIN_CONCILIAR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/pago-recibido",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "pago-recibido"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoPagoB}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"pago.recibido\",\n  \"referenciaPasarela\": \"{{referenciaB}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"valor\": \"95000.00\",\n  \"moneda\": \"COP\",\n  \"origen\": \"API\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = pm.collectionVariables.get('sufijoConc');",
+                  "pm.collectionVariables.set('eventoPagoB', 'evt-pm-pb-' + s);",
+                  "pm.collectionVariables.set('referenciaB', 'PSE-PM-B-' + s);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const r = pm.response.json();",
+                  "pm.test('Queda en la bandeja', () => pm.expect(r.estado).to.eql('SIN_CONCILIAR'));",
+                  "pm.collectionVariables.set('pagoB', r.pagoId);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bandeja de pagos sin conciliar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-recibidos?estado=SIN_CONCILIAR",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-recibidos"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "SIN_CONCILIAR"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye el pago de 95.000', () => pm.expect(pm.response.json().map((p) => p.id)).to.include(pm.collectionVariables.get('pagoB')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conciliar como sistema -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conciliaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conciliaciones"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pagoId\": \"{{pagoB}}\",\n  \"ordenes\": [{ \"numeroOrden\": \"{{ordenB}}\" }]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conciliar 95.000 contra la orden B -> PENDIENTE (-5.000)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conciliaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conciliaciones"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pagoId\": \"{{pagoB}}\",\n  \"ordenes\": [{ \"numeroOrden\": \"{{ordenB}}\" }]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const c = pm.response.json();",
+                  "pm.test('Diferencia de -5.000 y estado PENDIENTE', () => {",
+                  "  pm.expect(c.estado).to.eql('PENDIENTE');",
+                  "  pm.expect(c.diferencia).to.eql('-5000.00');",
+                  "  pm.expect(c.usuario).to.eql('u-contador');",
+                  "});",
+                  "pm.collectionVariables.set('conciliacionB', c.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conciliar el mismo pago otra vez -> 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conciliaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conciliaciones"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pagoId\": \"{{pagoB}}\",\n  \"ordenes\": [{ \"numeroOrden\": \"{{ordenB}}\" }]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Código CONCILIACION_DUPLICADA', () => pm.expect(pm.response.json().code).to.eql('CONCILIACION_DUPLICADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/conciliaciones",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conciliaciones"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pagoId\": \"00000000-0000-4000-8000-000000000000\",\n  \"ordenes\": [{ \"numeroOrden\": \"{{ordenB}}\" }]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Código PAGO_INEXISTENTE', () => pm.expect(pm.response.json().code).to.eql('PAGO_INEXISTENTE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle de la conciliación",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conciliaciones/{{conciliacionB}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conciliaciones",
+                "{{conciliacionB}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Detalle con la orden B', () => pm.expect(pm.response.json().detalles[0].numeroOrden).to.eql(pm.collectionVariables.get('ordenB')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Conciliaciones pendientes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/conciliaciones?estado=PENDIENTE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "conciliaciones"
+              ],
+              "query": [
+                {
+                  "key": "estado",
+                  "value": "PENDIENTE"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye la conciliación con diferencia', () => pm.expect(pm.response.json().map((c) => c.id)).to.include(pm.collectionVariables.get('conciliacionB')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Importar CSV (una fila nueva y una duplicada)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "text/csv"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-recibidos/importar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-recibidos",
+                "importar"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{{csvPagos}}",
+              "options": {
+                "raw": {
+                  "language": "text"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = pm.collectionVariables.get('sufijoConc');",
+                  "const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('csvPagos', [",
+                  "  'referencia,fecha,valor,ordenes',",
+                  "  'CSV-PM-' + s + ',' + hoy + ',1500.00,',",
+                  "  'CSV-PM-' + s + ',' + hoy + ',1500.00,',",
+                  "].join('\\n'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('1 importado y 1 duplicado', () => {",
+                  "  pm.expect(r.importados).to.eql(1);",
+                  "  pm.expect(r.duplicados).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

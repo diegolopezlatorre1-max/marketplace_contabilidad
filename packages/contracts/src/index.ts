@@ -1,4 +1,5 @@
 export * from './comisiones';
+export * from './conciliaciones';
 export * from './common';
 export * from './cuentasPorPagar';
 export * from './errors';

@@ -1,9 +1,11 @@
 import type { AuditLogger } from './AuditLogger';
 import type { ComisionRepository } from './ComisionRepository';
+import type { ConciliacionRepository } from './ConciliacionRepository';
 import type { ConfiguracionComisionRepository } from './ConfiguracionComisionRepository';
 import type { CuentaPorPagarRepository } from './CuentaPorPagarRepository';
 import type { EventPublisher } from './EventPublisher';
 import type { InboxRepository } from './InboxRepository';
+import type { PagoRecibidoRepository } from './PagoRecibidoRepository';
 import type { VentaContableRepository } from './VentaContableRepository';
 
 /**
@@ -18,6 +20,8 @@ export interface TransactionalRepositories {
   ventas: VentaContableRepository;
   comisiones: ComisionRepository;
   cuentasPorPagar: CuentaPorPagarRepository;
+  pagosRecibidos: PagoRecibidoRepository;
+  conciliaciones: ConciliacionRepository;
 }
 
 /** Ejecuta un trabajo de forma atómica: todo se confirma o todo se revierte. */
