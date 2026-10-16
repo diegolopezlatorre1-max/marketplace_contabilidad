@@ -249,3 +249,36 @@ describe('GET /ventas', () => {
     expect(pagina2.body.items).toHaveLength(1);
   });
 });
+
+describe('GET /periodos y GET /cuentas-por-pagar', () => {
+  it('lista las cuentas por quincena con filtros', async () => {
+    await enviar(orden('ORD-1', ['V-1', 'V-2'], ['100000.00', '50000.00']));
+    await enviar(orden('ORD-2', ['V-1'], ['20000.00'], '2026-10-16T15:00:00Z'));
+    const consultar = (url: string) =>
+      request(app()).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-contador');
+
+    expect((await consultar('/periodos')).body).toEqual({ periodos: ['2026-10-Q2', '2026-10-Q1'] });
+
+    const todas = await consultar('/cuentas-por-pagar');
+    expect(
+      todas.body.map((c: { vendedorId: string; periodo: string }) => [c.periodo, c.vendedorId]),
+    ).toEqual([
+      ['2026-10-Q2', 'V-1'],
+      ['2026-10-Q1', 'V-1'],
+      ['2026-10-Q1', 'V-2'],
+    ]);
+    const q1v1 = await consultar('/cuentas-por-pagar?periodo=2026-10-Q1&vendedorId=V-1');
+    expect(q1v1.body).toEqual([
+      {
+        vendedorId: 'V-1',
+        periodo: '2026-10-Q1',
+        totalNeto: '90000.00',
+        valorPagado: '0.00',
+        saldoPendiente: '90000.00',
+        estado: 'PENDIENTE',
+      },
+    ]);
+    expect((await consultar('/cuentas-por-pagar?estado=PAGADO')).body).toEqual([]);
+    expect((await consultar('/ventas?periodo=2026-10-Q2')).body.total).toBe(1);
+  });
+});

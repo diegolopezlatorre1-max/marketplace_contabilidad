@@ -1,4 +1,4 @@
-import { InvalidValueError, parseFechaContable } from '../../domain/shared';
+import { InvalidValueError, parseFechaContable, Periodo } from '../../domain/shared';
 import type { ContextoEjecucion, UseCase } from '../ports/in/UseCase';
 import type { PaginaVentas, VentaContableRepository } from '../ports/out/VentaContableRepository';
 import { exigirRol } from '../security';
@@ -7,11 +7,12 @@ export interface ListarVentasEntrada {
   desde?: string | undefined;
   hasta?: string | undefined;
   vendedorId?: string | undefined;
+  periodo?: string | undefined;
   page: number;
   size: number;
 }
 
-/** HU-CON-01: ventas registradas con su comisión, filtradas por fecha contable y vendedor. */
+/** HU-CON-01: ventas registradas con su comisión, filtradas por fecha contable, quincena y vendedor. */
 export class ListarVentasQuery implements UseCase<ListarVentasEntrada, PaginaVentas> {
   constructor(private readonly ventas: VentaContableRepository) {}
 
@@ -22,6 +23,7 @@ export class ListarVentasQuery implements UseCase<ListarVentasEntrada, PaginaVen
     if (desde && hasta && desde > hasta) {
       throw new InvalidValueError('La fecha "desde" no puede ser posterior a "hasta"');
     }
-    return this.ventas.listar({ ...entrada, desde, hasta });
+    const periodo = entrada.periodo ? Periodo.parse(entrada.periodo).codigo : undefined;
+    return this.ventas.listar({ ...entrada, desde, hasta, periodo });
   }
 }

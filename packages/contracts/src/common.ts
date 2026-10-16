@@ -17,6 +17,11 @@ export const montoPositivoSchema = montoSchema.refine((v) => Number(v) > 0, {
 
 export const fechaIsoSchema = z.string().datetime({ offset: true });
 
+/** Quincena de liquidación (D-03): "2026-10-Q1" (días 1-15) o "2026-10-Q2" (16-fin de mes). */
+export const periodoSchema = z
+  .string()
+  .regex(/^\d{4}-(0[1-9]|1[0-2])-Q[12]$/, 'Periodo inválido: use AAAA-MM-Q1 o AAAA-MM-Q2');
+
 export const monedaSchema = z.literal('COP');
 
 export const ROLES = ['CONTADOR', 'ADMIN_FINANCIERO', 'SISTEMA'] as const;

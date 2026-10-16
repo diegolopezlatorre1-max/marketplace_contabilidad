@@ -4,6 +4,8 @@ import swaggerUi from 'swagger-ui-express';
 import type { HealthResponse } from '@contabilidad/contracts';
 import type { ConfigurarComisionUseCase } from '../../../application/commands/ConfigurarComisionUseCase';
 import type { RegistrarVentaConfirmadaUseCase } from '../../../application/commands/RegistrarVentaConfirmadaUseCase';
+import type { ListarCuentasPorPagarQuery } from '../../../application/queries/ListarCuentasPorPagarQuery';
+import type { ListarPeriodosQuery } from '../../../application/queries/ListarPeriodosQuery';
 import type { ListarVentasQuery } from '../../../application/queries/ListarVentasQuery';
 import type { ObtenerComisionVigenteQuery } from '../../../application/queries/ObtenerComisionVigenteQuery';
 import type { ObtenerEstadoModulo } from '../../../application/queries/ObtenerEstadoModulo';
@@ -13,6 +15,7 @@ import { correlationId } from '../middlewares/correlationId';
 import { errorHandler, notFound } from '../middlewares/errorHandler';
 import { buildOpenApi } from '../openapi';
 import { comisionesRoutes } from '../routes/comisionesRoutes';
+import { cuentasPorPagarRoutes } from '../routes/cuentasPorPagarRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
 import { ventasRoutes } from '../routes/ventasRoutes';
 
@@ -25,6 +28,8 @@ export interface RouterDeps {
     obtenerEstado: ObtenerEstadoModulo;
     obtenerComision: ObtenerComisionVigenteQuery;
     listarVentas: ListarVentasQuery;
+    listarPeriodos: ListarPeriodosQuery;
+    listarCuentasPorPagar: ListarCuentasPorPagarQuery;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
@@ -68,8 +73,10 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
     ventasRoutes({
       registrarVenta: deps.commands.registrarVenta,
       listarVentas: deps.queries.listarVentas,
+      listarPeriodos: deps.queries.listarPeriodos,
     }),
   );
+  router.use(cuentasPorPagarRoutes({ listarCuentasPorPagar: deps.queries.listarCuentasPorPagar }));
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

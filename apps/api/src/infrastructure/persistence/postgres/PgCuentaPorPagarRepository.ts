@@ -1,4 +1,9 @@
-import type { CuentaPorPagarRepository } from '../../../application/ports/out/CuentaPorPagarRepository';
+import type {
+  CuentaPorPagarRepository,
+  CuentaPorPagarResumen,
+  EstadoCuentaPorPagar,
+  FiltroCuentasPorPagar,
+} from '../../../application/ports/out/CuentaPorPagarRepository';
 import { CuentaPorPagar } from '../../../domain/cuentaPorPagar/cuentaPorPagar';
 import { Money, type Periodo } from '../../../domain/shared';
 import type { Queryable } from './pool';
@@ -47,5 +52,42 @@ export class PgCuentaPorPagarRepository implements CuentaPorPagarRepository {
         c.estado,
       ],
     );
+  }
+
+  async listar(filtro: FiltroCuentasPorPagar): Promise<CuentaPorPagarResumen[]> {
+    const condiciones: string[] = [];
+    const params: unknown[] = [];
+    const agregar = (columnaYOperador: string, valor: unknown) => {
+      params.push(valor);
+      condiciones.push(`${columnaYOperador} $${params.length}`);
+    };
+    if (filtro.periodo) agregar('periodo =', filtro.periodo);
+    if (filtro.estado) agregar('estado =', filtro.estado);
+    if (filtro.vendedorId) agregar('vendedor_id =', filtro.vendedorId);
+    const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
+
+    const { rows } = await this.db.query<{
+      vendedor_id: string;
+      periodo: string;
+      total_neto: string;
+      valor_pagado: string;
+      saldo_pendiente: string;
+      estado: EstadoCuentaPorPagar;
+    }>(
+      `SELECT vendedor_id, periodo, total_neto, valor_pagado,
+              (total_neto - valor_pagado) AS saldo_pendiente, estado
+         FROM contabilidad.cuenta_por_pagar
+         ${where}
+        ORDER BY periodo DESC, vendedor_id`,
+      params,
+    );
+    return rows.map((f) => ({
+      vendedorId: f.vendedor_id,
+      periodo: f.periodo,
+      totalNeto: f.total_neto,
+      valorPagado: f.valor_pagado,
+      saldoPendiente: f.saldo_pendiente,
+      estado: f.estado,
+    }));
   }
 }
