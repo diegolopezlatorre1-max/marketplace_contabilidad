@@ -134,7 +134,7 @@ function BandejaPagos({
                 <th>Referencia</th>
                 <th>Fecha</th>
                 <th>Origen</th>
-                <th>Órdenes informadas</th>
+                <th className="cp-envolver">Órdenes informadas</th>
                 <th className="cp-num">Valor</th>
                 <th className="cp-num">Diferencia</th>
                 <th>Estado</th>
@@ -147,7 +147,7 @@ function BandejaPagos({
                   <td>{p.referenciaPasarela}</td>
                   <td>{fecha(p.fecha)}</td>
                   <td>{p.origen}</td>
-                  <td>{p.ordenesInformadas.join(', ') || '—'}</td>
+                  <td className="cp-envolver">{p.ordenesInformadas.join(', ') || '—'}</td>
                   <td className="cp-num">{formatoCOP(p.valor)}</td>
                   <td className="cp-num">{p.diferencia ? formatoCOP(p.diferencia) : '—'}</td>
                   <td>
@@ -353,7 +353,7 @@ function ListaConciliaciones() {
               <tr>
                 <th>Estado</th>
                 <th>Pago</th>
-                <th>Órdenes</th>
+                <th className="cp-envolver">Órdenes</th>
                 <th className="cp-num">Valor pago</th>
                 <th className="cp-num">Aplicado</th>
                 <th className="cp-num">Diferencia</th>
@@ -370,7 +370,7 @@ function ListaConciliaciones() {
                     </span>
                   </td>
                   <td>{c.referenciaPasarela}</td>
-                  <td>
+                  <td className="cp-envolver">
                     {c.detalles
                       .map((d) => `${d.numeroOrden} (${formatoCOP(d.valorAplicado)})`)
                       .join(', ')}
