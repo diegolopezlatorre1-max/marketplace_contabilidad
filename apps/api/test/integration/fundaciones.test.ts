@@ -33,11 +33,14 @@ describe('Fase 1 - el módulo atraviesa todas las capas contra PostgreSQL', () =
     expect(rows.map((r) => r.tablename)).toEqual([
       'auditoria',
       'comision',
+      'conciliacion',
+      'conciliacion_detalle',
       'configuracion_comision',
       'cuenta_por_pagar',
       'evento_ignorado',
       'inbox',
       'outbox',
+      'pago_recibido',
       'venta_contable',
     ]);
   });

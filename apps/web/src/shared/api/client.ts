@@ -21,16 +21,28 @@ export type ApiClient = ReturnType<typeof createApiClient>;
 
 /** Cliente HTTP del módulo. La URL base y el token los provee el host (standalone o marketplace). */
 export function createApiClient({ baseUrl, getToken, fetchFn = fetch }: ApiClientOptions) {
-  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async function request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    /** Cuerpo de texto ya serializado (p. ej. un CSV) en lugar de JSON. */
+    texto?: { contenido: string; contentType: string },
+  ): Promise<T> {
     const headers: Record<string, string> = { accept: 'application/json' };
     const token = getToken();
     if (token) headers.authorization = `Bearer ${token}`;
-    if (body !== undefined) headers['content-type'] = 'application/json';
+    if (texto) headers['content-type'] = texto.contentType;
+    else if (body !== undefined) headers['content-type'] = 'application/json';
 
+    const contenido = texto
+      ? texto.contenido
+      : body !== undefined
+        ? JSON.stringify(body)
+        : undefined;
     const res = await fetchFn(`${baseUrl}${path}`, {
       method,
       headers,
-      ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+      ...(contenido !== undefined ? { body: contenido } : {}),
     });
 
     const esJson = res.headers.get('content-type')?.includes('json') ?? false;
@@ -43,5 +55,8 @@ export function createApiClient({ baseUrl, getToken, fetchFn = fetch }: ApiClien
     get: <T>(path: string) => request<T>('GET', path),
     post: <T>(path: string, body: unknown) => request<T>('POST', path, body),
     put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
+    /** POST de un archivo de texto (p. ej. text/csv). */
+    postTexto: <T>(path: string, contenido: string, contentType: string) =>
+      request<T>('POST', path, undefined, { contenido, contentType }),
   };
 }

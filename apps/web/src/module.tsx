@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-quer
 import { useMemo } from 'react';
 import { Route, Routes, useLocation, useParams } from 'react-router-dom';
 import type { UsuarioActualResponse } from '@contabilidad/contracts';
+import { ConciliacionesPage } from './features/conciliacion/ConciliacionesPage';
 import { ConfiguracionComisionPanel } from './features/contabilidad/ConfiguracionComisionPanel';
 import { ContabilidadPanel } from './features/contabilidad/ContabilidadPanel';
 import { crearContabilidadApiRest } from './features/contabilidad/data/contabilidadApiRest';
@@ -109,6 +110,14 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
             element={
               <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
                 <ConfiguracionComisionPanel api={contabilidad} />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="conciliaciones"
+            element={
+              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+                <ConciliacionesPage />
               </RequireRole>
             }
           />

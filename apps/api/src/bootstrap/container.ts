@@ -4,7 +4,16 @@ import type { Router } from 'express';
 import type { AuthContext } from '../application/ports/out/AuthContext';
 import type { Clock } from '../application/ports/out/Clock';
 import type { UnitOfWork } from '../application/ports/out/UnitOfWork';
+import { ConciliarPagoUseCase } from '../application/commands/ConciliarPagoUseCase';
 import { ConfigurarComisionUseCase } from '../application/commands/ConfigurarComisionUseCase';
+import { ImportarPagosRecibidosUseCase } from '../application/commands/ImportarPagosRecibidosUseCase';
+import { RegistrarPagoRecibidoUseCase } from '../application/commands/RegistrarPagoRecibidoUseCase';
+import {
+  ListarConciliacionesQuery,
+  ListarPagosRecibidosQuery,
+  ObtenerConciliacionQuery,
+} from '../application/queries/ConciliacionQueries';
+import { PoliticaConciliacion } from '../domain/conciliacion/Conciliacion';
 import { RegistrarVentaConfirmadaUseCase } from '../application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentasPorPagarQuery';
 import { ListarPeriodosQuery } from '../application/queries/ListarPeriodosQuery';
@@ -17,7 +26,9 @@ import { JwtAuthContext } from '../infrastructure/integration/auth/JwtAuthContex
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
 import { PgConfiguracionComisionRepository } from '../infrastructure/persistence/postgres/PgConfiguracionComisionRepository';
+import { PgConciliacionRepository } from '../infrastructure/persistence/postgres/PgConciliacionRepository';
 import { PgCuentaPorPagarRepository } from '../infrastructure/persistence/postgres/PgCuentaPorPagarRepository';
+import { PgPagoRecibidoRepository } from '../infrastructure/persistence/postgres/PgPagoRecibidoRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
 import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWork';
@@ -66,6 +77,16 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
     new PgCuentaPorPagarRepository(pool),
   );
 
+  // HU-CON-04. Tolerancia de conciliación 0 hasta que el contador defina otra (D-08).
+  const politicaConciliacion = new PoliticaConciliacion();
+  const registrarPago = new RegistrarPagoRecibidoUseCase(unitOfWork, clock, politicaConciliacion);
+  const importarPagos = new ImportarPagosRecibidosUseCase(unitOfWork, clock, politicaConciliacion);
+  const conciliarPago = new ConciliarPagoUseCase(unitOfWork, clock, politicaConciliacion);
+  const conciliaciones = new PgConciliacionRepository(pool);
+  const listarPagos = new ListarPagosRecibidosQuery(new PgPagoRecibidoRepository(pool));
+  const listarConciliaciones = new ListarConciliacionesQuery(conciliaciones);
+  const obtenerConciliacion = new ObtenerConciliacionQuery(conciliaciones);
+
   const router = createContabilidadRouter({
     logger,
     auth,
@@ -77,8 +98,11 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       listarVentas,
       listarPeriodos,
       listarCuentasPorPagar,
+      listarPagos,
+      listarConciliaciones,
+      obtenerConciliacion,
     },
-    commands: { configurarComision, registrarVenta },
+    commands: { configurarComision, registrarVenta, registrarPago, importarPagos, conciliarPago },
   });
 
   return { router, unitOfWork };

@@ -42,6 +42,7 @@ npx newman run docs/postman/contabilidad.postman_collection.json
 | 2. HU-CON-09 Comisión | consulta del % vigente; contador → 403; % inválido → 400; vigencia solapada → 409; administrador → 200 (la anterior se cierra el día previo) |
 | 3. HU-CON-01 Registrar venta | orden multi-vendedor → 201 PROCESADO; reenvío → YA_PROCESADO; misma orden con otro eventId → 409 ORDEN_DUPLICADA; orden PENDIENTE → IGNORADO; evento inválido → 400; contador → 403 |
 | 4. Consultas | `/ventas` (una sola venta por vendedor, comisión con el % vigente, bruto = comisión + neto); `/periodos`; `/cuentas-por-pagar` (saldo = neto); filtro inválido → 400 |
+| 5. HU-CON-04 Conciliación | pago exacto con su orden → CONCILIADO automático; reenvío → YA_PROCESADO; misma referencia → 409; pago de 95.000 sin órdenes → bandeja SIN_CONCILIAR; conciliar contra una orden de 100.000 → PENDIENTE (−5.000); conciliar dos veces → 409; pago inexistente → 404; detalle y lista de pendientes; importar CSV (1 importado, 1 duplicado) |
 
 Cada ejecución crea una orden nueva, con vendedores `V-PM-<marca de tiempo>`, así que se
 puede repetir las veces que haga falta.

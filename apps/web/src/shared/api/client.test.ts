@@ -27,4 +27,22 @@ describe('createApiClient', () => {
     expect((error as ApiError).status).toBe(401);
     expect((error as ApiError).problem?.code).toBe('NO_AUTENTICADO');
   });
+
+  it('envía archivos de texto con su content-type', async () => {
+    const fetchFn = vi.fn().mockResolvedValue(respuesta(200, { importados: 1 }));
+    const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-contador', fetchFn });
+
+    await expect(api.postTexto('/pagos-recibidos/importar', 'a,b', 'text/csv')).resolves.toEqual({
+      importados: 1,
+    });
+    expect(fetchFn).toHaveBeenCalledWith('/api/pagos-recibidos/importar', {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        authorization: 'Bearer mock-contador',
+        'content-type': 'text/csv',
+      },
+      body: 'a,b',
+    });
+  });
 });

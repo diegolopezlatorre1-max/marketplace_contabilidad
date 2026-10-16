@@ -2,7 +2,15 @@ import express, { Router } from 'express';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import type { HealthResponse } from '@contabilidad/contracts';
+import type { ConciliarPagoUseCase } from '../../../application/commands/ConciliarPagoUseCase';
 import type { ConfigurarComisionUseCase } from '../../../application/commands/ConfigurarComisionUseCase';
+import type { ImportarPagosRecibidosUseCase } from '../../../application/commands/ImportarPagosRecibidosUseCase';
+import type { RegistrarPagoRecibidoUseCase } from '../../../application/commands/RegistrarPagoRecibidoUseCase';
+import type {
+  ListarConciliacionesQuery,
+  ListarPagosRecibidosQuery,
+  ObtenerConciliacionQuery,
+} from '../../../application/queries/ConciliacionQueries';
 import type { RegistrarVentaConfirmadaUseCase } from '../../../application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ListarCuentasPorPagarQuery } from '../../../application/queries/ListarCuentasPorPagarQuery';
 import type { ListarPeriodosQuery } from '../../../application/queries/ListarPeriodosQuery';
@@ -15,6 +23,7 @@ import { correlationId } from '../middlewares/correlationId';
 import { errorHandler, notFound } from '../middlewares/errorHandler';
 import { buildOpenApi } from '../openapi';
 import { comisionesRoutes } from '../routes/comisionesRoutes';
+import { conciliacionesRoutes } from '../routes/conciliacionesRoutes';
 import { cuentasPorPagarRoutes } from '../routes/cuentasPorPagarRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
 import { ventasRoutes } from '../routes/ventasRoutes';
@@ -30,10 +39,16 @@ export interface RouterDeps {
     listarVentas: ListarVentasQuery;
     listarPeriodos: ListarPeriodosQuery;
     listarCuentasPorPagar: ListarCuentasPorPagarQuery;
+    listarPagos: ListarPagosRecibidosQuery;
+    listarConciliaciones: ListarConciliacionesQuery;
+    obtenerConciliacion: ObtenerConciliacionQuery;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
     registrarVenta: RegistrarVentaConfirmadaUseCase;
+    registrarPago: RegistrarPagoRecibidoUseCase;
+    importarPagos: ImportarPagosRecibidosUseCase;
+    conciliarPago: ConciliarPagoUseCase;
   };
 }
 
@@ -77,6 +92,16 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
     }),
   );
   router.use(cuentasPorPagarRoutes({ listarCuentasPorPagar: deps.queries.listarCuentasPorPagar }));
+  router.use(
+    conciliacionesRoutes({
+      registrarPago: deps.commands.registrarPago,
+      importarPagos: deps.commands.importarPagos,
+      conciliarPago: deps.commands.conciliarPago,
+      listarPagos: deps.queries.listarPagos,
+      listarConciliaciones: deps.queries.listarConciliaciones,
+      obtenerConciliacion: deps.queries.obtenerConciliacion,
+    }),
+  );
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

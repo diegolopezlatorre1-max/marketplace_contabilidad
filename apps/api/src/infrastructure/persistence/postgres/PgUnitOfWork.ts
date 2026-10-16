@@ -5,10 +5,12 @@ import type {
 } from '../../../application/ports/out/UnitOfWork';
 import { PgAuditLogger } from './PgAuditLogger';
 import { PgComisionRepository } from './PgComisionRepository';
+import { PgConciliacionRepository } from './PgConciliacionRepository';
 import { PgConfiguracionComisionRepository } from './PgConfiguracionComisionRepository';
 import { PgCuentaPorPagarRepository } from './PgCuentaPorPagarRepository';
 import { PgInboxRepository } from './PgInboxRepository';
 import { PgOutboxPublisher } from './PgOutboxPublisher';
+import { PgPagoRecibidoRepository } from './PgPagoRecibidoRepository';
 import { PgVentaContableRepository } from './PgVentaContableRepository';
 import type { Queryable } from './pool';
 
@@ -22,6 +24,8 @@ export function createRepositories(db: Queryable): TransactionalRepositories {
     ventas: new PgVentaContableRepository(db),
     comisiones: new PgComisionRepository(db),
     cuentasPorPagar: new PgCuentaPorPagarRepository(db),
+    pagosRecibidos: new PgPagoRecibidoRepository(db),
+    conciliaciones: new PgConciliacionRepository(db),
   };
 }
 

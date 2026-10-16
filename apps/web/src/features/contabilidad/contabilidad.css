@@ -326,6 +326,21 @@
   margin: 0;
 }
 
+.cp-badge--neutro {
+  background: var(--cp-soft);
+  color: var(--cp-muted);
+}
+
+.cp-boton--chico {
+  min-height: 34px;
+  padding: 0 12px;
+  font-size: 0.85rem;
+}
+
+.cp-fila-orden {
+  margin-top: 8px;
+}
+
 /* ---- Documentación de la API ---- */
 .cp-doc-acciones {
   display: flex;
