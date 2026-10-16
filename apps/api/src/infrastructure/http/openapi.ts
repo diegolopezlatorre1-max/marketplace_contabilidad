@@ -26,6 +26,22 @@ export function buildOpenApi(version: string) {
         'Los montos viajan como string decimal con 2 decimales.',
     },
     servers: [{ url: '/api/v1/contabilidad' }],
+    tags: [
+      { name: 'Sistema', description: 'Estado del módulo y usuario autenticado.' },
+      {
+        name: 'Comisiones',
+        description: 'Porcentaje de comisión del marketplace con fechas de vigencia (HU-CON-09).',
+      },
+      {
+        name: 'Ventas',
+        description:
+          'Registro automático de órdenes confirmadas y consulta de ventas con su comisión (HU-CON-01, HU-CON-02).',
+      },
+      {
+        name: 'Cuentas por pagar',
+        description: 'Saldos a pagar a cada vendedor por quincena (HU-CON-03).',
+      },
+    ],
     components: {
       securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } },
       schemas: {
@@ -173,6 +189,17 @@ export function buildOpenApi(version: string) {
             porcentajeAplicado: { type: 'string', nullable: true, example: '10.0000' },
             comision: { type: 'string', nullable: true, example: '10000.00' },
             valorNeto: { type: 'string', nullable: true, example: '90000.00' },
+          },
+        },
+        CuentaPorPagar: {
+          type: 'object',
+          properties: {
+            vendedorId: { type: 'string', example: 'V-1' },
+            periodo: { type: 'string', example: '2026-10-Q1' },
+            totalNeto: { type: 'string', example: '135000.00' },
+            valorPagado: { type: 'string', example: '0.00' },
+            saldoPendiente: { type: 'string', example: '135000.00' },
+            estado: { type: 'string', enum: ['PENDIENTE', 'PAGADO'] },
           },
         },
         PaginaVentas: {
@@ -330,6 +357,12 @@ export function buildOpenApi(version: string) {
               schema: { type: 'string', format: 'date' },
               description: 'Fecha contable final (inclusive)',
             },
+            {
+              name: 'periodo',
+              in: 'query',
+              schema: { type: 'string', example: '2026-10-Q1' },
+              description: 'Quincena de liquidación (AAAA-MM-Q1 o AAAA-MM-Q2)',
+            },
             { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
             { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
             {
@@ -343,6 +376,67 @@ export function buildOpenApi(version: string) {
               description: 'Página de ventas, de la más reciente a la más antigua',
               content: {
                 'application/json': { schema: { $ref: '#/components/schemas/PaginaVentas' } },
+              },
+            },
+            '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/periodos': {
+        get: {
+          tags: ['Ventas'],
+          summary: 'Quincenas con ventas registradas, de la más reciente a la más antigua',
+          security: [{ bearer: [] }],
+          responses: {
+            '200': {
+              description: 'Periodos disponibles',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: {
+                      periodos: {
+                        type: 'array',
+                        items: { type: 'string', example: '2026-10-Q1' },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/cuentas-por-pagar': {
+        get: {
+          tags: ['Cuentas por pagar'],
+          summary: 'Saldo pendiente por vendedor y quincena (HU-CON-03)',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'periodo',
+              in: 'query',
+              schema: { type: 'string', example: '2026-10-Q1' },
+              description: 'Quincena (AAAA-MM-Q1 o AAAA-MM-Q2)',
+            },
+            {
+              name: 'estado',
+              in: 'query',
+              schema: { type: 'string', enum: ['PENDIENTE', 'PAGADO'] },
+            },
+            { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
+          ],
+          responses: {
+            '200': {
+              description: 'Cuentas por pagar, de la quincena más reciente a la más antigua',
+              content: {
+                'application/json': {
+                  schema: { type: 'array', items: { $ref: '#/components/schemas/CuentaPorPagar' } },
+                },
               },
             },
             '400': problema('Filtros inválidos'),

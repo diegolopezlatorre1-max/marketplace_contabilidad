@@ -70,7 +70,8 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
           (v) =>
             (!f.desde || v.fechaContable >= f.desde) &&
             (!f.hasta || v.fechaContable <= f.hasta) &&
-            (!f.vendedorId || v.vendedorId === f.vendedorId),
+            (!f.vendedorId || v.vendedorId === f.vendedorId) &&
+            (!f.periodo || v.periodo.codigo === f.periodo),
         )
         .map((v) => {
           const c = db.datos.comisiones.find((x) => x.ventaId === v.id)?.comision;
@@ -89,6 +90,8 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
         total: items.length,
       };
     },
+    listarPeriodos: async () =>
+      [...new Set(db.datos.ventas.map(({ venta }) => venta.periodo.codigo))].sort().reverse(),
   };
 
   return {
@@ -150,6 +153,31 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
           },
         ];
       },
+      listar: async (f) =>
+        db.datos.cuentas
+          .map((c) => {
+            const saldo = c.totalNeto.subtract(c.pagado);
+            const estado: 'PENDIENTE' | 'PAGADO' =
+              c.totalNeto.isPositive() && saldo.isZero() ? 'PAGADO' : 'PENDIENTE';
+            return {
+              vendedorId: c.vendedorId,
+              periodo: c.periodo,
+              totalNeto: c.totalNeto.toString(),
+              valorPagado: c.pagado.toString(),
+              saldoPendiente: saldo.toString(),
+              estado,
+            };
+          })
+          .filter(
+            (c) =>
+              (!f.periodo || c.periodo === f.periodo) &&
+              (!f.estado || c.estado === f.estado) &&
+              (!f.vendedorId || c.vendedorId === f.vendedorId),
+          )
+          .sort(
+            (a, b) =>
+              b.periodo.localeCompare(a.periodo) || a.vendedorId.localeCompare(b.vendedorId),
+          ),
     },
   };
 }

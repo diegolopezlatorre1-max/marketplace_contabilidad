@@ -79,6 +79,7 @@ export class PgVentaContableRepository implements VentaContableRepository {
     if (filtro.desde) agregar('v.fecha_contable >=', filtro.desde);
     if (filtro.hasta) agregar('v.fecha_contable <=', filtro.hasta);
     if (filtro.vendedorId) agregar('v.vendedor_id =', filtro.vendedorId);
+    if (filtro.periodo) agregar('v.periodo =', filtro.periodo);
     const where = condiciones.length ? `WHERE ${condiciones.join(' AND ')}` : '';
 
     const total = await this.db.query<{ total: string }>(
@@ -101,5 +102,12 @@ export class PgVentaContableRepository implements VentaContableRepository {
       size: filtro.size,
       total: Number(total.rows[0]?.total ?? 0),
     };
+  }
+
+  async listarPeriodos(): Promise<string[]> {
+    const { rows } = await this.db.query<{ periodo: string }>(
+      `SELECT DISTINCT periodo FROM contabilidad.venta_contable ORDER BY periodo DESC`,
+    );
+    return rows.map((r) => r.periodo);
   }
 }

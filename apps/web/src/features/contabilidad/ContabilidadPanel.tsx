@@ -2,11 +2,19 @@ import { useEffect, useState } from 'react';
 import { TablaComisiones } from './components/TablaComisiones';
 import { TablaCuentasPorPagar } from './components/TablaCuentasPorPagar';
 import { contabilidadApiMock, type ContabilidadApi } from './data/contabilidadApi';
-import { PERIODOS } from './data/mockData';
 import type { ComisionFila, CuentaPorPagarFila, EstadoCuenta } from './types';
 import './contabilidad.css';
 
 type Vista = 'comisiones' | 'cuentas';
+
+/** Quincena actual en hora de Colombia (AAAA-MM-Q1|Q2), para cuando aún no hay ventas. */
+function periodoActual(): string {
+  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
+  return `${hoy.slice(0, 7)}-Q${Number(hoy.slice(8, 10)) <= 15 ? 1 : 2}`;
+}
+
+const mensajeDe = (e: unknown) =>
+  e instanceof Error && e.message ? e.message : 'No se pudo cargar la información.';
 
 interface ContabilidadPanelProps {
   api?: ContabilidadApi;
@@ -18,14 +26,37 @@ export function ContabilidadPanel({
   vistaInicial = 'comisiones',
 }: ContabilidadPanelProps) {
   const [vista, setVista] = useState<Vista>(vistaInicial);
-  const [periodo, setPeriodo] = useState<string>(PERIODOS[0] ?? '');
+  const [periodos, setPeriodos] = useState<string[]>([]);
+  const [periodo, setPeriodo] = useState<string>('');
   const [estado, setEstado] = useState<EstadoCuenta | ''>('');
   const [comisiones, setComisiones] = useState<ComisionFila[]>([]);
   const [cuentas, setCuentas] = useState<CuentaPorPagarFila[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Periodos con ventas, del más reciente al más antiguo.
   useEffect(() => {
+    let activo = true;
+    api
+      .listarPeriodos()
+      .then((lista) => {
+        if (!activo) return;
+        const ordenados = [...new Set([...lista, periodoActual()])].sort().reverse();
+        setPeriodos(ordenados);
+        setPeriodo(lista.length ? [...lista].sort().reverse()[0]! : periodoActual());
+      })
+      .catch((e: unknown) => {
+        if (!activo) return;
+        setError(mensajeDe(e));
+        setCargando(false);
+      });
+    return () => {
+      activo = false;
+    };
+  }, [api]);
+
+  useEffect(() => {
+    if (!periodo) return;
     let activo = true;
     setCargando(true);
     setError(null);
@@ -42,8 +73,8 @@ export function ContabilidadPanel({
           });
           if (activo) setCuentas(datos);
         }
-      } catch {
-        if (activo) setError('No se pudo cargar la información.');
+      } catch (e) {
+        if (activo) setError(mensajeDe(e));
       } finally {
         if (activo) setCargando(false);
       }
@@ -83,7 +114,7 @@ export function ContabilidadPanel({
         <label className="cp-filtro">
           Periodo
           <select value={periodo} onChange={(e) => setPeriodo(e.target.value)}>
-            {PERIODOS.map((p) => (
+            {periodos.map((p) => (
               <option key={p} value={p}>
                 {p}
               </option>

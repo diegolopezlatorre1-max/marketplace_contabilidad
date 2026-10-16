@@ -7,6 +7,8 @@ import { ConfigurarComisionUseCase } from '../../../src/application/commands/Con
 import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ConfiguracionComisionRepository } from '../../../src/application/ports/out/ConfiguracionComisionRepository';
 import type { UnitOfWork } from '../../../src/application/ports/out/UnitOfWork';
+import { ListarCuentasPorPagarQuery } from '../../../src/application/queries/ListarCuentasPorPagarQuery';
+import { ListarPeriodosQuery } from '../../../src/application/queries/ListarPeriodosQuery';
 import { ListarVentasQuery } from '../../../src/application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../../../src/application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../../../src/application/queries/ObtenerEstadoModulo';
@@ -43,6 +45,8 @@ function app(dbOk = true) {
       obtenerEstado: new ObtenerEstadoModulo({ ping: async () => dbOk }, reloj),
       obtenerComision: new ObtenerComisionVigenteQuery(repoVacio, reloj),
       listarVentas: new ListarVentasQuery(base.repos.ventas),
+      listarPeriodos: new ListarPeriodosQuery(base.repos.ventas),
+      listarCuentasPorPagar: new ListarCuentasPorPagarQuery(base.repos.cuentasPorPagar),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
@@ -120,7 +124,12 @@ describe('Router del módulo', () => {
     expect(Object.keys(res.body.paths)).toContain('/health');
     expect(Object.keys(res.body.paths)).toContain('/comisiones/configuracion');
     expect(Object.keys(res.body.paths)).toEqual(
-      expect.arrayContaining(['/eventos/orden-confirmada', '/ventas']),
+      expect.arrayContaining([
+        '/eventos/orden-confirmada',
+        '/ventas',
+        '/periodos',
+        '/cuentas-por-pagar',
+      ]),
     );
   });
 });
@@ -249,6 +258,44 @@ describe('Rutas de ventas', () => {
       .send({ ...evento, estado: 'PENDIENTE' });
     expect(res.status).toBe(200);
     expect(res.body.resultado).toBe('IGNORADO');
+  });
+
+  it('GET /periodos y GET /cuentas-por-pagar reflejan las ventas registradas', async () => {
+    const servidor = app();
+    await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
+    const contador = (url: string) =>
+      request(servidor)
+        .get(`/api/v1/contabilidad${url}`)
+        .set('authorization', 'Bearer mock-contador');
+
+    expect((await contador('/periodos')).body).toEqual({ periodos: ['2026-10-Q1'] });
+    const cuentas = await contador('/cuentas-por-pagar?periodo=2026-10-Q1&estado=PENDIENTE');
+    expect(cuentas.status).toBe(200);
+    expect(cuentas.body).toEqual([
+      {
+        vendedorId: 'V-1',
+        periodo: '2026-10-Q1',
+        totalNeto: '90000.00',
+        valorPagado: '0.00',
+        saldoPendiente: '90000.00',
+        estado: 'PENDIENTE',
+      },
+    ]);
+    expect((await contador('/cuentas-por-pagar?estado=PAGADO')).body).toEqual([]);
+    expect((await contador('/ventas?periodo=2026-10-Q2')).body.total).toBe(0);
+  });
+
+  it('GET /cuentas-por-pagar valida filtros y rol', async () => {
+    for (const q of ['?periodo=2026-10-Q3', '?estado=PARCIAL']) {
+      const res = await request(app())
+        .get(`/api/v1/contabilidad/cuentas-por-pagar${q}`)
+        .set('authorization', 'Bearer mock-contador');
+      expect(res.status, q).toBe(400);
+    }
+    const sistema = await request(app())
+      .get('/api/v1/contabilidad/cuentas-por-pagar')
+      .set('authorization', 'Bearer mock-sistema');
+    expect(sistema.status).toBe(403);
   });
 
   it('GET /ventas valida filtros y rol', async () => {

@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import { fechaContableSchema } from './comisiones';
-import { paginacionQuerySchema } from './common';
+import { paginacionQuerySchema, periodoSchema } from './common';
 
-/** GET /ventas?desde=&hasta=&vendedorId=&page=&size= (fechas contables AAAA-MM-DD, inclusive). */
+/** GET /ventas?desde=&hasta=&periodo=&vendedorId=&page=&size= (fechas contables AAAA-MM-DD, inclusive). */
 export const listarVentasQuerySchema = paginacionQuerySchema.extend({
   desde: fechaContableSchema.optional(),
   hasta: fechaContableSchema.optional(),
+  periodo: periodoSchema.optional(),
   vendedorId: z.string().min(1).max(64).optional(),
 });
 export type ListarVentasQuery = z.infer<typeof listarVentasQuerySchema>;

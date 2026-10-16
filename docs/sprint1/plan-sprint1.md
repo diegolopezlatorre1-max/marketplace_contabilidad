@@ -31,7 +31,7 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 | T-02 | Migración `002_configuracion_comision.sql` y `PgConfiguracionComisionRepository` (implementa el puerto `CommissionConfigProvider`). | BD / Infra | ✅ |
 | T-03 | `ConfigurarComisionUseCase` (con auditoría) y `ObtenerComisionVigenteQuery`. | Aplicación | ✅ |
 | T-04 | `GET/PUT /comisiones/configuracion` (PUT solo ADMIN_FINANCIERO), DTOs en `packages/contracts`, OpenAPI, pruebas de integración. | API | ✅ |
-| T-05 | Pantalla `/configuracion/comision` con historial de vigencias. Se desarrolla en otra rama. | Web | ⬜ |
+| T-05 | Pantalla `/configuracion/comision` con historial de vigencias. Pantalla con el estilo de la interfaz, conectada a la API. | Web | ✅ |
 | T-06 | Seed `010_comision_global.sql` (10 % global desde 2026-01-01). | Seeds | ✅ |
 
 ### HU-CON-01 — Carlos
@@ -43,7 +43,7 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 | T-09 | `RegistrarVentaConfirmadaUseCase`: inbox → validar estado (si no, `evento_ignorado`) → una venta por línea/vendedor → comisión y cuenta por pagar (puertos de Diego) en la misma UoW → auditoría y outbox `contabilidad.venta.registrada`. | Aplicación | ✅ |
 | T-10 | `POST /eventos/orden-confirmada` (rol SISTEMA) y `GET /ventas?desde=&hasta=&vendedorId=&page=&size=`. | API | ✅ |
 | T-11 | `MockOrdersGateway` y simulador de órdenes (script `npm run simular:orden`). | Integración | ✅ |
-| T-12 | Pantalla `/ventas`: listado con filtros. La pantalla está en la interfaz (datos simulados); falta conectarla a `GET /ventas`. | Web | ⬜ |
+| T-12 | Pantalla `/ventas`: listado con filtros. La pantalla de la interfaz ya usa `GET /ventas`. | Web | ✅ |
 | T-13 | Pruebas: orden nueva se registra; evento repetido → YA_PROCESADO; orden "pendiente" → IGNORADO; multi-vendedor → N ventas; dos eventos simultáneos → un solo registro. | Pruebas | ✅ |
 
 ### HU-CON-02 — Diego
@@ -65,7 +65,7 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 | T-21 | Migración `005_cuenta_por_pagar.sql` con índices (vendedor_id, periodo, estado). Hecho por Carlos con la HU-CON-01. | BD | ✅ |
 | T-22 | `GenerarCuentaPorPagar` (llamado desde T-09), `ListarCuentasPorPagarQuery` y `ResumenSaldoVendedorQuery`. Generación hecha por Carlos con la HU-CON-01; faltan las consultas. | Aplicación | 🔄 |
 | T-23 | Puerto `SellersGateway` y adaptador mock (nombre / razón social del vendedor). | Integración | ⬜ |
-| T-24 | `GET /cuentas-por-pagar?vendedorId=&periodo=&estado=` y `GET /cuentas-por-pagar/resumen?periodo=`. | API | ⬜ |
+| T-24 | `GET /cuentas-por-pagar?vendedorId=&periodo=&estado=` y `GET /cuentas-por-pagar/resumen?periodo=`. `GET /cuentas-por-pagar` hecho por Carlos (para conectar la interfaz); falta `/resumen`. | API | 🔄 |
 | T-25 | Pantalla `/cuentas-por-pagar`: resumen por vendedor y periodo, detalle y filtro por estado. | Web | ⬜ |
 | T-26 | Prueba: ventas netas de 90.000 y 45.000 → saldo 135.000. | Pruebas | ⬜ |
 

@@ -1,0 +1,1091 @@
+{
+  "info": {
+    "name": "Contabilidad - Marketplace (API v1)",
+    "description": "Pruebas de la API del módulo de contabilidad (HU-CON-09, HU-CON-01, consultas).\n\nRequisitos: `npm run db:migrate && npm run db:seed` y `npm run dev:api` (AUTH_MODE=mock).\nEjecute la colección completa en orden (Run collection) o con Newman. Ver docs/postman/README.md.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api/v1/contabilidad"
+    },
+    {
+      "key": "tokenContador",
+      "value": "mock-contador"
+    },
+    {
+      "key": "tokenAdmin",
+      "value": "mock-admin"
+    },
+    {
+      "key": "tokenSistema",
+      "value": "mock-sistema"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Sistema",
+      "item": [
+        {
+          "name": "Health (público)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('La base de datos responde', () => pm.expect(pm.response.json().checks.baseDeDatos).to.eql('ok'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - contador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Rol CONTADOR', () => pm.expect(pm.response.json().roles).to.include('CONTADOR'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - administrador",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Rol ADMIN_FINANCIERO', () => pm.expect(pm.response.json().roles).to.include('ADMIN_FINANCIERO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Me - sin token -> 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "me"
+              ]
+            },
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+                  "pm.test('Código NO_AUTENTICADO', () => pm.expect(pm.response.json().code).to.eql('NO_AUTENTICADO'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2. HU-CON-09 Comisión",
+      "item": [
+        {
+          "name": "Consultar comisión vigente (contador)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comisiones/configuracion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comisiones",
+                "configuracion"
+              ]
+            },
+            "description": "Guarda el % vigente y el inicio de la vigencia abierta para los siguientes pasos.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Hay un porcentaje vigente', () => pm.expect(r.vigente).to.not.eql(null));",
+                  "pm.collectionVariables.set('porcentajeVigente', r.vigente.porcentaje);",
+                  "// Inicio de la vigencia abierta: una nueva debe empezar después.",
+                  "const abierta = r.historial.find((v) => v.vigenteHasta === null);",
+                  "pm.collectionVariables.set('inicioVigenciaAbierta', abierta.vigenteDesde);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Configurar como contador -> 403",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comisiones/configuracion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comisiones",
+                "configuracion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"porcentaje\": \"12\",\n  \"vigenteDesde\": \"2030-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+                  "pm.test('Código NO_AUTORIZADO', () => pm.expect(pm.response.json().code).to.eql('NO_AUTORIZADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Porcentaje inválido -> 400",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comisiones/configuracion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comisiones",
+                "configuracion"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"porcentaje\": \"150\",\n  \"vigenteDesde\": \"2030-01-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Código VALIDACION', () => pm.expect(pm.response.json().code).to.eql('VALIDACION'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Vigencia solapada -> 409",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comisiones/configuracion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comisiones",
+                "configuracion"
+              ]
+            },
+            "description": "Una vigencia nueva no puede empezar el mismo día (ni antes) que la vigente.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"porcentaje\": \"12\",\n  \"vigenteDesde\": \"{{inicioVigenciaAbierta}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Código CONFLICTO', () => pm.expect(pm.response.json().code).to.eql('CONFLICTO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Configurar como administrador (mismo %) -> 200",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/comisiones/configuracion",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "comisiones",
+                "configuracion"
+              ]
+            },
+            "description": "Registra el MISMO porcentaje vigente en la siguiente fecha válida: demuestra el cierre de la vigencia anterior sin cambiar el % de la BD de desarrollo, así la colección se puede ejecutar varias veces. Para cambiar el % de verdad, edite el cuerpo.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"porcentaje\": \"{{porcentajeVigente}}\",\n  \"vigenteDesde\": \"{{fechaNuevaVigencia}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Siguiente fecha válida: hoy (hora de Colombia) o el día después del inicio de la vigencia abierta.",
+                  "const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);",
+                  "const inicio = pm.collectionVariables.get('inicioVigenciaAbierta');",
+                  "const siguiente = new Date(inicio + 'T00:00:00Z');",
+                  "siguiente.setUTCDate(siguiente.getUTCDate() + 1);",
+                  "const minimo = siguiente.toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('fechaNuevaVigencia', hoy > minimo ? hoy : minimo);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const fecha = pm.collectionVariables.get('fechaNuevaVigencia');",
+                  "pm.test('La nueva vigencia queda abierta', () => {",
+                  "  const nueva = r.historial.find((v) => v.vigenteDesde === fecha);",
+                  "  pm.expect(nueva.vigenteHasta).to.eql(null);",
+                  "  pm.expect(nueva.creadoPor).to.eql('u-admin');",
+                  "});",
+                  "pm.test('La anterior se cerró el día previo', () => {",
+                  "  const d = new Date(fecha + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - 1);",
+                  "  const anterior = r.historial.find((v) => v.vigenteDesde === pm.collectionVariables.get('inicioVigenciaAbierta'));",
+                  "  pm.expect(anterior.vigenteHasta).to.eql(d.toISOString().slice(0, 10));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3. HU-CON-01 Registrar venta",
+      "item": [
+        {
+          "name": "Orden confirmada multi-vendedor -> 201 PROCESADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{numeroOrden}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [\n    { \"vendedorId\": \"{{vendedor1}}\", \"valorBruto\": \"100000.00\" },\n    { \"vendedorId\": \"{{vendedor2}}\", \"valorBruto\": \"50000.00\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Datos únicos en cada ejecución.",
+                  "const sufijo = Date.now();",
+                  "pm.collectionVariables.set('eventId', 'evt-pm-' + pm.variables.replaceIn('{{$guid}}'));",
+                  "pm.collectionVariables.set('numeroOrden', 'ORD-PM-' + sufijo);",
+                  "pm.collectionVariables.set('vendedor1', 'V-PM-' + sufijo + '-1');",
+                  "pm.collectionVariables.set('vendedor2', 'V-PM-' + sufijo + '-2');",
+                  "pm.collectionVariables.set('ahoraIso', new Date().toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Resultado PROCESADO', () => pm.expect(pm.response.json().resultado).to.eql('PROCESADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mismo evento otra vez -> 200 YA_PROCESADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{numeroOrden}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [\n    { \"vendedorId\": \"{{vendedor1}}\", \"valorBruto\": \"100000.00\" },\n    { \"vendedorId\": \"{{vendedor2}}\", \"valorBruto\": \"50000.00\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Resultado YA_PROCESADO', () => pm.expect(pm.response.json().resultado).to.eql('YA_PROCESADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Misma orden con otro eventId -> 409 ORDEN_DUPLICADA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}-otro\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{numeroOrden}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [\n    { \"vendedorId\": \"{{vendedor1}}\", \"valorBruto\": \"100000.00\" },\n    { \"vendedorId\": \"{{vendedor2}}\", \"valorBruto\": \"50000.00\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Código ORDEN_DUPLICADA', () => pm.expect(pm.response.json().code).to.eql('ORDEN_DUPLICADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Orden PENDIENTE -> 200 IGNORADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}-pendiente\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{numeroOrden}}-P\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"PENDIENTE\",\n  \"moneda\": \"COP\",\n  \"lineas\": [\n    { \"vendedorId\": \"{{vendedor1}}\", \"valorBruto\": \"100000.00\" },\n    { \"vendedorId\": \"{{vendedor2}}\", \"valorBruto\": \"50000.00\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Resultado IGNORADO', () => pm.expect(pm.response.json().resultado).to.eql('IGNORADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Evento inválido -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"evt-invalido\",\n  \"version\": 1,\n  \"tipo\": \"orden.confirmada\",\n  \"lineas\": []\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Detalla los campos con error', () => pm.expect(pm.response.json().errors.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Enviar como contador -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{numeroOrden}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [\n    { \"vendedorId\": \"{{vendedor1}}\", \"valorBruto\": \"100000.00\" },\n    { \"vendedorId\": \"{{vendedor2}}\", \"valorBruto\": \"50000.00\" }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4. Consultas (ventas y cuentas por pagar)",
+      "item": [
+        {
+          "name": "Ventas del vendedor 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ventas?vendedorId={{vendedor1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ventas"
+              ],
+              "query": [
+                {
+                  "key": "vendedorId",
+                  "value": "{{vendedor1}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Una sola venta (sin duplicados)', () => pm.expect(r.total).to.eql(1));",
+                  "const v = r.items[0];",
+                  "const pct = Number(pm.collectionVariables.get('porcentajeVigente'));",
+                  "const comision = Math.round(100000 * pct) / 100;",
+                  "pm.test('Comisión con el % vigente', () => {",
+                  "  pm.expect(v.numeroOrden).to.eql(pm.collectionVariables.get('numeroOrden'));",
+                  "  pm.expect(Number(v.comision)).to.eql(comision);",
+                  "  pm.expect(Number(v.valorNeto)).to.eql(100000 - comision);",
+                  "});",
+                  "pm.test('bruto = comisión + neto', () => pm.expect(Number(v.comision) + Number(v.valorNeto)).to.eql(Number(v.valorBruto)));",
+                  "pm.collectionVariables.set('periodo', v.periodo);",
+                  "pm.collectionVariables.set('netoVendedor1', v.valorNeto);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Periodos con ventas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/periodos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "periodos"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye el periodo de la venta', () => pm.expect(pm.response.json().periodos).to.include(pm.collectionVariables.get('periodo')));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ventas del periodo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ventas?periodo={{periodo}}&size=200",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ventas"
+              ],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "{{periodo}}"
+                },
+                {
+                  "key": "size",
+                  "value": "200"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Todas son del periodo', () => pm.response.json().items.forEach((v) => pm.expect(v.periodo).to.eql(pm.collectionVariables.get('periodo'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cuenta por pagar del vendedor 1",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cuentas-por-pagar?vendedorId={{vendedor1}}&periodo={{periodo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cuentas-por-pagar"
+              ],
+              "query": [
+                {
+                  "key": "vendedorId",
+                  "value": "{{vendedor1}}"
+                },
+                {
+                  "key": "periodo",
+                  "value": "{{periodo}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const [c] = pm.response.json();",
+                  "pm.test('Saldo pendiente = neto de la venta', () => {",
+                  "  pm.expect(c.estado).to.eql('PENDIENTE');",
+                  "  pm.expect(c.saldoPendiente).to.eql(pm.collectionVariables.get('netoVendedor1'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cuentas por pagar pendientes del periodo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cuentas-por-pagar?periodo={{periodo}}&estado=PENDIENTE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cuentas-por-pagar"
+              ],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "{{periodo}}"
+                },
+                {
+                  "key": "estado",
+                  "value": "PENDIENTE"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Incluye a los dos vendedores de la orden', () => {",
+                  "  const ids = pm.response.json().map((c) => c.vendedorId);",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('vendedor1'));",
+                  "  pm.expect(ids).to.include(pm.collectionVariables.get('vendedor2'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtro inválido -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cuentas-por-pagar?periodo=2026-10-Q3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cuentas-por-pagar"
+              ],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "2026-10-Q3"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

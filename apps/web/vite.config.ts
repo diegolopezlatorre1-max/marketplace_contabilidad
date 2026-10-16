@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: { '/api': 'http://localhost:3000' },
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     environment: 'node',
   },
 });

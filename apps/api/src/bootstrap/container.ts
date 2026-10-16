@@ -6,6 +6,8 @@ import type { Clock } from '../application/ports/out/Clock';
 import type { UnitOfWork } from '../application/ports/out/UnitOfWork';
 import { ConfigurarComisionUseCase } from '../application/commands/ConfigurarComisionUseCase';
 import { RegistrarVentaConfirmadaUseCase } from '../application/commands/RegistrarVentaConfirmadaUseCase';
+import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentasPorPagarQuery';
+import { ListarPeriodosQuery } from '../application/queries/ListarPeriodosQuery';
 import { ListarVentasQuery } from '../application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../application/queries/ObtenerEstadoModulo';
@@ -15,6 +17,7 @@ import { JwtAuthContext } from '../infrastructure/integration/auth/JwtAuthContex
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
 import { PgConfiguracionComisionRepository } from '../infrastructure/persistence/postgres/PgConfiguracionComisionRepository';
+import { PgCuentaPorPagarRepository } from '../infrastructure/persistence/postgres/PgCuentaPorPagarRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
 import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWork';
@@ -56,14 +59,25 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const obtenerComision = new ObtenerComisionVigenteQuery(configuracionComision, clock);
   const configurarComision = new ConfigurarComisionUseCase(unitOfWork, clock);
   const registrarVenta = new RegistrarVentaConfirmadaUseCase(unitOfWork, clock);
-  const listarVentas = new ListarVentasQuery(new PgVentaContableRepository(pool));
+  const ventas = new PgVentaContableRepository(pool);
+  const listarVentas = new ListarVentasQuery(ventas);
+  const listarPeriodos = new ListarPeriodosQuery(ventas);
+  const listarCuentasPorPagar = new ListarCuentasPorPagarQuery(
+    new PgCuentaPorPagarRepository(pool),
+  );
 
   const router = createContabilidadRouter({
     logger,
     auth,
     version: VERSION_MODULO,
     integrationMode: config.INTEGRATION_MODE,
-    queries: { obtenerEstado, obtenerComision, listarVentas },
+    queries: {
+      obtenerEstado,
+      obtenerComision,
+      listarVentas,
+      listarPeriodos,
+      listarCuentasPorPagar,
+    },
     commands: { configurarComision, registrarVenta },
   });
 

@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import type { Rol } from '@contabilidad/contracts';
 import { useModulo } from '../auth/ModuloContext';
+import { rutaDelModulo } from './rutas';
 
 interface ItemMenu {
   to: string;
@@ -13,7 +14,7 @@ interface ItemMenu {
 const MENU: ItemMenu[] = [
   { to: '.', label: 'Inicio', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
   { to: 'ventas', label: 'Ventas', roles: ['CONTADOR'] },
-  { to: 'configuracion/comision', label: 'Comisión', roles: ['ADMIN_FINANCIERO'], sprint: 1 },
+  { to: 'configuracion/comision', label: 'Comisión', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
   { to: 'cuentas-por-pagar', label: 'Cuentas por pagar', roles: ['CONTADOR'] },
   { to: 'conciliaciones', label: 'Conciliación', roles: ['CONTADOR'], sprint: 2 },
   { to: 'ajustes', label: 'Ajustes', roles: ['CONTADOR'], sprint: 2 },
@@ -24,10 +25,11 @@ const MENU: ItemMenu[] = [
     sprint: 2,
   },
   { to: 'auditoria', label: 'Auditoría', roles: ['ADMIN_FINANCIERO'], sprint: 3 },
+  { to: 'documentacion-api', label: 'Documentación API', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
 ];
 
 export function Layout() {
-  const { usuario, onLogout } = useModulo();
+  const { usuario, onLogout, basePath } = useModulo();
   const visibles = MENU.filter((i) => i.roles.some((r) => usuario.roles.includes(r)));
 
   return (
@@ -47,7 +49,7 @@ export function Layout() {
                     <small>Sprint {item.sprint}</small>
                   </span>
                 ) : (
-                  <NavLink to={item.to} end>
+                  <NavLink to={rutaDelModulo(basePath, item.to)} end>
                     {item.label}
                   </NavLink>
                 )}

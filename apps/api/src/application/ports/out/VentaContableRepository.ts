@@ -5,6 +5,8 @@ export interface FiltroVentas {
   desde?: FechaContable | undefined;
   hasta?: FechaContable | undefined;
   vendedorId?: string | undefined;
+  /** Quincena, p. ej. "2026-10-Q1". */
+  periodo?: string | undefined;
   page: number;
   size: number;
 }
@@ -36,4 +38,6 @@ export interface VentaContableRepository {
   /** La restricción UNIQUE (numero_orden, vendedor_id) es la barrera final ante duplicados. */
   guardar(venta: VentaContable, eventId: string): Promise<void>;
   listar(filtro: FiltroVentas): Promise<PaginaVentas>;
+  /** Quincenas que tienen ventas, de la más reciente a la más antigua. */
+  listarPeriodos(): Promise<string[]>;
 }
