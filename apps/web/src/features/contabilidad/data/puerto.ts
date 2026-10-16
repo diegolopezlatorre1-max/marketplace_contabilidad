@@ -3,9 +3,11 @@ import type {
   ComisionFila,
   CuentaPorPagarFila,
   EstadoCuenta,
+  FiltroReporte,
   NuevaVenta,
   NuevoAjuste,
   NuevoPago,
+  ReporteIngresos,
   SaldoVendedorFila,
   VentaDetalle,
   VigenciaPorcentaje,
@@ -30,4 +32,6 @@ export interface ContabilidadApi {
   /** HU-CON-06: ajustes de una venta, del más reciente al más antiguo. */
   listarAjustes(ventaId: string): Promise<AjusteFila[]>;
   registrarAjuste(ajuste: NuevoAjuste): Promise<AjusteFila>;
+  /** HU-CON-05: ingresos y comisiones del rango; ajustes ubicados por su propia fecha. */
+  obtenerReporte(filtro: FiltroReporte): Promise<ReporteIngresos>;
 }

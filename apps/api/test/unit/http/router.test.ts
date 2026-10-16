@@ -16,6 +16,7 @@ import { ListarVentasQuery } from '../../../src/application/queries/ListarVentas
 import { ObtenerComisionVigenteQuery } from '../../../src/application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../../../src/application/queries/ObtenerEstadoModulo';
 import { ObtenerVentaQuery } from '../../../src/application/queries/ObtenerVentaQuery';
+import { ReporteIngresosQuery } from '../../../src/application/queries/ReporteIngresosQuery';
 import { ResumenSaldoVendedorQuery } from '../../../src/application/queries/ResumenSaldoVendedorQuery';
 import { InvalidValueError } from '../../../src/domain/shared';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
@@ -57,6 +58,7 @@ function app(dbOk = true) {
       listarCuentasPorPagar: new ListarCuentasPorPagarQuery(base.repos.cuentasPorPagar, vendedores),
       resumenSaldoVendedor: new ResumenSaldoVendedorQuery(base.repos.cuentasPorPagar, vendedores),
       listarAjustes: new ListarAjustesQuery(base.repos.ajustes),
+      reporteIngresos: new ReporteIngresosQuery(base.reporte),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
@@ -146,6 +148,7 @@ describe('Router del módulo', () => {
         '/ajustes',
         '/eventos/orden-cancelada',
         '/eventos/orden-devuelta',
+        '/reportes/ingresos',
       ]),
     );
   });
@@ -506,6 +509,69 @@ describe('Rutas de ajustes (HU-CON-06)', () => {
     expect((await enviar(devuelta, 'mock-contador')).status).toBe(403);
     expect((await enviar({ ...devuelta, lineas: [{ vendedorId: 'V-1' }] })).status).toBe(400);
     expect((await enviar(devuelta)).status).toBe(201);
+  });
+});
+
+describe('Ruta del reporte de ingresos (HU-CON-05)', () => {
+  const URL = '/api/v1/contabilidad/reportes/ingresos';
+  const orden = {
+    eventId: 'evt-001',
+    version: 1,
+    ocurridoEn: '2026-10-05T10:00:00-05:00',
+    tipo: 'orden.confirmada',
+    numeroOrden: 'ORD-1001',
+    fecha: '2026-10-05T09:58:00-05:00',
+    estado: 'CONFIRMADA',
+    moneda: 'COP',
+    lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+  };
+
+  it('GET entrega totales, control y detalle por día para el contador y el administrador', async () => {
+    const servidor = app();
+    await request(servidor)
+      .post('/api/v1/contabilidad/eventos/orden-confirmada')
+      .set('authorization', 'Bearer mock-sistema')
+      .send(orden);
+    for (const token of ['mock-contador', 'mock-admin']) {
+      const res = await request(servidor)
+        .get(`${URL}?desde=2026-10-01&hasta=2026-10-31`)
+        .set('authorization', `Bearer ${token}`);
+      expect(res.status, token).toBe(200);
+      expect(res.body).toMatchObject({
+        desde: '2026-10-01',
+        hasta: '2026-10-31',
+        vendedorId: null,
+        ventas: {
+          cantidad: 1,
+          valorBruto: '100000.00',
+          comision: '10000.00',
+          valorNeto: '90000.00',
+        },
+        totales: { valorBruto: '100000.00', comision: '10000.00', valorNeto: '90000.00' },
+        control: { cuadra: true },
+        porDia: [{ fecha: '2026-10-05' }],
+      });
+    }
+  });
+
+  it('GET valida el rango y el rol', async () => {
+    for (const q of [
+      '',
+      '?desde=2026-10-01',
+      '?hasta=2026-10-31',
+      '?desde=01-10-2026&hasta=2026-10-31',
+      '?desde=2026-10-31&hasta=2026-10-01',
+      '?desde=2024-01-01&hasta=2025-01-01',
+    ]) {
+      const res = await request(app())
+        .get(`${URL}${q}`)
+        .set('authorization', 'Bearer mock-contador');
+      expect(res.status, q).toBe(400);
+    }
+    const sistema = await request(app())
+      .get(`${URL}?desde=2026-10-01&hasta=2026-10-31`)
+      .set('authorization', 'Bearer mock-sistema');
+    expect(sistema.status).toBe(403);
   });
 });
 

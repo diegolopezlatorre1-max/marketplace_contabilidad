@@ -5,7 +5,9 @@ import type {
   CuentaPorPagarFila,
   NuevaVenta,
   NuevoAjuste,
+  FiltroReporte,
   NuevoPago,
+  ReporteIngresos,
   SaldoVendedorFila,
   VentaDetalle,
   VigenciaPorcentaje,
@@ -312,6 +314,85 @@ export class AlmacenContabilidad {
     return fila;
   }
 
+  // ---- HU-CON-05: reporte de ingresos (ajustes por la fecha del ajuste) ----
+  obtenerReporte({ desde, hasta, vendedorId }: FiltroReporte): ReporteIngresos {
+    validarFecha(desde);
+    validarFecha(hasta);
+    if (desde > hasta)
+      throw new ErrorDeNegocio('La fecha "desde" no puede ser posterior a "hasta"');
+
+    type Suma = { cantidad: number; bruto: bigint; comision: bigint; neto: bigint };
+    const cero = (): Suma => ({ cantidad: 0, bruto: 0n, comision: 0n, neto: 0n });
+    const dias = new Map<string, { ventas: Suma; ajustes: Suma }>();
+    const total = { ventas: cero(), ajustes: cero() };
+    const acumular = (
+      fecha: string,
+      grupo: 'ventas' | 'ajustes',
+      bruto: string,
+      comision: string,
+      neto: string,
+    ) => {
+      const dia = dias.get(fecha) ?? { ventas: cero(), ajustes: cero() };
+      dias.set(fecha, dia);
+      for (const s of [dia[grupo], total[grupo]]) {
+        s.cantidad += 1;
+        s.bruto += aCentavos(bruto);
+        s.comision += aCentavos(comision);
+        s.neto += aCentavos(neto);
+      }
+    };
+    const enRango = (fecha: string, vendedor: string) =>
+      fecha >= desde && fecha <= hasta && (!vendedorId || vendedor === vendedorId);
+
+    for (const v of this.comisiones) {
+      if (enRango(v.fecha, v.vendedorId))
+        acumular(v.fecha, 'ventas', v.valorBruto, v.comision, v.valorNeto);
+    }
+    for (const { ventaId, fila: a } of this.ajustes) {
+      const venta = this.comisiones.find((c) => c.id === ventaId)!;
+      if (enRango(a.fechaContable, venta.vendedorId)) {
+        acumular(a.fechaContable, 'ajustes', a.valor, a.comisionRevertida, a.netoRevertido);
+      }
+    }
+
+    const aTotales = (s: Suma) => ({
+      cantidad: s.cantidad,
+      valorBruto: deCentavos(s.bruto),
+      comision: deCentavos(s.comision),
+      valorNeto: deCentavos(s.neto),
+    });
+    const diferencia = (a: Suma, b: Suma) => ({
+      valorBruto: deCentavos(a.bruto - b.bruto),
+      comision: deCentavos(a.comision - b.comision),
+      valorNeto: deCentavos(a.neto - b.neto),
+    });
+    const cuadra = (s: Suma) => s.comision + s.neto === s.bruto;
+    const ok = cuadra(total.ventas) && cuadra(total.ajustes);
+
+    return {
+      desde,
+      hasta,
+      vendedorId: vendedorId ?? null,
+      ventas: aTotales(total.ventas),
+      ajustes: aTotales(total.ajustes),
+      totales: diferencia(total.ventas, total.ajustes),
+      control: {
+        cuadra: ok,
+        detalle: ok
+          ? 'Bruto = comisión + neto en ventas, ajustes y totales'
+          : 'No cuadra bruto = comisión + neto',
+      },
+      porDia: [...dias.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([fecha, d]) => ({
+          fecha,
+          ventas: aTotales(d.ventas),
+          ajustes: aTotales(d.ajustes),
+          totales: diferencia(d.ventas, d.ajustes),
+        })),
+    };
+  }
+
   registrarPago(pago: NuevoPago): CuentaPorPagarFila {
     const cuenta = this.cuentas.get(`${pago.vendedorId}|${pago.periodo}`);
     if (!cuenta) throw new ErrorDeNegocio('No existe una cuenta para ese vendedor y periodo');
@@ -375,6 +456,10 @@ export function crearApiEnMemoria(almacen: AlmacenContabilidad, retardoMs = 0): 
     async registrarAjuste(ajuste) {
       await espera();
       return almacen.registrarAjuste(ajuste);
+    },
+    async obtenerReporte(filtro) {
+      await espera();
+      return almacen.obtenerReporte(filtro);
     },
   };
 }

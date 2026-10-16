@@ -62,6 +62,11 @@ export function buildOpenApi(version: string) {
         description: 'Saldos a pagar a cada vendedor por quincena (HU-CON-03).',
       },
       {
+        name: 'Reportes',
+        description:
+          'Ingresos y comisiones por rango de días contables en hora de Colombia (HU-CON-05).',
+      },
+      {
         name: 'Ajustes',
         description:
           'Devoluciones y cancelaciones: revierten comisión y neto con el % original (HU-CON-06, D-07 provisional).',
@@ -362,6 +367,65 @@ export function buildOpenApi(version: string) {
             },
           },
         },
+        Montos: {
+          type: 'object',
+          properties: {
+            valorBruto: { type: 'string', example: '150000.00' },
+            comision: { type: 'string', example: '15000.00' },
+            valorNeto: { type: 'string', example: '135000.00' },
+          },
+        },
+        TotalesMovimientos: {
+          type: 'object',
+          properties: {
+            cantidad: { type: 'integer', example: 2 },
+            valorBruto: { type: 'string', example: '150000.00' },
+            comision: { type: 'string', example: '15000.00' },
+            valorNeto: { type: 'string', example: '135000.00' },
+          },
+        },
+        ReporteIngresosDia: {
+          type: 'object',
+          properties: {
+            fecha: {
+              type: 'string',
+              format: 'date',
+              description: 'Día contable (hora de Colombia)',
+            },
+            ventas: { $ref: '#/components/schemas/TotalesMovimientos' },
+            ajustes: { $ref: '#/components/schemas/TotalesMovimientos' },
+            totales: { $ref: '#/components/schemas/Montos' },
+          },
+        },
+        ReporteIngresos: {
+          type: 'object',
+          properties: {
+            desde: { type: 'string', format: 'date' },
+            hasta: { type: 'string', format: 'date' },
+            vendedorId: { type: 'string', nullable: true },
+            ventas: { $ref: '#/components/schemas/TotalesMovimientos' },
+            ajustes: {
+              allOf: [{ $ref: '#/components/schemas/TotalesMovimientos' }],
+              description:
+                'Lo revertido por ajustes con fecha dentro del rango (valores positivos)',
+            },
+            totales: {
+              allOf: [{ $ref: '#/components/schemas/Montos' }],
+              description: 'Ventas menos ajustes',
+            },
+            control: {
+              type: 'object',
+              properties: {
+                cuadra: { type: 'boolean' },
+                detalle: { type: 'string' },
+              },
+            },
+            porDia: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/ReporteIngresosDia' },
+            },
+          },
+        },
         PaginaVentas: {
           type: 'object',
           properties: {
@@ -622,6 +686,43 @@ export function buildOpenApi(version: string) {
               },
             },
             '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/reportes/ingresos': {
+        get: {
+          tags: ['Reportes'],
+          summary: 'Ingresos y comisiones por rango de fechas (HU-CON-05)',
+          description:
+            'Días contables en hora de Colombia (America/Bogota), inclusive; máximo 366 días. ' +
+            'Las ventas se ubican por su fecha y los ajustes por la fecha del ajuste. ' +
+            'totales = ventas − ajustes; control verifica bruto = comisión + neto.',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'desde',
+              in: 'query',
+              required: true,
+              schema: { type: 'string', format: 'date' },
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              required: true,
+              schema: { type: 'string', format: 'date' },
+            },
+            { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
+          ],
+          responses: {
+            '200': {
+              description: 'Reporte del rango',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ReporteIngresos' } },
+              },
+            },
+            '400': problema('Rango inválido (falta una fecha, desde > hasta o más de 366 días)'),
             '401': problema('No autenticado'),
             '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
           },

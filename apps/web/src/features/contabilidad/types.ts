@@ -1,4 +1,16 @@
+import type { ReporteIngresosDto } from '@contabilidad/contracts';
+
 export type EstadoCuenta = 'PENDIENTE' | 'PAGADO';
+
+/** HU-CON-05: reporte de ingresos (mismo formato que la API). */
+export type ReporteIngresos = ReporteIngresosDto;
+
+export interface FiltroReporte {
+  /** Días contables en hora de Colombia (AAAA-MM-DD), inclusive. */
+  desde: string;
+  hasta: string;
+  vendedorId?: string | undefined;
+}
 
 export interface ComisionFila {
   /** Identificador de la venta (abre su detalle). */

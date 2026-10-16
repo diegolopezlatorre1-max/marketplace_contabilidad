@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Contabilidad - Marketplace (API v1)",
-    "description": "Pruebas de la API del módulo de contabilidad (HU-CON-09, HU-CON-01, consultas, HU-CON-06 ajustes).\n\nRequisitos: `npm run db:migrate && npm run db:seed` y `npm run dev:api` (AUTH_MODE=mock).\nEjecute la colección completa en orden (Run collection) o con Newman. Ver docs/postman/README.md.",
+    "description": "Pruebas de la API del módulo de contabilidad (HU-CON-09, HU-CON-01, consultas, HU-CON-06 ajustes, HU-CON-05 reporte).\n\nRequisitos: `npm run db:migrate && npm run db:seed` y `npm run dev:api` (AUTH_MODE=mock).\nEjecute la colección completa en orden (Run collection) o con Newman. Ver docs/postman/README.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1602,6 +1602,178 @@
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
                   "const v2 = pm.response.json().find((s) => s.vendedorId === pm.collectionVariables.get('vendedor2'));",
                   "pm.test('Saldo pendiente 0', () => pm.expect(v2.saldoPendiente).to.eql('0.00'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6. HU-CON-05 Reporte",
+      "description": "Reporte de ingresos por rango de días contables en hora de Colombia. Los ajustes se ubican por la fecha del ajuste. Usa el vendedor 1 de la carpeta 3, cuya venta de 100.000 se ajustó por completo en la carpeta 5.",
+      "item": [
+        {
+          "name": "Reporte de hoy del vendedor 1 -> ventas menos ajustes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/ingresos?desde={{hoyBogota}}&hasta={{hoyBogota}}&vendedorId={{vendedor1}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "ingresos"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{hoyBogota}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{hoyBogota}}"
+                },
+                {
+                  "key": "vendedorId",
+                  "value": "{{vendedor1}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Día contable de hoy en hora de Colombia (UTC-5, sin horario de verano).",
+                  "pm.collectionVariables.set('hoyBogota', new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Venta de 100.000 y ajustes por 100.000', () => {",
+                  "  pm.expect(r.ventas.valorBruto).to.eql('100000.00');",
+                  "  pm.expect(r.ajustes.valorBruto).to.eql('100000.00');",
+                  "});",
+                  "pm.test('Totales = ventas − ajustes = 0', () => pm.expect(r.totales).to.eql({ valorBruto: '0.00', comision: '0.00', valorNeto: '0.00' }));",
+                  "pm.test('Control: bruto = comisión + neto', () => pm.expect(r.control.cuadra).to.eql(true));",
+                  "pm.test('Un solo día, el de hoy', () => pm.expect(r.porDia.map((d) => d.fecha)).to.eql([pm.collectionVariables.get('hoyBogota')]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rango invertido -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/ingresos?desde=2026-10-31&hasta=2026-10-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "ingresos"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "2026-10-31"
+                },
+                {
+                  "key": "hasta",
+                  "value": "2026-10-01"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rango mayor a 366 días -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reportes/ingresos?desde=2024-01-01&hasta=2025-01-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reportes",
+                "ingresos"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "hasta",
+                  "value": "2025-01-01"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
                 ]
               }
             }

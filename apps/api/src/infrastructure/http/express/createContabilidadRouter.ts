@@ -13,6 +13,7 @@ import type { ListarVentasQuery } from '../../../application/queries/ListarVenta
 import type { ObtenerComisionVigenteQuery } from '../../../application/queries/ObtenerComisionVigenteQuery';
 import type { ObtenerEstadoModulo } from '../../../application/queries/ObtenerEstadoModulo';
 import type { ObtenerVentaQuery } from '../../../application/queries/ObtenerVentaQuery';
+import type { ReporteIngresosQuery } from '../../../application/queries/ReporteIngresosQuery';
 import type { ResumenSaldoVendedorQuery } from '../../../application/queries/ResumenSaldoVendedorQuery';
 import type { AuthContext } from '../../../application/ports/out/AuthContext';
 import { authenticate } from '../middlewares/auth';
@@ -22,6 +23,7 @@ import { buildOpenApi } from '../openapi';
 import { ajustesRoutes } from '../routes/ajustesRoutes';
 import { comisionesRoutes } from '../routes/comisionesRoutes';
 import { cuentasPorPagarRoutes } from '../routes/cuentasPorPagarRoutes';
+import { reportesRoutes } from '../routes/reportesRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
 import { ventasRoutes } from '../routes/ventasRoutes';
 
@@ -39,6 +41,7 @@ export interface RouterDeps {
     listarCuentasPorPagar: ListarCuentasPorPagarQuery;
     resumenSaldoVendedor: ResumenSaldoVendedorQuery;
     listarAjustes: ListarAjustesQuery;
+    reporteIngresos: ReporteIngresosQuery;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
@@ -101,6 +104,7 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
       listarAjustes: deps.queries.listarAjustes,
     }),
   );
+  router.use(reportesRoutes({ reporteIngresos: deps.queries.reporteIngresos }));
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

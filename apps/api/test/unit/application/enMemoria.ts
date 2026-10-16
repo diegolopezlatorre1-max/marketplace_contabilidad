@@ -3,6 +3,10 @@ import type { AjusteContableRepository } from '../../../src/application/ports/ou
 import type { RegistroAuditoria } from '../../../src/application/ports/out/AuditLogger';
 import type { EventoDeIntegracion } from '../../../src/application/ports/out/EventPublisher';
 import type {
+  FilaDiaReporte,
+  ReporteIngresosRepository,
+} from '../../../src/application/ports/out/ReporteIngresosRepository';
+import type {
   TransactionalRepositories,
   UnitOfWork,
 } from '../../../src/application/ports/out/UnitOfWork';
@@ -260,6 +264,61 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
 }
 
 /** UnitOfWork en memoria: si el trabajo falla, restaura el estado anterior (rollback). */
+/** Agrupa por día contable (hora de Colombia), igual que PgReporteIngresosRepository. */
+function reporteEnMemoria(db: { datos: DatosEnMemoria }): ReporteIngresosRepository {
+  const agrupar = (
+    filas: Array<{ fecha: string; bruto: Money; comision: Money; neto: Money }>,
+  ): FilaDiaReporte[] => {
+    const dias = new Map<string, FilaDiaReporte>();
+    for (const f of filas) {
+      const d = dias.get(f.fecha);
+      dias.set(f.fecha, {
+        fecha: f.fecha,
+        cantidad: (d?.cantidad ?? 0) + 1,
+        valorBruto: Money.of(d?.valorBruto ?? '0')
+          .add(f.bruto)
+          .toString(),
+        comision: Money.of(d?.comision ?? '0')
+          .add(f.comision)
+          .toString(),
+        valorNeto: Money.of(d?.valorNeto ?? '0')
+          .add(f.neto)
+          .toString(),
+      });
+    }
+    return [...dias.values()].sort((a, b) => a.fecha.localeCompare(b.fecha));
+  };
+  return {
+    movimientosPorDia: async ({ desde, hasta, vendedorId }) => {
+      const enRango = (fecha: string, vendedor: string) =>
+        fecha >= desde && fecha <= hasta && (!vendedorId || vendedor === vendedorId);
+      const ventas = db.datos.ventas
+        .map(({ venta }) => venta)
+        .filter((v) => enRango(v.fechaContable, v.vendedorId))
+        .map((v) => {
+          const c = db.datos.comisiones.find((x) => x.ventaId === v.id)!.comision;
+          return {
+            fecha: v.fechaContable,
+            bruto: v.valorBruto,
+            comision: c.comision,
+            neto: c.valorNeto,
+          };
+        });
+      // Los ajustes se ubican por la fecha del ajuste, no la de la venta.
+      const ajustes = db.datos.ajustes
+        .map(({ ajuste }) => ajuste)
+        .filter((a) => enRango(a.fechaContable, a.vendedorId))
+        .map((a) => ({
+          fecha: a.fechaContable,
+          bruto: a.valor,
+          comision: a.comisionRevertida,
+          neto: a.netoRevertido,
+        }));
+      return { ventas: agrupar(ventas), ajustes: agrupar(ajustes) };
+    },
+  };
+}
+
 export function crearBaseEnMemoria() {
   const db = { datos: vacio() };
   const repos = repositorios(db);
@@ -274,7 +333,7 @@ export function crearBaseEnMemoria() {
       }
     },
   };
-  return { db, repos, uow };
+  return { db, repos, uow, reporte: reporteEnMemoria(db) };
 }
 
 /** Comisión GLOBAL vigente desde 2026-01-01 (igual que el seed 010). */
