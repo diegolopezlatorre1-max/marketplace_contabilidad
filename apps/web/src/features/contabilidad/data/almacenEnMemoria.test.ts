@@ -107,6 +107,61 @@ describe('AlmacenContabilidad (reglas de HU-09, 01, 02 y 03)', () => {
     expect(() => a.obtenerVenta('no-existe')).toThrow(ErrorDeNegocio);
   });
 
+  it('ajustes (HU-CON-06): parcial + cancelación cuadran y descuentan el saldo', () => {
+    const a = nuevo('12.5');
+    const v = a.registrarVenta(venta('ORD-1', '100.05')); // comisión 12.51, neto 87.54
+    const parcial = a.registrarAjuste({
+      ventaId: v.id,
+      tipo: 'DEVOLUCION',
+      motivo: 'Defectuoso',
+      valor: '50.03',
+      fecha: '2026-10-06',
+    });
+    expect(parcial).toMatchObject({ comisionRevertida: '6.25', netoRevertido: '43.78' });
+    expect(() =>
+      a.registrarAjuste({
+        ventaId: v.id,
+        tipo: 'DEVOLUCION',
+        motivo: 'x',
+        valor: '50.03',
+        fecha: '2026-10-06',
+      }),
+    ).toThrow(ErrorDeNegocio);
+
+    const cierre = a.registrarAjuste({
+      ventaId: v.id,
+      tipo: 'CANCELACION',
+      motivo: 'Resto',
+      fecha: '2026-10-07',
+    });
+    expect(cierre).toMatchObject({
+      valor: '50.02',
+      comisionRevertida: '6.26',
+      netoRevertido: '43.76',
+    });
+    expect(a.listarAjustes(v.id).map((x) => x.id)).toEqual([cierre.id, parcial.id]);
+    expect(a.listarCuentasPorPagar({ periodo: '2026-10-Q1' })[0]?.saldoPendiente).toBe('0.00');
+    expect(() =>
+      a.registrarAjuste({ ventaId: v.id, tipo: 'CANCELACION', motivo: 'x', fecha: '2026-10-07' }),
+    ).toThrow('ajustada por completo');
+  });
+
+  it('ajustes: rechaza ventas inexistentes y fechas anteriores a la venta', () => {
+    const a = nuevo();
+    const v = a.registrarVenta(venta('ORD-1', '1000'));
+    expect(() =>
+      a.registrarAjuste({
+        ventaId: 'no-existe',
+        tipo: 'CANCELACION',
+        motivo: 'x',
+        fecha: '2026-10-06',
+      }),
+    ).toThrow(ErrorDeNegocio);
+    expect(() =>
+      a.registrarAjuste({ ventaId: v.id, tipo: 'CANCELACION', motivo: 'x', fecha: '2026-10-04' }),
+    ).toThrow('anterior a la venta');
+  });
+
   it('separa las quincenas: día 15 es Q1 y día 16 es Q2', () => {
     const a = nuevo();
     expect(a.registrarVenta(venta('ORD-1', '1000', '2026-10-15')).periodo).toBe('2026-10-Q1');

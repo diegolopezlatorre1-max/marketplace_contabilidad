@@ -1,4 +1,5 @@
 import type {
+  AjusteDto,
   ConfiguracionComisionResponse,
   CuentaPorPagarDto,
   Pagina,
@@ -9,7 +10,7 @@ import type {
   VigenciaComisionDto,
 } from '@contabilidad/contracts';
 import type { ApiClient } from '../../../shared/api/client';
-import type { ComisionFila, VigenciaPorcentaje } from '../types';
+import type { AjusteFila, ComisionFila, VigenciaPorcentaje } from '../types';
 import type { ContabilidadApi } from './puerto';
 
 /** Máximo que acepta GET /ventas por página. */
@@ -42,6 +43,21 @@ function aComisionFila(v: VentaDto): ComisionFila {
     porcentajeAplicado: v.porcentajeAplicado ?? '0',
     comision: v.comision ?? '0.00',
     valorNeto: v.valorNeto ?? '0.00',
+  };
+}
+
+function aAjusteFila(a: AjusteDto): AjusteFila {
+  return {
+    id: a.id,
+    tipo: a.tipo,
+    motivo: a.motivo,
+    fechaContable: a.fechaContable,
+    valor: a.valor,
+    comisionRevertida: a.comisionRevertida,
+    netoRevertido: a.netoRevertido,
+    saldoAFavor: a.saldoAFavor,
+    origen: a.origen,
+    registradoPor: a.registradoPor,
   };
 }
 
@@ -109,6 +125,17 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
 
     async resumirPorVendedor(periodo) {
       return api.get<ResumenSaldoVendedorDto[]>(`/cuentas-por-pagar/resumen${query({ periodo })}`);
+    },
+
+    async listarAjustes(ventaId) {
+      const pagina = await api.get<Pagina<AjusteDto>>(
+        `/ajustes${query({ ventaId, size: String(TAMANO_PAGINA) })}`,
+      );
+      return pagina.items.map(aAjusteFila);
+    },
+
+    async registrarAjuste(ajuste) {
+      return aAjusteFila(await api.post<AjusteDto>('/ajustes', ajuste));
     },
 
     async registrarPago() {

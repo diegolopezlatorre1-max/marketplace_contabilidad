@@ -3,6 +3,9 @@ import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import type { HealthResponse } from '@contabilidad/contracts';
 import type { ConfigurarComisionUseCase } from '../../../application/commands/ConfigurarComisionUseCase';
+import type { ProcesarAjusteOrdenUseCase } from '../../../application/commands/ProcesarAjusteOrdenUseCase';
+import type { RegistrarAjusteUseCase } from '../../../application/commands/RegistrarAjusteUseCase';
+import type { ListarAjustesQuery } from '../../../application/queries/ListarAjustesQuery';
 import type { RegistrarVentaConfirmadaUseCase } from '../../../application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ListarCuentasPorPagarQuery } from '../../../application/queries/ListarCuentasPorPagarQuery';
 import type { ListarPeriodosQuery } from '../../../application/queries/ListarPeriodosQuery';
@@ -16,6 +19,7 @@ import { authenticate } from '../middlewares/auth';
 import { correlationId } from '../middlewares/correlationId';
 import { errorHandler, notFound } from '../middlewares/errorHandler';
 import { buildOpenApi } from '../openapi';
+import { ajustesRoutes } from '../routes/ajustesRoutes';
 import { comisionesRoutes } from '../routes/comisionesRoutes';
 import { cuentasPorPagarRoutes } from '../routes/cuentasPorPagarRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
@@ -34,10 +38,13 @@ export interface RouterDeps {
     listarPeriodos: ListarPeriodosQuery;
     listarCuentasPorPagar: ListarCuentasPorPagarQuery;
     resumenSaldoVendedor: ResumenSaldoVendedorQuery;
+    listarAjustes: ListarAjustesQuery;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
     registrarVenta: RegistrarVentaConfirmadaUseCase;
+    registrarAjuste: RegistrarAjusteUseCase;
+    procesarAjusteOrden: ProcesarAjusteOrdenUseCase;
   };
 }
 
@@ -85,6 +92,13 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
     cuentasPorPagarRoutes({
       listarCuentasPorPagar: deps.queries.listarCuentasPorPagar,
       resumenSaldoVendedor: deps.queries.resumenSaldoVendedor,
+    }),
+  );
+  router.use(
+    ajustesRoutes({
+      registrarAjuste: deps.commands.registrarAjuste,
+      procesarAjusteOrden: deps.commands.procesarAjusteOrden,
+      listarAjustes: deps.queries.listarAjustes,
     }),
   );
 

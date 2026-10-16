@@ -1,8 +1,10 @@
 import { aCentavos, deCentavos } from '../lib/formato';
 import type {
+  AjusteFila,
   ComisionFila,
   CuentaPorPagarFila,
   NuevaVenta,
+  NuevoAjuste,
   NuevoPago,
   SaldoVendedorFila,
   VentaDetalle,
@@ -93,6 +95,7 @@ export class AlmacenContabilidad {
   private comisiones: ComisionFila[] = [];
   private registradas = new Map<string, string>();
   private cuentas = new Map<string, CuentaInterna>();
+  private ajustes: Array<{ ventaId: string; fila: AjusteFila }> = [];
 
   // ---- HU-CON-09: porcentaje con vigencia ----
   configurarPorcentaje(vigencia: VigenciaPorcentaje): VigenciaPorcentaje {
@@ -239,6 +242,76 @@ export class AlmacenContabilidad {
       }));
   }
 
+  // ---- HU-CON-06: ajustes por devolución o cancelación (D-07) ----
+  listarAjustes(ventaId: string): AjusteFila[] {
+    return this.ajustes
+      .filter((a) => a.ventaId === ventaId)
+      .map((a) => a.fila)
+      .reverse();
+  }
+
+  registrarAjuste(nuevo: NuevoAjuste): AjusteFila {
+    const venta = this.comisiones.find((c) => c.id === nuevo.ventaId);
+    if (!venta) throw new ErrorDeNegocio(`No existe la venta ${nuevo.ventaId}`);
+    const motivo = textoObligatorio(nuevo.motivo, 'El motivo');
+    const fecha = nuevo.fecha ?? new Date().toISOString().slice(0, 10);
+    validarFecha(fecha);
+    if (fecha < venta.fecha) throw new ErrorDeNegocio('El ajuste no puede ser anterior a la venta');
+
+    const previos = this.ajustes.filter((a) => a.ventaId === venta.id).map((a) => a.fila);
+    const suma = (campo: 'valor' | 'comisionRevertida' | 'netoRevertido') =>
+      previos.reduce((acc, a) => acc + aCentavos(a[campo]), 0n);
+    const disponible = aCentavos(venta.valorBruto) - suma('valor');
+    if (disponible <= 0n) throw new ErrorDeNegocio('La venta ya está ajustada por completo');
+
+    let valor: bigint;
+    if (nuevo.tipo === 'CANCELACION') {
+      valor = disponible;
+    } else {
+      valor = montoPositivo(nuevo.valor ?? '', 'El valor devuelto');
+      if (valor > disponible) {
+        throw new ErrorDeNegocio(
+          `El valor devuelto supera lo que queda por ajustar (${deCentavos(disponible)})`,
+        );
+      }
+    }
+
+    // Mismas reglas que AjusteContable en la API: proporcional, y el último cierra exacto.
+    const comisionRestante = aCentavos(venta.comision) - suma('comisionRevertida');
+    const netoRestante = aCentavos(venta.valorNeto) - suma('netoRevertido');
+    let comision = comisionRestante;
+    if (valor !== disponible) {
+      const proporcional = calcularComision(
+        valor,
+        porcentajeEnDiezMilesimas(venta.porcentajeAplicado),
+      );
+      const minimo = valor - netoRestante;
+      comision = proporcional < minimo ? minimo : proporcional;
+      if (comision > comisionRestante) comision = comisionRestante;
+    }
+    const neto = valor - comision;
+
+    const cuenta = this.cuentas.get(`${venta.vendedorId}|${venta.periodo}`)!;
+    const pendiente = cuenta.totalNeto - cuenta.pagado;
+    const aplicable = neto < pendiente ? neto : pendiente;
+    cuenta.totalNeto -= aplicable;
+
+    const fila: AjusteFila = {
+      id: `ajuste-${this.ajustes.length + 1}`,
+      tipo: nuevo.tipo,
+      motivo,
+      fechaContable: fecha,
+      valor: deCentavos(valor),
+      comisionRevertida: deCentavos(comision),
+      netoRevertido: deCentavos(neto),
+      saldoAFavor: deCentavos(neto - aplicable),
+      origen: 'MANUAL',
+      registradoPor: 'contador',
+    };
+    this.ajustes.push({ ventaId: venta.id, fila });
+    return fila;
+  }
+
   registrarPago(pago: NuevoPago): CuentaPorPagarFila {
     const cuenta = this.cuentas.get(`${pago.vendedorId}|${pago.periodo}`);
     if (!cuenta) throw new ErrorDeNegocio('No existe una cuenta para ese vendedor y periodo');
@@ -294,6 +367,14 @@ export function crearApiEnMemoria(almacen: AlmacenContabilidad, retardoMs = 0): 
     async registrarPago(pago) {
       await espera();
       return almacen.registrarPago(pago);
+    },
+    async listarAjustes(ventaId) {
+      await espera();
+      return almacen.listarAjustes(ventaId);
+    },
+    async registrarAjuste(ajuste) {
+      await espera();
+      return almacen.registrarAjuste(ajuste);
     },
   };
 }

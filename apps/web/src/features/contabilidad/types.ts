@@ -21,6 +21,33 @@ export interface VentaDetalle extends ComisionFila {
   registradoEn: string;
 }
 
+export type TipoAjuste = 'DEVOLUCION' | 'CANCELACION';
+
+/** HU-CON-06: ajuste registrado sobre una venta (devolución o cancelación). */
+export interface AjusteFila {
+  id: string;
+  tipo: TipoAjuste;
+  motivo: string;
+  /** Día del ajuste (AAAA-MM-DD). */
+  fechaContable: string;
+  valor: string;
+  comisionRevertida: string;
+  netoRevertido: string;
+  /** Parte ya pagada al vendedor que queda a favor del marketplace. */
+  saldoAFavor: string;
+  origen: 'MANUAL' | 'EVENTO';
+  registradoPor: string;
+}
+
+/** HU-CON-06: ajuste que registra el contador. La cancelación no lleva valor. */
+export interface NuevoAjuste {
+  ventaId: string;
+  tipo: TipoAjuste;
+  motivo: string;
+  valor?: string;
+  fecha?: string;
+}
+
 /** HU-CON-03: saldo total de un vendedor (de un periodo o de todos). */
 export interface SaldoVendedorFila {
   vendedorId: string;

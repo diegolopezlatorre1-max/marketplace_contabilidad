@@ -45,6 +45,8 @@ export interface VentaContableRepository {
   guardar(venta: VentaContable, eventId: string): Promise<void>;
   listar(filtro: FiltroVentas): Promise<PaginaVentas>;
   obtener(id: string): Promise<VentaDetalle | null>;
+  /** Venta de una línea de orden (eventos orden.cancelada / orden.devuelta). */
+  obtenerPorOrden(numeroOrden: string, vendedorId: string): Promise<VentaDetalle | null>;
   /** Quincenas que tienen ventas, de la más reciente a la más antigua. */
   listarPeriodos(): Promise<string[]>;
 }

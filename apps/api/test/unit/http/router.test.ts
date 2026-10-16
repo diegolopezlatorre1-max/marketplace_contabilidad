@@ -4,6 +4,9 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { ConfigurarComisionUseCase } from '../../../src/application/commands/ConfigurarComisionUseCase';
+import { ProcesarAjusteOrdenUseCase } from '../../../src/application/commands/ProcesarAjusteOrdenUseCase';
+import { RegistrarAjusteUseCase } from '../../../src/application/commands/RegistrarAjusteUseCase';
+import { ListarAjustesQuery } from '../../../src/application/queries/ListarAjustesQuery';
 import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ConfiguracionComisionRepository } from '../../../src/application/ports/out/ConfiguracionComisionRepository';
 import type { UnitOfWork } from '../../../src/application/ports/out/UnitOfWork';
@@ -53,10 +56,13 @@ function app(dbOk = true) {
       listarPeriodos: new ListarPeriodosQuery(base.repos.ventas),
       listarCuentasPorPagar: new ListarCuentasPorPagarQuery(base.repos.cuentasPorPagar, vendedores),
       resumenSaldoVendedor: new ResumenSaldoVendedorQuery(base.repos.cuentasPorPagar, vendedores),
+      listarAjustes: new ListarAjustesQuery(base.repos.ajustes),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
       registrarVenta: new RegistrarVentaConfirmadaUseCase(base.uow, reloj),
+      registrarAjuste: new RegistrarAjusteUseCase(base.uow, reloj),
+      procesarAjusteOrden: new ProcesarAjusteOrdenUseCase(base.uow, reloj),
     },
   });
   return express().use('/api/v1/contabilidad', router);
@@ -137,6 +143,9 @@ describe('Router del módulo', () => {
         '/periodos',
         '/cuentas-por-pagar',
         '/cuentas-por-pagar/resumen',
+        '/ajustes',
+        '/eventos/orden-cancelada',
+        '/eventos/orden-devuelta',
       ]),
     );
   });
@@ -368,6 +377,135 @@ describe('Rutas de ventas', () => {
       .get('/api/v1/contabilidad/ventas')
       .set('authorization', 'Bearer mock-sistema');
     expect(sistema.status).toBe(403);
+  });
+});
+
+describe('Rutas de ajustes (HU-CON-06)', () => {
+  const BASE = '/api/v1/contabilidad';
+  const orden = {
+    eventId: 'evt-001',
+    version: 1,
+    ocurridoEn: '2026-10-05T10:00:00-05:00',
+    tipo: 'orden.confirmada',
+    numeroOrden: 'ORD-1001',
+    fecha: '2026-10-05T09:58:00-05:00',
+    estado: 'CONFIRMADA',
+    moneda: 'COP',
+    lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+  };
+  const cancelada = {
+    eventId: 'evt-cancel',
+    version: 1,
+    ocurridoEn: '2026-10-05T11:00:00-05:00',
+    tipo: 'orden.cancelada',
+    numeroOrden: 'ORD-1001',
+    fecha: '2026-10-05T10:59:00-05:00',
+    motivo: 'Cancelada por el comprador',
+    lineas: [{ vendedorId: 'V-1' }],
+  };
+
+  /** Servidor con la orden ORD-1001 registrada; devuelve el id de su venta. */
+  async function conVenta() {
+    const servidor = app();
+    await request(servidor)
+      .post(`${BASE}/eventos/orden-confirmada`)
+      .set('authorization', 'Bearer mock-sistema')
+      .send(orden);
+    const ventas = await request(servidor)
+      .get(`${BASE}/ventas`)
+      .set('authorization', 'Bearer mock-contador');
+    return { servidor, ventaId: ventas.body.items[0].id as string };
+  }
+
+  it('POST /ajustes registra una devolución parcial y GET /ajustes la lista', async () => {
+    const { servidor, ventaId } = await conVenta();
+    const res = await request(servidor)
+      .post(`${BASE}/ajustes`)
+      .set('authorization', 'Bearer mock-contador')
+      .send({ ventaId, tipo: 'DEVOLUCION', motivo: 'Producto defectuoso', valor: '30000.00' });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({
+      ventaId,
+      tipo: 'DEVOLUCION',
+      motivo: 'Producto defectuoso',
+      valor: '30000.00',
+      comisionRevertida: '3000.00',
+      netoRevertido: '27000.00',
+      origen: 'MANUAL',
+    });
+
+    const lista = await request(servidor)
+      .get(`${BASE}/ajustes?ventaId=${ventaId}`)
+      .set('authorization', 'Bearer mock-admin');
+    expect(lista.status).toBe(200);
+    expect(lista.body).toMatchObject({ total: 1, items: [{ id: res.body.id }] });
+
+    const cuentas = await request(servidor)
+      .get(`${BASE}/cuentas-por-pagar`)
+      .set('authorization', 'Bearer mock-contador');
+    expect(cuentas.body[0].saldoPendiente).toBe('63000.00');
+  });
+
+  it('POST /ajustes valida el cuerpo, el rol, la venta y el saldo ajustable', async () => {
+    const { servidor, ventaId } = await conVenta();
+    const enviar = (body: object, token = 'mock-contador') =>
+      request(servidor).post(`${BASE}/ajustes`).set('authorization', `Bearer ${token}`).send(body);
+
+    for (const body of [
+      { ventaId, tipo: 'DEVOLUCION', motivo: 'Sin valor' },
+      { ventaId, tipo: 'CANCELACION', motivo: 'Con valor', valor: '10.00' },
+      { ventaId, tipo: 'DEVOLUCION', motivo: '   ', valor: '10.00' },
+      { ventaId: 'no-es-uuid', tipo: 'CANCELACION', motivo: 'x' },
+      { ventaId, tipo: 'OTRO', motivo: 'x' },
+    ]) {
+      expect((await enviar(body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect(
+      (await enviar({ ventaId, tipo: 'CANCELACION', motivo: 'x' }, 'mock-sistema')).status,
+    ).toBe(403);
+    const inexistente = await enviar({
+      ventaId: '00000000-0000-4000-8000-000000000000',
+      tipo: 'CANCELACION',
+      motivo: 'x',
+    });
+    expect(inexistente.status).toBe(404);
+    expect(inexistente.body.code).toBe('ORDEN_INEXISTENTE');
+    const excede = await enviar({ ventaId, tipo: 'DEVOLUCION', motivo: 'x', valor: '100000.01' });
+    expect(excede.status).toBe(422);
+    expect(excede.body.code).toBe('AJUSTE_EXCEDE_SALDO');
+  });
+
+  it('POST /eventos/orden-cancelada responde 201 PROCESADO y luego YA_PROCESADO', async () => {
+    const { servidor } = await conVenta();
+    const enviar = () =>
+      request(servidor)
+        .post(`${BASE}/eventos/orden-cancelada`)
+        .set('authorization', 'Bearer mock-sistema')
+        .send(cancelada);
+    const primero = await enviar();
+    expect(primero.status).toBe(201);
+    expect(primero.body).toEqual({ eventId: 'evt-cancel', resultado: 'PROCESADO' });
+    const repetido = await enviar();
+    expect(repetido.status).toBe(200);
+    expect(repetido.body.resultado).toBe('YA_PROCESADO');
+  });
+
+  it('POST /eventos/orden-devuelta valida el contrato y el rol', async () => {
+    const { servidor } = await conVenta();
+    const devuelta = {
+      ...cancelada,
+      eventId: 'evt-dev',
+      tipo: 'orden.devuelta',
+      lineas: [{ vendedorId: 'V-1', valorDevuelto: '25000.00' }],
+    };
+    const enviar = (body: object, token = 'mock-sistema') =>
+      request(servidor)
+        .post(`${BASE}/eventos/orden-devuelta`)
+        .set('authorization', `Bearer ${token}`)
+        .send(body);
+    expect((await enviar(devuelta, 'mock-contador')).status).toBe(403);
+    expect((await enviar({ ...devuelta, lineas: [{ vendedorId: 'V-1' }] })).status).toBe(400);
+    expect((await enviar(devuelta)).status).toBe(201);
   });
 });
 

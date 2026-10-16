@@ -75,6 +75,33 @@ describe('CuentaPorPagar', () => {
   });
 });
 
+describe('CuentaPorPagar.revertir (HU-CON-06, D-07)', () => {
+  it('descuenta el neto revertido del saldo pendiente', () => {
+    const c = CuentaPorPagar.abrir('V-1', Q1);
+    c.acumular(comision('ORD-1', '100000'), VENTA_Q1);
+    c.acumular(comision('ORD-2', '50000'), VENTA_Q1);
+    expect(c.revertir(Money.of('45000')).isZero()).toBe(true);
+    expect(c.saldoPendiente.toString()).toBe('90000.00');
+  });
+
+  it('si ya se pagó, lo que excede el pendiente queda como saldo a favor', () => {
+    const c = CuentaPorPagar.abrir('V-1', Q1);
+    c.acumular(comision('ORD-1', '100000'), VENTA_Q1);
+    c.registrarPago(Money.of('80000'));
+    const aFavor = c.revertir(Money.of('90000'));
+    expect(aFavor.toString()).toBe('80000.00');
+    expect(c.saldoPendiente.isZero()).toBe(true);
+    expect(c.valorTotalNeto.toString()).toBe('80000.00');
+    expect(c.valorPagado.toString()).toBe('80000.00');
+  });
+
+  it('rechaza un neto negativo', () => {
+    expect(() => CuentaPorPagar.abrir('V-1', Q1).revertir(Money.of('-1'))).toThrow(
+      InvalidValueError,
+    );
+  });
+});
+
 describe('CuentaPorPagar.reconstituir', () => {
   it('retoma totales y órdenes persistidos y sigue acumulando', () => {
     const c = CuentaPorPagar.reconstituir({

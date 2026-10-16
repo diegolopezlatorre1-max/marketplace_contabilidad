@@ -1,3 +1,4 @@
+export * from './ajustes';
 export * from './comisiones';
 export * from './common';
 export * from './cuentasPorPagar';
