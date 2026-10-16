@@ -181,6 +181,25 @@ describe('crearContabilidadApiRest', () => {
     expect(JSON.parse(String(opciones.body))).toEqual(nuevo);
   });
 
+  it('obtiene el reporte de ingresos del rango (HU-CON-05)', async () => {
+    const reporte = {
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
+      vendedorId: 'V-1',
+      ventas: { cantidad: 1, valorBruto: '100000.00', comision: '10000.00', valorNeto: '90000.00' },
+      ajustes: { cantidad: 0, valorBruto: '0.00', comision: '0.00', valorNeto: '0.00' },
+      totales: { valorBruto: '100000.00', comision: '10000.00', valorNeto: '90000.00' },
+      control: { cuadra: true, detalle: 'ok' },
+      porDia: [],
+    };
+    const { contabilidad } = crear({
+      '/api/reportes/ingresos?desde=2026-10-01&hasta=2026-10-31&vendedorId=V-1': { body: reporte },
+    });
+    await expect(
+      contabilidad.obtenerReporte({ desde: '2026-10-01', hasta: '2026-10-31', vendedorId: 'V-1' }),
+    ).resolves.toEqual(reporte);
+  });
+
   it('lee y configura vigencias del porcentaje', async () => {
     const historial = [
       {

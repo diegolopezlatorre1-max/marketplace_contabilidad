@@ -15,6 +15,7 @@ import { ListarVentasQuery } from '../application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../application/queries/ObtenerEstadoModulo';
 import { ObtenerVentaQuery } from '../application/queries/ObtenerVentaQuery';
+import { ReporteIngresosQuery } from '../application/queries/ReporteIngresosQuery';
 import { ResumenSaldoVendedorQuery } from '../application/queries/ResumenSaldoVendedorQuery';
 import type { AppConfig } from '../infrastructure/config/env';
 import { createContabilidadRouter } from '../infrastructure/http/express/createContabilidadRouter';
@@ -26,6 +27,7 @@ import { PgAjusteContableRepository } from '../infrastructure/persistence/postgr
 import { PgConfiguracionComisionRepository } from '../infrastructure/persistence/postgres/PgConfiguracionComisionRepository';
 import { PgCuentaPorPagarRepository } from '../infrastructure/persistence/postgres/PgCuentaPorPagarRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
+import { PgReporteIngresosRepository } from '../infrastructure/persistence/postgres/PgReporteIngresosRepository';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
 import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWork';
 
@@ -78,6 +80,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const registrarAjuste = new RegistrarAjusteUseCase(unitOfWork, clock);
   const procesarAjusteOrden = new ProcesarAjusteOrdenUseCase(unitOfWork, clock);
   const listarAjustes = new ListarAjustesQuery(new PgAjusteContableRepository(pool));
+  const reporteIngresos = new ReporteIngresosQuery(new PgReporteIngresosRepository(pool));
 
   const router = createContabilidadRouter({
     logger,
@@ -93,6 +96,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       listarCuentasPorPagar,
       resumenSaldoVendedor,
       listarAjustes,
+      reporteIngresos,
     },
     commands: { configurarComision, registrarVenta, registrarAjuste, procesarAjusteOrden },
   });

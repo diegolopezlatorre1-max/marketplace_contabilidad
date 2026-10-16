@@ -41,6 +41,7 @@ const MENU = [
   '/contabilidad/ventas',
   '/contabilidad/configuracion/comision',
   '/contabilidad/cuentas-por-pagar',
+  '/contabilidad/reportes/ingresos',
   '/contabilidad/documentacion-api',
 ];
 
@@ -49,6 +50,7 @@ describe('Menú del módulo', () => {
     '/contabilidad',
     '/contabilidad/ventas',
     '/contabilidad/configuracion/comision',
+    '/contabilidad/reportes/ingresos',
     '/contabilidad/documentacion-api',
   ])('desde %s los enlaces no se acumulan', (url) => {
     expect(hrefsDelMenu(url)).toEqual(MENU);

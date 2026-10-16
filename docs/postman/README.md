@@ -43,6 +43,7 @@ npx newman run docs/postman/contabilidad.postman_collection.json
 | 3. HU-CON-01 Registrar venta | orden multi-vendedor → 201 PROCESADO; reenvío → YA_PROCESADO; misma orden con otro eventId → 409 ORDEN_DUPLICADA; orden PENDIENTE → IGNORADO; evento inválido → 400; contador → 403 |
 | 4. Consultas | `/ventas` (una sola venta por vendedor, comisión con el % vigente, bruto = comisión + neto); `/periodos`; `/cuentas-por-pagar` (saldo = neto); filtro inválido → 400 |
 | 5. HU-CON-06 Ajustes | devolución parcial de 30.000 → 201 (reverso con el % original); exceso → 422 AJUSTE_EXCEDE_SALDO; cancelación del resto → 201; venta inexistente → 404; historial suma el bruto; evento `orden.cancelada` → 201 y reenvío → YA_PROCESADO; saldo del vendedor 2 en 0 |
+| 6. HU-CON-05 Reporte | reporte de hoy (hora de Colombia) del vendedor 1: ventas 100.000 − ajustes 100.000 = 0 y control cuadra; rango invertido → 400; rango mayor a 366 días → 400 |
 
 Cada ejecución crea una orden nueva, con vendedores `V-PM-<marca de tiempo>`, así que se
 puede repetir las veces que haga falta.

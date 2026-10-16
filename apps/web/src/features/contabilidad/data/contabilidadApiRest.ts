@@ -4,6 +4,7 @@ import type {
   CuentaPorPagarDto,
   Pagina,
   PeriodosResponse,
+  ReporteIngresosDto,
   ResumenSaldoVendedorDto,
   VentaDetalleDto,
   VentaDto,
@@ -136,6 +137,12 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
 
     async registrarAjuste(ajuste) {
       return aAjusteFila(await api.post<AjusteDto>('/ajustes', ajuste));
+    },
+
+    async obtenerReporte({ desde, hasta, vendedorId }) {
+      return api.get<ReporteIngresosDto>(
+        `/reportes/ingresos${query({ desde, hasta, vendedorId })}`,
+      );
     },
 
     async registrarPago() {

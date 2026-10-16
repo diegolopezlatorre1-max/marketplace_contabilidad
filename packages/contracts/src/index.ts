@@ -4,5 +4,6 @@ export * from './common';
 export * from './cuentasPorPagar';
 export * from './errors';
 export * from './events';
+export * from './reportes';
 export * from './system';
 export * from './ventas';
