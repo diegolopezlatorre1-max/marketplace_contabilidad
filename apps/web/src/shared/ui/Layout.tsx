@@ -12,9 +12,9 @@ interface ItemMenu {
 
 const MENU: ItemMenu[] = [
   { to: '.', label: 'Inicio', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
-  { to: 'ventas', label: 'Ventas', roles: ['CONTADOR'], sprint: 1 },
+  { to: 'ventas', label: 'Ventas', roles: ['CONTADOR'] },
   { to: 'configuracion/comision', label: 'Comisión', roles: ['ADMIN_FINANCIERO'], sprint: 1 },
-  { to: 'cuentas-por-pagar', label: 'Cuentas por pagar', roles: ['CONTADOR'], sprint: 1 },
+  { to: 'cuentas-por-pagar', label: 'Cuentas por pagar', roles: ['CONTADOR'] },
   { to: 'conciliaciones', label: 'Conciliación', roles: ['CONTADOR'], sprint: 2 },
   { to: 'ajustes', label: 'Ajustes', roles: ['CONTADOR'], sprint: 2 },
   {
