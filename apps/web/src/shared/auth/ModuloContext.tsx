@@ -5,6 +5,8 @@ import type { ApiClient } from '../api/client';
 export interface ModuloContextValue {
   api: ApiClient;
   usuario: UsuarioActualResponse;
+  /** Ruta donde el host montó el módulo (p. ej. "/contabilidad"); base de todos los enlaces. */
+  basePath: string;
   onLogout?: () => void;
 }
 

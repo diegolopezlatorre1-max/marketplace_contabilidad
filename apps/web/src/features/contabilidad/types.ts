@@ -26,6 +26,10 @@ export interface CuentaPorPagarFila {
 export interface VigenciaPorcentaje {
   desde: string;
   porcentaje: string;
+  /** Último día de vigencia (inclusive); null = vigente. Lo informa la API. */
+  hasta?: string | null;
+  /** Usuario que la configuró (lo informa la API). */
+  creadoPor?: string;
 }
 
 /** HU-CON-01: venta confirmada que se registra. */
