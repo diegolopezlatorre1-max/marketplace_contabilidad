@@ -50,31 +50,31 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
-| T-14 | `CalculadoraComision`: comisión = round(bruto × %), neto = bruto − comisión; guarda el % aplicado. Pruebas con `fast-check` (bruto = comisión + neto). | Dominio | ⬜ |
+| T-14 | `CalculadoraComision`: comisión = round(bruto × %), neto = bruto − comisión; guarda el % aplicado. Pruebas con `fast-check` (bruto = comisión + neto). Implementada como `ComisionVenta`. | Dominio | ✅ |
 | T-15 | Migración `004_comision.sql` (venta_id UNIQUE FK) con CHECK bruto = comisión + neto. Hecho por Carlos con la HU-CON-01. | BD | ✅ |
 | T-16 | `PgComisionRepository` y su uso dentro de T-09 (en pareja con Carlos). Hecho por Carlos con la HU-CON-01. | Infra | ✅ |
-| T-17 | `GET /ventas/{id}`: bruto, % aplicado, comisión y neto. DTO en contracts. | API | ⬜ |
-| T-18 | Pantalla `/ventas/:id` con el desglose. | Web | ⬜ |
-| T-19 | Pruebas: $100.000 al 10 % → 10.000 / 90.000; cambiar de 10 % a 12 % no altera ventas previas; valores con decimales cuadran. | Pruebas | ⬜ |
+| T-17 | `GET /ventas/{id}`: bruto, % aplicado, comisión y neto. DTO en contracts. | API | ✅ |
+| T-18 | Pantalla `/ventas/:id` con el desglose. | Web | ✅ |
+| T-19 | Pruebas: $100.000 al 10 % → 10.000 / 90.000; cambiar de 10 % a 12 % no altera ventas previas; valores con decimales cuadran. | Pruebas | ✅ |
 
 ### HU-CON-03 — Diego
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
-| T-20 | `CuentaPorPagar` (PENDIENTE / PARCIAL / PAGADA) con el periodo quincenal de `Periodo.ts`. Pruebas unitarias. | Dominio | ⬜ |
+| T-20 | `CuentaPorPagar` (PENDIENTE / PARCIAL / PAGADA) con el periodo quincenal de `Periodo.ts`. Pruebas unitarias. Hoy maneja PENDIENTE / PAGADO; PARCIAL llega con los pagos (HU-CON-10). | Dominio | ✅ |
 | T-21 | Migración `005_cuenta_por_pagar.sql` con índices (vendedor_id, periodo, estado). Hecho por Carlos con la HU-CON-01. | BD | ✅ |
-| T-22 | `GenerarCuentaPorPagar` (llamado desde T-09), `ListarCuentasPorPagarQuery` y `ResumenSaldoVendedorQuery`. Generación hecha por Carlos con la HU-CON-01; faltan las consultas. | Aplicación | 🔄 |
-| T-23 | Puerto `SellersGateway` y adaptador mock (nombre / razón social del vendedor). | Integración | ⬜ |
-| T-24 | `GET /cuentas-por-pagar?vendedorId=&periodo=&estado=` y `GET /cuentas-por-pagar/resumen?periodo=`. `GET /cuentas-por-pagar` hecho por Carlos (para conectar la interfaz); falta `/resumen`. | API | 🔄 |
-| T-25 | Pantalla `/cuentas-por-pagar`: resumen por vendedor y periodo, detalle y filtro por estado. | Web | ⬜ |
-| T-26 | Prueba: ventas netas de 90.000 y 45.000 → saldo 135.000. | Pruebas | ⬜ |
+| T-22 | `GenerarCuentaPorPagar` (llamado desde T-09), `ListarCuentasPorPagarQuery` y `ResumenSaldoVendedorQuery`. Generación hecha por Carlos con la HU-CON-01. | Aplicación | ✅ |
+| T-23 | Puerto `SellersGateway` y adaptador mock (nombre / razón social del vendedor). | Integración | ✅ |
+| T-24 | `GET /cuentas-por-pagar?vendedorId=&periodo=&estado=` y `GET /cuentas-por-pagar/resumen?periodo=`. | API | ✅ |
+| T-25 | Pantalla `/cuentas-por-pagar`: resumen por vendedor y periodo, detalle y filtro por estado. | Web | ✅ |
+| T-26 | Prueba: ventas netas de 90.000 y 45.000 → saldo 135.000. | Pruebas | ✅ |
 
 ### Compartidas
 
 | ID | Tarea | Responsable | Estado |
 |----|-------|-------------|--------|
-| T-27 | Acordar las interfaces del día 1 (ver "Acuerdos") y dejarlas en código como puertos vacíos. | Carlos + Diego | ⬜ |
-| T-28 | Prueba de integración del flujo completo: evento → venta → comisión → cuenta por pagar. | Carlos + Diego | ⬜ |
+| T-27 | Acordar las interfaces del día 1 (ver "Acuerdos") y dejarlas en código como puertos vacíos. | Carlos + Diego | ✅ |
+| T-28 | Prueba de integración del flujo completo: evento → venta → comisión → cuenta por pagar (`test/integration/ventas.test.ts`). | Carlos + Diego | ✅ |
 | T-29 | Revisión cruzada: cada PR lo aprueba el otro integrante. | Carlos + Diego | ⬜ |
 | T-30 | Demo con datos de ejemplo y validación del Contador. | Carlos (presenta) + Diego | ⬜ |
 
