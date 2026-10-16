@@ -108,6 +108,82 @@ export function buildOpenApi(version: string) {
             },
           },
         },
+        OrdenConfirmada: {
+          type: 'object',
+          description: 'Evento orden.confirmada v1 (docs/fase0/contratos-integracion.md)',
+          required: [
+            'eventId',
+            'version',
+            'ocurridoEn',
+            'tipo',
+            'numeroOrden',
+            'fecha',
+            'estado',
+            'moneda',
+            'lineas',
+          ],
+          properties: {
+            eventId: { type: 'string', example: 'evt-001' },
+            version: { type: 'integer', enum: [1] },
+            ocurridoEn: { type: 'string', format: 'date-time' },
+            tipo: { type: 'string', enum: ['orden.confirmada'] },
+            numeroOrden: { type: 'string', example: 'ORD-1001' },
+            fecha: { type: 'string', format: 'date-time', example: '2026-10-05T09:58:00-05:00' },
+            estado: {
+              type: 'string',
+              example: 'CONFIRMADA',
+              description: 'Solo CONFIRMADA genera registro; otro valor responde IGNORADO',
+            },
+            moneda: { type: 'string', enum: ['COP'] },
+            lineas: {
+              type: 'array',
+              minItems: 1,
+              description: 'Una línea por vendedor',
+              items: {
+                type: 'object',
+                required: ['vendedorId', 'valorBruto'],
+                properties: {
+                  vendedorId: { type: 'string', example: 'V-1' },
+                  valorBruto: { type: 'string', example: '100000.00' },
+                  categoriaId: { type: 'string', example: 'CAT-9' },
+                },
+              },
+            },
+          },
+        },
+        EventoProcesado: {
+          type: 'object',
+          properties: {
+            eventId: { type: 'string' },
+            resultado: { type: 'string', enum: ['PROCESADO', 'YA_PROCESADO', 'IGNORADO'] },
+            detalle: { type: 'string' },
+          },
+        },
+        Venta: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            numeroOrden: { type: 'string' },
+            vendedorId: { type: 'string' },
+            categoriaId: { type: 'string', nullable: true },
+            fecha: { type: 'string', format: 'date-time' },
+            fechaContable: { type: 'string', format: 'date' },
+            periodo: { type: 'string', example: '2026-10-Q1' },
+            valorBruto: { type: 'string', example: '100000.00' },
+            porcentajeAplicado: { type: 'string', nullable: true, example: '10.0000' },
+            comision: { type: 'string', nullable: true, example: '10000.00' },
+            valorNeto: { type: 'string', nullable: true, example: '90000.00' },
+          },
+        },
+        PaginaVentas: {
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { $ref: '#/components/schemas/Venta' } },
+            page: { type: 'integer' },
+            size: { type: 'integer' },
+            total: { type: 'integer' },
+          },
+        },
         UsuarioActual: {
           type: 'object',
           properties: {
@@ -197,6 +273,81 @@ export function buildOpenApi(version: string) {
             '401': problema('No autenticado'),
             '403': problema('Requiere rol ADMIN_FINANCIERO'),
             '409': problema('La nueva vigencia se solaparía con la actual'),
+          },
+        },
+      },
+      '/eventos/orden-confirmada': {
+        post: {
+          tags: ['Ventas'],
+          summary:
+            'Registra una orden confirmada: venta, comisión y cuenta por pagar por vendedor (HU-CON-01)',
+          description:
+            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId: un reenvío ' +
+            'responde YA_PROCESADO sin duplicar registros.',
+          security: [{ bearer: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/OrdenConfirmada' } },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'PROCESADO: ventas registradas',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EventoProcesado' } },
+              },
+            },
+            '200': {
+              description: 'YA_PROCESADO (evento repetido) o IGNORADO (orden no confirmada)',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EventoProcesado' } },
+              },
+            },
+            '400': problema('El evento no cumple el contrato v1'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol SISTEMA'),
+            '409': problema('ORDEN_DUPLICADA: la orden ya se registró con otro eventId'),
+            '422': problema('COMISION_NO_CONFIGURADA: no hay porcentaje vigente en la fecha'),
+          },
+        },
+      },
+      '/ventas': {
+        get: {
+          tags: ['Ventas'],
+          summary: 'Ventas registradas con el desglose de su comisión (HU-CON-01)',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'desde',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha contable inicial (inclusive)',
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha contable final (inclusive)',
+            },
+            { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            {
+              name: 'size',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Página de ventas, de la más reciente a la más antigua',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/PaginaVentas' } },
+              },
+            },
+            '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
           },
         },
       },

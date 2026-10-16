@@ -21,6 +21,32 @@ export class CuentaPorPagar {
     return new CuentaPorPagar(vendedorId, periodo);
   }
 
+  /** Reconstruye una cuenta persistida (la usa el repositorio). */
+  static reconstituir(datos: {
+    vendedorId: string;
+    periodo: Periodo;
+    totalNeto: Money;
+    pagado: Money;
+    ordenes: readonly string[];
+  }): CuentaPorPagar {
+    if (datos.pagado.isNegative() || datos.pagado.greaterThan(datos.totalNeto)) {
+      throw new InvalidValueError('El valor pagado no puede superar el total neto');
+    }
+    const cuenta = CuentaPorPagar.abrir(datos.vendedorId, datos.periodo);
+    cuenta.totalNeto = datos.totalNeto;
+    cuenta.pagado = datos.pagado;
+    datos.ordenes.forEach((o) => cuenta.ordenes.add(o));
+    return cuenta;
+  }
+
+  get valorTotalNeto(): Money {
+    return this.totalNeto;
+  }
+
+  get valorPagado(): Money {
+    return this.pagado;
+  }
+
   /** Suma el valor neto de una venta (bruto − comisión) a la cuenta. */
   acumular(comision: ComisionVenta, fechaVenta: Date): void {
     if (comision.vendedorId !== this.vendedorId) {

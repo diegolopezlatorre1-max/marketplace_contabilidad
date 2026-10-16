@@ -16,7 +16,8 @@
     "test:all": "vitest run",
     "db:create": "tsx scripts/create-database.ts",
     "db:migrate": "tsx scripts/migrate.ts",
-    "db:seed": "tsx scripts/seed.ts"
+    "db:seed": "tsx scripts/seed.ts",
+    "simular:orden": "tsx scripts/simular-orden.ts"
   },
   "dependencies": {
     "@contabilidad/contracts": "*",

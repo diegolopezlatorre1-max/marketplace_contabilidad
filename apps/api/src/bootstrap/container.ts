@@ -5,6 +5,8 @@ import type { AuthContext } from '../application/ports/out/AuthContext';
 import type { Clock } from '../application/ports/out/Clock';
 import type { UnitOfWork } from '../application/ports/out/UnitOfWork';
 import { ConfigurarComisionUseCase } from '../application/commands/ConfigurarComisionUseCase';
+import { RegistrarVentaConfirmadaUseCase } from '../application/commands/RegistrarVentaConfirmadaUseCase';
+import { ListarVentasQuery } from '../application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../application/queries/ObtenerEstadoModulo';
 import type { AppConfig } from '../infrastructure/config/env';
@@ -14,6 +16,7 @@ import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthCont
 import { SystemClock } from '../infrastructure/integration/SystemClock';
 import { PgConfiguracionComisionRepository } from '../infrastructure/persistence/postgres/PgConfiguracionComisionRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
+import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
 import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWork';
 
 export const VERSION_MODULO = '0.1.0';
@@ -52,14 +55,16 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const obtenerEstado = new ObtenerEstadoModulo(dbHealth, clock);
   const obtenerComision = new ObtenerComisionVigenteQuery(configuracionComision, clock);
   const configurarComision = new ConfigurarComisionUseCase(unitOfWork, clock);
+  const registrarVenta = new RegistrarVentaConfirmadaUseCase(unitOfWork, clock);
+  const listarVentas = new ListarVentasQuery(new PgVentaContableRepository(pool));
 
   const router = createContabilidadRouter({
     logger,
     auth,
     version: VERSION_MODULO,
     integrationMode: config.INTEGRATION_MODE,
-    queries: { obtenerEstado, obtenerComision },
-    commands: { configurarComision },
+    queries: { obtenerEstado, obtenerComision, listarVentas },
+    commands: { configurarComision, registrarVenta },
   });
 
   return { router, unitOfWork };

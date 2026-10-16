@@ -1,9 +1,12 @@
 export type * from './AuditLogger';
 export type * from './AuthContext';
 export type * from './Clock';
+export type * from './ComisionRepository';
 export type * from './CommissionConfigProvider';
 export type * from './ConfiguracionComisionRepository';
+export type * from './CuentaPorPagarRepository';
 export type * from './DatabaseHealth';
 export type * from './EventPublisher';
 export type * from './InboxRepository';
 export type * from './UnitOfWork';
+export type * from './VentaContableRepository';

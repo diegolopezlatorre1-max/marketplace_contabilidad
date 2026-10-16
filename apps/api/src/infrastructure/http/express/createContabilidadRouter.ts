@@ -3,6 +3,8 @@ import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import type { HealthResponse } from '@contabilidad/contracts';
 import type { ConfigurarComisionUseCase } from '../../../application/commands/ConfigurarComisionUseCase';
+import type { RegistrarVentaConfirmadaUseCase } from '../../../application/commands/RegistrarVentaConfirmadaUseCase';
+import type { ListarVentasQuery } from '../../../application/queries/ListarVentasQuery';
 import type { ObtenerComisionVigenteQuery } from '../../../application/queries/ObtenerComisionVigenteQuery';
 import type { ObtenerEstadoModulo } from '../../../application/queries/ObtenerEstadoModulo';
 import type { AuthContext } from '../../../application/ports/out/AuthContext';
@@ -12,14 +14,22 @@ import { errorHandler, notFound } from '../middlewares/errorHandler';
 import { buildOpenApi } from '../openapi';
 import { comisionesRoutes } from '../routes/comisionesRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
+import { ventasRoutes } from '../routes/ventasRoutes';
 
 export interface RouterDeps {
   logger: Logger;
   auth: AuthContext;
   version: string;
   integrationMode: HealthResponse['integrationMode'];
-  queries: { obtenerEstado: ObtenerEstadoModulo; obtenerComision: ObtenerComisionVigenteQuery };
-  commands: { configurarComision: ConfigurarComisionUseCase };
+  queries: {
+    obtenerEstado: ObtenerEstadoModulo;
+    obtenerComision: ObtenerComisionVigenteQuery;
+    listarVentas: ListarVentasQuery;
+  };
+  commands: {
+    configurarComision: ConfigurarComisionUseCase;
+    registrarVenta: RegistrarVentaConfirmadaUseCase;
+  };
 }
 
 /**
@@ -54,7 +64,12 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
       obtenerComision: deps.queries.obtenerComision,
     }),
   );
-  // Sprint 1+: router.use(ventasRoutes(...)), router.use(eventosRoutes(...)), ...
+  router.use(
+    ventasRoutes({
+      registrarVenta: deps.commands.registrarVenta,
+      listarVentas: deps.queries.listarVentas,
+    }),
+  );
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

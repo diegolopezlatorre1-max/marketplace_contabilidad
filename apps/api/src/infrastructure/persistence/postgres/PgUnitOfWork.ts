@@ -4,9 +4,12 @@ import type {
   UnitOfWork,
 } from '../../../application/ports/out/UnitOfWork';
 import { PgAuditLogger } from './PgAuditLogger';
+import { PgComisionRepository } from './PgComisionRepository';
 import { PgConfiguracionComisionRepository } from './PgConfiguracionComisionRepository';
+import { PgCuentaPorPagarRepository } from './PgCuentaPorPagarRepository';
 import { PgInboxRepository } from './PgInboxRepository';
 import { PgOutboxPublisher } from './PgOutboxPublisher';
+import { PgVentaContableRepository } from './PgVentaContableRepository';
 import type { Queryable } from './pool';
 
 /** Construye los repositorios sobre una conexión concreta (la de la transacción). */
@@ -16,6 +19,9 @@ export function createRepositories(db: Queryable): TransactionalRepositories {
     outbox: new PgOutboxPublisher(db),
     inbox: new PgInboxRepository(db),
     configuracionComision: new PgConfiguracionComisionRepository(db),
+    ventas: new PgVentaContableRepository(db),
+    comisiones: new PgComisionRepository(db),
+    cuentasPorPagar: new PgCuentaPorPagarRepository(db),
   };
 }
 

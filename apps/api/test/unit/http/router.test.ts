@@ -4,14 +4,17 @@ import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { ConfigurarComisionUseCase } from '../../../src/application/commands/ConfigurarComisionUseCase';
+import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ConfiguracionComisionRepository } from '../../../src/application/ports/out/ConfiguracionComisionRepository';
 import type { UnitOfWork } from '../../../src/application/ports/out/UnitOfWork';
+import { ListarVentasQuery } from '../../../src/application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../../../src/application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../../../src/application/queries/ObtenerEstadoModulo';
 import { InvalidValueError } from '../../../src/domain/shared';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
 import { errorHandler } from '../../../src/infrastructure/http/middlewares/errorHandler';
 import { MockAuthContext } from '../../../src/infrastructure/integration/auth/MockAuthContext';
+import { comisionGlobal, crearBaseEnMemoria } from '../application/enMemoria';
 
 const logger = pino({ level: 'silent' });
 const reloj = { now: () => new Date('2026-10-05T10:00:00Z') };
@@ -28,6 +31,9 @@ const uowQueFalla: UnitOfWork = {
 };
 
 function app(dbOk = true) {
+  // Ventas sobre una base en memoria con comisión GLOBAL del 10 %.
+  const base = crearBaseEnMemoria();
+  base.db.datos.configuraciones.push(comisionGlobal('10'));
   const router = createContabilidadRouter({
     logger,
     auth: new MockAuthContext(),
@@ -36,8 +42,12 @@ function app(dbOk = true) {
     queries: {
       obtenerEstado: new ObtenerEstadoModulo({ ping: async () => dbOk }, reloj),
       obtenerComision: new ObtenerComisionVigenteQuery(repoVacio, reloj),
+      listarVentas: new ListarVentasQuery(base.repos.ventas),
     },
-    commands: { configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj) },
+    commands: {
+      configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
+      registrarVenta: new RegistrarVentaConfirmadaUseCase(base.uow, reloj),
+    },
   });
   return express().use('/api/v1/contabilidad', router);
 }
@@ -109,6 +119,9 @@ describe('Router del módulo', () => {
     expect(res.body.openapi).toBe('3.0.3');
     expect(Object.keys(res.body.paths)).toContain('/health');
     expect(Object.keys(res.body.paths)).toContain('/comisiones/configuracion');
+    expect(Object.keys(res.body.paths)).toEqual(
+      expect.arrayContaining(['/eventos/orden-confirmada', '/ventas']),
+    );
   });
 });
 
@@ -165,6 +178,88 @@ describe('Rutas de comisión', () => {
       .send(valido);
     expect(res.status).toBe(409);
     expect(res.body.code).toBe('CONFLICTO');
+  });
+});
+
+describe('Rutas de ventas', () => {
+  const EVENTOS = '/api/v1/contabilidad/eventos/orden-confirmada';
+  const evento = {
+    eventId: 'evt-001',
+    version: 1,
+    ocurridoEn: '2026-10-05T10:00:00-05:00',
+    tipo: 'orden.confirmada',
+    numeroOrden: 'ORD-1001',
+    fecha: '2026-10-05T09:58:00-05:00',
+    estado: 'CONFIRMADA',
+    moneda: 'COP',
+    lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+  };
+
+  it('POST /eventos/orden-confirmada es exclusivo del rol SISTEMA', async () => {
+    const res = await request(app())
+      .post(EVENTOS)
+      .set('authorization', 'Bearer mock-contador')
+      .send(evento);
+    expect(res.status).toBe(403);
+  });
+
+  it('valida el evento contra el contrato v1', async () => {
+    for (const body of [
+      { ...evento, lineas: [] },
+      { ...evento, version: 2 },
+      { ...evento, lineas: [{ vendedorId: 'V-1', valorBruto: 100000 }] },
+      { ...evento, lineas: [evento.lineas[0], evento.lineas[0]] },
+    ]) {
+      const res = await request(app())
+        .post(EVENTOS)
+        .set('authorization', 'Bearer mock-sistema')
+        .send(body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+    }
+  });
+
+  it('responde 201 PROCESADO, luego 200 YA_PROCESADO, y lista la venta', async () => {
+    const servidor = app();
+    const primero = await request(servidor)
+      .post(EVENTOS)
+      .set('authorization', 'Bearer mock-sistema')
+      .send(evento);
+    expect(primero.status).toBe(201);
+    expect(primero.body).toEqual({ eventId: 'evt-001', resultado: 'PROCESADO' });
+
+    const repetido = await request(servidor)
+      .post(EVENTOS)
+      .set('authorization', 'Bearer mock-sistema')
+      .send(evento);
+    expect(repetido.status).toBe(200);
+    expect(repetido.body.resultado).toBe('YA_PROCESADO');
+
+    const ventas = await request(servidor)
+      .get('/api/v1/contabilidad/ventas?vendedorId=V-1')
+      .set('authorization', 'Bearer mock-contador');
+    expect(ventas.status).toBe(200);
+    expect(ventas.body).toMatchObject({ page: 1, size: 50, total: 1 });
+    expect(ventas.body.items[0]).toMatchObject({ numeroOrden: 'ORD-1001', valorNeto: '90000.00' });
+  });
+
+  it('responde 200 IGNORADO para órdenes no confirmadas', async () => {
+    const res = await request(app())
+      .post(EVENTOS)
+      .set('authorization', 'Bearer mock-sistema')
+      .send({ ...evento, estado: 'PENDIENTE' });
+    expect(res.status).toBe(200);
+    expect(res.body.resultado).toBe('IGNORADO');
+  });
+
+  it('GET /ventas valida filtros y rol', async () => {
+    const malFiltro = await request(app())
+      .get('/api/v1/contabilidad/ventas?desde=05-10-2026')
+      .set('authorization', 'Bearer mock-contador');
+    expect(malFiltro.status).toBe(400);
+    const sistema = await request(app())
+      .get('/api/v1/contabilidad/ventas')
+      .set('authorization', 'Bearer mock-sistema');
+    expect(sistema.status).toBe(403);
   });
 });
 
