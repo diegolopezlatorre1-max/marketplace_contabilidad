@@ -4,6 +4,8 @@ import type {
   EstadoCuenta,
   NuevaVenta,
   NuevoPago,
+  SaldoVendedorFila,
+  VentaDetalle,
   VigenciaPorcentaje,
 } from '../types';
 
@@ -18,7 +20,9 @@ export interface ContabilidadApi {
   listarVigencias(): Promise<VigenciaPorcentaje[]>;
   configurarPorcentaje(vigencia: VigenciaPorcentaje): Promise<VigenciaPorcentaje>;
   registrarVenta(venta: NuevaVenta): Promise<ComisionFila>;
-  listarComisiones(periodo?: string): Promise<ComisionFila[]>;
+  listarComisiones(periodo?: string, vendedorId?: string): Promise<ComisionFila[]>;
+  obtenerVenta(id: string): Promise<VentaDetalle>;
   listarCuentasPorPagar(filtro: FiltroCuentas): Promise<CuentaPorPagarFila[]>;
+  resumirPorVendedor(periodo?: string): Promise<SaldoVendedorFila[]>;
   registrarPago(pago: NuevoPago): Promise<CuentaPorPagarFila>;
 }

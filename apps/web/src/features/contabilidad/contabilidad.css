@@ -559,3 +559,46 @@
     padding: 12px;
   }
 }
+
+/* ---- Detalle de venta (HU-CON-02) y detalle de cuenta (HU-CON-03) ---- */
+.cp-enlace {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cp-primary);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.cp-enlace:hover {
+  color: var(--cp-primary-hover);
+}
+
+.cp-enlace:focus-visible {
+  outline: 3px solid rgb(35 65 95 / 28%);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+.cp-tabla tbody tr.cp-fila-activa {
+  background: var(--cp-soft);
+}
+
+.cp-desglose {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin: 0 0 4px;
+}
+
+.cp-desglose .cp-tarjeta {
+  margin-bottom: 0;
+}
+
+.cp-desglose dd {
+  margin: 0;
+  font-size: 1.9rem;
+}

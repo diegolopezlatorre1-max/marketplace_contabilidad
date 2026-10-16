@@ -26,6 +26,12 @@ export interface VentaRegistrada {
   valorNeto: string | null;
 }
 
+/** Detalle de una venta (HU-CON-02). */
+export interface VentaDetalle extends VentaRegistrada {
+  estadoOrigen: string;
+  registradoEn: string;
+}
+
 export interface PaginaVentas {
   items: VentaRegistrada[];
   page: number;
@@ -38,6 +44,7 @@ export interface VentaContableRepository {
   /** La restricción UNIQUE (numero_orden, vendedor_id) es la barrera final ante duplicados. */
   guardar(venta: VentaContable, eventId: string): Promise<void>;
   listar(filtro: FiltroVentas): Promise<PaginaVentas>;
+  obtener(id: string): Promise<VentaDetalle | null>;
   /** Quincenas que tienen ventas, de la más reciente a la más antigua. */
   listarPeriodos(): Promise<string[]>;
 }

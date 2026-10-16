@@ -12,10 +12,13 @@ import { ListarPeriodosQuery } from '../../../src/application/queries/ListarPeri
 import { ListarVentasQuery } from '../../../src/application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../../../src/application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../../../src/application/queries/ObtenerEstadoModulo';
+import { ObtenerVentaQuery } from '../../../src/application/queries/ObtenerVentaQuery';
+import { ResumenSaldoVendedorQuery } from '../../../src/application/queries/ResumenSaldoVendedorQuery';
 import { InvalidValueError } from '../../../src/domain/shared';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
 import { errorHandler } from '../../../src/infrastructure/http/middlewares/errorHandler';
 import { MockAuthContext } from '../../../src/infrastructure/integration/auth/MockAuthContext';
+import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
 import { comisionGlobal, crearBaseEnMemoria } from '../application/enMemoria';
 
 const logger = pino({ level: 'silent' });
@@ -36,6 +39,7 @@ function app(dbOk = true) {
   // Ventas sobre una base en memoria con comisión GLOBAL del 10 %.
   const base = crearBaseEnMemoria();
   base.db.datos.configuraciones.push(comisionGlobal('10'));
+  const vendedores = new MockSellersGateway();
   const router = createContabilidadRouter({
     logger,
     auth: new MockAuthContext(),
@@ -44,9 +48,11 @@ function app(dbOk = true) {
     queries: {
       obtenerEstado: new ObtenerEstadoModulo({ ping: async () => dbOk }, reloj),
       obtenerComision: new ObtenerComisionVigenteQuery(repoVacio, reloj),
-      listarVentas: new ListarVentasQuery(base.repos.ventas),
+      listarVentas: new ListarVentasQuery(base.repos.ventas, vendedores),
+      obtenerVenta: new ObtenerVentaQuery(base.repos.ventas, vendedores),
       listarPeriodos: new ListarPeriodosQuery(base.repos.ventas),
-      listarCuentasPorPagar: new ListarCuentasPorPagarQuery(base.repos.cuentasPorPagar),
+      listarCuentasPorPagar: new ListarCuentasPorPagarQuery(base.repos.cuentasPorPagar, vendedores),
+      resumenSaldoVendedor: new ResumenSaldoVendedorQuery(base.repos.cuentasPorPagar, vendedores),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
@@ -127,8 +133,10 @@ describe('Router del módulo', () => {
       expect.arrayContaining([
         '/eventos/orden-confirmada',
         '/ventas',
+        '/ventas/{id}',
         '/periodos',
         '/cuentas-por-pagar',
+        '/cuentas-por-pagar/resumen',
       ]),
     );
   });
@@ -274,6 +282,7 @@ describe('Rutas de ventas', () => {
     expect(cuentas.body).toEqual([
       {
         vendedorId: 'V-1',
+        vendedorNombre: 'Artesanías del Valle S.A.S.',
         periodo: '2026-10-Q1',
         totalNeto: '90000.00',
         valorPagado: '0.00',
@@ -283,6 +292,58 @@ describe('Rutas de ventas', () => {
     ]);
     expect((await contador('/cuentas-por-pagar?estado=PAGADO')).body).toEqual([]);
     expect((await contador('/ventas?periodo=2026-10-Q2')).body.total).toBe(0);
+  });
+
+  it('GET /ventas/:id entrega el desglose y responde 404 o 400 según el id', async () => {
+    const servidor = app();
+    await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
+    const contador = (url: string) =>
+      request(servidor)
+        .get(`/api/v1/contabilidad${url}`)
+        .set('authorization', 'Bearer mock-contador');
+
+    const { id } = (await contador('/ventas')).body.items[0];
+    const detalle = await contador(`/ventas/${id}`);
+    expect(detalle.status).toBe(200);
+    expect(detalle.body).toMatchObject({
+      id,
+      numeroOrden: 'ORD-1001',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
+      estadoOrigen: 'CONFIRMADA',
+      valorBruto: '100000.00',
+      porcentajeAplicado: '10.0000',
+      comision: '10000.00',
+      valorNeto: '90000.00',
+    });
+
+    const inexistente = await contador('/ventas/00000000-0000-4000-8000-000000000000');
+    expect(inexistente.status).toBe(404);
+    expect(inexistente.body.code).toBe('NO_ENCONTRADO');
+    expect((await contador('/ventas/no-es-uuid')).status).toBe(400);
+  });
+
+  it('GET /cuentas-por-pagar/resumen suma el saldo por vendedor', async () => {
+    const servidor = app();
+    await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
+    const contador = (url: string) =>
+      request(servidor)
+        .get(`/api/v1/contabilidad${url}`)
+        .set('authorization', 'Bearer mock-contador');
+
+    const resumen = await contador('/cuentas-por-pagar/resumen?periodo=2026-10-Q1');
+    expect(resumen.status).toBe(200);
+    expect(resumen.body).toEqual([
+      {
+        vendedorId: 'V-1',
+        vendedorNombre: 'Artesanías del Valle S.A.S.',
+        cuentas: 1,
+        totalNeto: '90000.00',
+        valorPagado: '0.00',
+        saldoPendiente: '90000.00',
+      },
+    ]);
+    expect((await contador('/cuentas-por-pagar/resumen?periodo=2026-10-Q2')).body).toEqual([]);
+    expect((await contador('/cuentas-por-pagar/resumen?periodo=2026-13-Q1')).status).toBe(400);
   });
 
   it('GET /cuentas-por-pagar valida filtros y rol', async () => {

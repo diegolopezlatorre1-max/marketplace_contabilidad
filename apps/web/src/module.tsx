@@ -5,13 +5,14 @@ import type { UsuarioActualResponse } from '@contabilidad/contracts';
 import { ConfiguracionComisionPanel } from './features/contabilidad/ConfiguracionComisionPanel';
 import { ContabilidadPanel } from './features/contabilidad/ContabilidadPanel';
 import { crearContabilidadApiRest } from './features/contabilidad/data/contabilidadApiRest';
+import { DetalleVentaPage } from './features/contabilidad/DetalleVentaPage';
 import { DocumentacionApiPage } from './features/documentacion/DocumentacionApiPage';
 import { InicioPage } from './features/inicio/InicioPage';
 import { ApiError, createApiClient, type ApiClient } from './shared/api/client';
 import { ModuloProvider } from './shared/auth/ModuloContext';
 import { RequireRole } from './shared/auth/RequireRole';
 import { Layout } from './shared/ui/Layout';
-import { basePathDesde } from './shared/ui/rutas';
+import { basePathDesde, rutaDelModulo } from './shared/ui/rutas';
 import './shared/ui/styles.css';
 
 export interface ContabilidadModuleProps {
@@ -59,6 +60,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
   const contabilidad = useMemo(() => crearContabilidadApiRest(api), [api]);
   // Ruta de montaje (p. ej. /contabilidad): los enlaces del menú se arman desde ella.
   const basePath = basePathDesde(useLocation().pathname, useParams()['*'] ?? '');
+  const rutaVenta = (id: string) => rutaDelModulo(basePath, `ventas/${encodeURIComponent(id)}`);
 
   if (me.isPending) return <p className="ct-content">Cargando…</p>;
   if (me.isError) {
@@ -92,7 +94,23 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
             path="ventas"
             element={
               <RequireRole roles={['CONTADOR']}>
-                <ContabilidadPanel key="ventas" api={contabilidad} vistaInicial="comisiones" />
+                <ContabilidadPanel
+                  key="ventas"
+                  api={contabilidad}
+                  vistaInicial="comisiones"
+                  rutaVenta={rutaVenta}
+                />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="ventas/:id"
+            element={
+              <RequireRole roles={['CONTADOR']}>
+                <DetalleVentaPage
+                  api={contabilidad}
+                  rutaVolver={rutaDelModulo(basePath, 'ventas')}
+                />
               </RequireRole>
             }
           />
@@ -100,7 +118,12 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
             path="cuentas-por-pagar"
             element={
               <RequireRole roles={['CONTADOR']}>
-                <ContabilidadPanel key="cuentas" api={contabilidad} vistaInicial="cuentas" />
+                <ContabilidadPanel
+                  key="cuentas"
+                  api={contabilidad}
+                  vistaInicial="cuentas"
+                  rutaVenta={rutaVenta}
+                />
               </RequireRole>
             }
           />
