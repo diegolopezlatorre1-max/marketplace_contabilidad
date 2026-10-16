@@ -32,6 +32,7 @@ describe('Fase 1 - el módulo atraviesa todas las capas contra PostgreSQL', () =
     );
     expect(rows.map((r) => r.tablename)).toEqual([
       'auditoria',
+      'configuracion_comision',
       'evento_ignorado',
       'inbox',
       'outbox',

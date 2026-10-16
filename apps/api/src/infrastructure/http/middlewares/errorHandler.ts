@@ -71,6 +71,15 @@ function aProblem(err: unknown): ProblemDetails {
       code: 'CONFLICTO',
     };
   }
+  // Violación de una restricción EXCLUDE (p. ej. vigencias de comisión solapadas).
+  if (e?.code === '23P01') {
+    return {
+      type: TIPO_BASE + 'CONFLICTO',
+      title: 'El registro se solapa con otro existente',
+      status: 409,
+      code: 'CONFLICTO',
+    };
+  }
   return {
     type: TIPO_BASE + 'ERROR_INTERNO',
     title: 'Error interno',

@@ -30,7 +30,9 @@ export async function migrate(pool: pg.Pool, dir: string): Promise<ResultadoMigr
   const pendientes: Array<{ nombre: string; sql: string; checksum: string }> = [];
   for (const nombre of archivos) {
     const sql = await readFile(path.join(dir, nombre), 'utf8');
-    const checksum = createHash('sha256').update(sql).digest('hex');
+    // Se normalizan los saltos de línea: git en Windows (core.autocrlf) reescribe LF como
+    // CRLF y eso no debe contar como una modificación de la migración.
+    const checksum = createHash('sha256').update(sql.replace(/\r\n/g, '\n')).digest('hex');
     const previo = aplicadas.get(nombre);
     if (previo && previo !== checksum) {
       throw new Error(

@@ -4,6 +4,7 @@ import type {
   UnitOfWork,
 } from '../../../application/ports/out/UnitOfWork';
 import { PgAuditLogger } from './PgAuditLogger';
+import { PgConfiguracionComisionRepository } from './PgConfiguracionComisionRepository';
 import { PgInboxRepository } from './PgInboxRepository';
 import { PgOutboxPublisher } from './PgOutboxPublisher';
 import type { Queryable } from './pool';
@@ -14,6 +15,7 @@ export function createRepositories(db: Queryable): TransactionalRepositories {
     auditoria: new PgAuditLogger(db),
     outbox: new PgOutboxPublisher(db),
     inbox: new PgInboxRepository(db),
+    configuracionComision: new PgConfiguracionComisionRepository(db),
   };
 }
 

@@ -2,12 +2,15 @@ import express, { Router } from 'express';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import type { HealthResponse } from '@contabilidad/contracts';
+import type { ConfigurarComisionUseCase } from '../../../application/commands/ConfigurarComisionUseCase';
+import type { ObtenerComisionVigenteQuery } from '../../../application/queries/ObtenerComisionVigenteQuery';
 import type { ObtenerEstadoModulo } from '../../../application/queries/ObtenerEstadoModulo';
 import type { AuthContext } from '../../../application/ports/out/AuthContext';
 import { authenticate } from '../middlewares/auth';
 import { correlationId } from '../middlewares/correlationId';
 import { errorHandler, notFound } from '../middlewares/errorHandler';
 import { buildOpenApi } from '../openapi';
+import { comisionesRoutes } from '../routes/comisionesRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
 
 export interface RouterDeps {
@@ -15,7 +18,8 @@ export interface RouterDeps {
   auth: AuthContext;
   version: string;
   integrationMode: HealthResponse['integrationMode'];
-  queries: { obtenerEstado: ObtenerEstadoModulo };
+  queries: { obtenerEstado: ObtenerEstadoModulo; obtenerComision: ObtenerComisionVigenteQuery };
+  commands: { configurarComision: ConfigurarComisionUseCase };
 }
 
 /**
@@ -44,6 +48,12 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
   // Rutas protegidas
   router.use(authenticate(deps.auth));
   router.use(meRoutes());
+  router.use(
+    comisionesRoutes({
+      configurarComision: deps.commands.configurarComision,
+      obtenerComision: deps.queries.obtenerComision,
+    }),
+  );
   // Sprint 1+: router.use(ventasRoutes(...)), router.use(eventosRoutes(...)), ...
 
   router.use(notFound);
