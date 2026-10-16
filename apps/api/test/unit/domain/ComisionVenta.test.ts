@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { ComisionVenta } from '../../../src/domain/comision/ComisionVenta';
 import { InvalidValueError } from '../../../src/domain/shared/DomainError';
@@ -53,6 +54,21 @@ describe('ComisionVenta', () => {
 
   it('rechaza un valor bruto de cero', () => {
     expect(() => calcular('0', '10')).toThrow(InvalidValueError);
+  });
+
+  it('propiedad: para cualquier bruto y porcentaje, bruto = comisión + neto y nada es negativo', () => {
+    // Bruto en centavos (0,01 a 10^12) y porcentaje con hasta 4 decimales (0 a 100).
+    const bruto = fc.bigInt({ min: 1n, max: 10n ** 14n });
+    const porcentaje = fc.integer({ min: 0, max: 1_000_000 });
+    fc.assert(
+      fc.property(bruto, porcentaje, (centavos, diezmilesimas) => {
+        const brutoTexto = `${centavos / 100n}.${(centavos % 100n).toString().padStart(2, '0')}`;
+        const r = calcular(brutoTexto, (diezmilesimas / 10_000).toFixed(4));
+        expect(r.comision.add(r.valorNeto).equals(r.valorBruto)).toBe(true);
+        expect(r.comision.isNegative()).toBe(false);
+        expect(r.valorNeto.isNegative()).toBe(false);
+      }),
+    );
   });
 
   it('toJSON entrega todo como texto con el porcentaje aplicado', () => {

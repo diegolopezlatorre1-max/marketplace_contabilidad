@@ -69,6 +69,16 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
   const de = (alcance: AlcanceComision, ref: string | null) =>
     db.datos.configuraciones.filter((c) => c.alcance === alcance && c.referenciaId === ref);
 
+  const conComision = (v: VentaContable) => {
+    const c = db.datos.comisiones.find((x) => x.ventaId === v.id)?.comision;
+    return {
+      ...v.toJSON(),
+      porcentajeAplicado: c?.porcentajeAplicado.toString() ?? null,
+      comision: c?.comision.toString() ?? null,
+      valorNeto: c?.valorNeto.toString() ?? null,
+    };
+  };
+
   const ventas: VentaContableRepository = {
     existe: async (numeroOrden, vendedorId) =>
       db.datos.ventas.some(
@@ -87,15 +97,7 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
             (!f.vendedorId || v.vendedorId === f.vendedorId) &&
             (!f.periodo || v.periodo.codigo === f.periodo),
         )
-        .map((v) => {
-          const c = db.datos.comisiones.find((x) => x.ventaId === v.id)?.comision;
-          return {
-            ...v.toJSON(),
-            porcentajeAplicado: c?.porcentajeAplicado.toString() ?? null,
-            comision: c?.comision.toString() ?? null,
-            valorNeto: c?.valorNeto.toString() ?? null,
-          };
-        });
+        .map(conComision);
       const inicio = (f.page - 1) * f.size;
       return {
         items: items.slice(inicio, inicio + f.size),
@@ -103,6 +105,11 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
         size: f.size,
         total: items.length,
       };
+    },
+    obtener: async (id) => {
+      const venta = db.datos.ventas.find(({ venta: v }) => v.id === id)?.venta;
+      // En memoria no hay instante de registro aparte: se usa el de la orden.
+      return venta ? { ...conComision(venta), registradoEn: venta.fecha.toISOString() } : null;
     },
     listarPeriodos: async () =>
       [...new Set(db.datos.ventas.map(({ venta }) => venta.periodo.codigo))].sort().reverse(),
@@ -226,6 +233,30 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
             pagado: cuenta.valorPagado,
           },
         ];
+      },
+      resumirPorVendedor: async (periodo) => {
+        const porVendedor = new Map<string, { cuentas: number; total: Money; pagado: Money }>();
+        for (const c of db.datos.cuentas.filter((x) => !periodo || x.periodo === periodo)) {
+          const a = porVendedor.get(c.vendedorId) ?? {
+            cuentas: 0,
+            total: Money.CERO,
+            pagado: Money.CERO,
+          };
+          porVendedor.set(c.vendedorId, {
+            cuentas: a.cuentas + 1,
+            total: a.total.add(c.totalNeto),
+            pagado: a.pagado.add(c.pagado),
+          });
+        }
+        return [...porVendedor.entries()]
+          .sort(([a], [b]) => a.localeCompare(b))
+          .map(([vendedorId, a]) => ({
+            vendedorId,
+            cuentas: a.cuentas,
+            totalNeto: a.total.toString(),
+            valorPagado: a.pagado.toString(),
+            saldoPendiente: a.total.subtract(a.pagado).toString(),
+          }));
       },
       listar: async (f) =>
         db.datos.cuentas

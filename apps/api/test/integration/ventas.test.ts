@@ -271,6 +271,7 @@ describe('GET /periodos y GET /cuentas-por-pagar', () => {
     expect(q1v1.body).toEqual([
       {
         vendedorId: 'V-1',
+        vendedorNombre: 'Artesanías del Valle S.A.S.',
         periodo: '2026-10-Q1',
         totalNeto: '90000.00',
         valorPagado: '0.00',
@@ -280,5 +281,69 @@ describe('GET /periodos y GET /cuentas-por-pagar', () => {
     ]);
     expect((await consultar('/cuentas-por-pagar?estado=PAGADO')).body).toEqual([]);
     expect((await consultar('/ventas?periodo=2026-10-Q2')).body.total).toBe(1);
+  });
+});
+
+describe('HU-CON-02 - GET /ventas/:id', () => {
+  it('entrega el desglose bruto / % / comisión / neto guardado en la BD', async () => {
+    await enviar(orden('ORD-9001', ['V-2'], ['100.05']));
+    await request(app())
+      .put('/api/v1/contabilidad/comisiones/configuracion')
+      .set('authorization', 'Bearer mock-admin')
+      .send({ porcentaje: '12.5', vigenteDesde: '2026-10-06' });
+    const consultar = (url: string) =>
+      request(app()).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-contador');
+
+    const { id } = (await consultar('/ventas')).body.items[0];
+    const detalle = await consultar(`/ventas/${id}`);
+    expect(detalle.status).toBe(200);
+    // El cambio a 12,5 % no altera la venta ya registrada al 10 %.
+    expect(detalle.body).toMatchObject({
+      id,
+      numeroOrden: 'ORD-9001',
+      vendedorId: 'V-2',
+      vendedorNombre: 'Tecnología Andina Ltda.',
+      estadoOrigen: 'CONFIRMADA',
+      valorBruto: '100.05',
+      porcentajeAplicado: '10.0000',
+      comision: '10.01',
+      valorNeto: '90.04',
+    });
+    expect(detalle.body.registradoEn).toBeTruthy();
+
+    const inexistente = await consultar('/ventas/00000000-0000-4000-8000-000000000000');
+    expect(inexistente.status).toBe(404);
+  });
+});
+
+describe('HU-CON-03 - GET /cuentas-por-pagar/resumen', () => {
+  it('suma el saldo por vendedor: netos de 90.000 y 45.000 -> 135.000', async () => {
+    await enviar(orden('ORD-1', ['V-1', 'V-2'], ['100000.00', '30000.00']));
+    await enviar(orden('ORD-2', ['V-1'], ['50000.00'], '2026-10-10T15:00:00Z'));
+    await enviar(orden('ORD-3', ['V-1'], ['20000.00'], '2026-10-16T15:00:00Z'));
+    const resumen = (q: string) =>
+      request(app())
+        .get(`/api/v1/contabilidad/cuentas-por-pagar/resumen${q}`)
+        .set('authorization', 'Bearer mock-contador');
+
+    const q1 = await resumen('?periodo=2026-10-Q1');
+    expect(q1.status).toBe(200);
+    expect(q1.body).toEqual([
+      {
+        vendedorId: 'V-1',
+        vendedorNombre: 'Artesanías del Valle S.A.S.',
+        cuentas: 1,
+        totalNeto: '135000.00',
+        valorPagado: '0.00',
+        saldoPendiente: '135000.00',
+      },
+      expect.objectContaining({ vendedorId: 'V-2', saldoPendiente: '27000.00' }),
+    ]);
+    const todas = await resumen('');
+    expect(todas.body[0]).toMatchObject({
+      vendedorId: 'V-1',
+      cuentas: 2,
+      saldoPendiente: '153000.00',
+    });
   });
 });

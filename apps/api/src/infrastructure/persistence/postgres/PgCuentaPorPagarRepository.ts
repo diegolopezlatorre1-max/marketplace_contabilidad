@@ -3,6 +3,7 @@ import type {
   CuentaPorPagarResumen,
   EstadoCuentaPorPagar,
   FiltroCuentasPorPagar,
+  SaldoVendedor,
 } from '../../../application/ports/out/CuentaPorPagarRepository';
 import { CuentaPorPagar } from '../../../domain/cuentaPorPagar/cuentaPorPagar';
 import { Money, type Periodo } from '../../../domain/shared';
@@ -88,6 +89,32 @@ export class PgCuentaPorPagarRepository implements CuentaPorPagarRepository {
       valorPagado: f.valor_pagado,
       saldoPendiente: f.saldo_pendiente,
       estado: f.estado,
+    }));
+  }
+
+  async resumirPorVendedor(periodo?: string): Promise<SaldoVendedor[]> {
+    const { rows } = await this.db.query<{
+      vendedor_id: string;
+      cuentas: string;
+      total_neto: string;
+      valor_pagado: string;
+      saldo_pendiente: string;
+    }>(
+      `SELECT vendedor_id, count(*) AS cuentas, sum(total_neto) AS total_neto,
+              sum(valor_pagado) AS valor_pagado,
+              sum(total_neto - valor_pagado) AS saldo_pendiente
+         FROM contabilidad.cuenta_por_pagar
+        ${periodo ? 'WHERE periodo = $1' : ''}
+        GROUP BY vendedor_id
+        ORDER BY vendedor_id`,
+      periodo ? [periodo] : [],
+    );
+    return rows.map((f) => ({
+      vendedorId: f.vendedor_id,
+      cuentas: Number(f.cuentas),
+      totalNeto: f.total_neto,
+      valorPagado: f.valor_pagado,
+      saldoPendiente: f.saldo_pendiente,
     }));
   }
 }

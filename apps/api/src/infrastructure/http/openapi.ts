@@ -10,6 +10,26 @@ const estadoComision = {
   },
 };
 
+/** Campos de una venta, compartidos por el listado (Venta) y el detalle (VentaDetalle). */
+const propiedadesVenta = {
+  id: { type: 'string', format: 'uuid' },
+  numeroOrden: { type: 'string' },
+  vendedorId: { type: 'string' },
+  vendedorNombre: {
+    type: 'string',
+    example: 'Artesanías del Valle S.A.S.',
+    description: 'Del módulo de Vendedores; el id si no se conoce',
+  },
+  categoriaId: { type: 'string', nullable: true },
+  fecha: { type: 'string', format: 'date-time' },
+  fechaContable: { type: 'string', format: 'date' },
+  periodo: { type: 'string', example: '2026-10-Q1' },
+  valorBruto: { type: 'string', example: '100000.00' },
+  porcentajeAplicado: { type: 'string', nullable: true, example: '10.0000' },
+  comision: { type: 'string', nullable: true, example: '10000.00' },
+  valorNeto: { type: 'string', nullable: true, example: '90000.00' },
+};
+
 /**
  * Contrato OpenAPI publicado en /api/v1/contabilidad/docs.
  * Cada sprint agrega aquí los endpoints de sus historias.
@@ -181,26 +201,31 @@ export function buildOpenApi(version: string) {
             detalle: { type: 'string' },
           },
         },
-        Venta: {
+        Venta: { type: 'object', properties: propiedadesVenta },
+        VentaDetalle: {
           type: 'object',
           properties: {
-            id: { type: 'string', format: 'uuid' },
-            numeroOrden: { type: 'string' },
-            vendedorId: { type: 'string' },
-            categoriaId: { type: 'string', nullable: true },
-            fecha: { type: 'string', format: 'date-time' },
-            fechaContable: { type: 'string', format: 'date' },
-            periodo: { type: 'string', example: '2026-10-Q1' },
-            valorBruto: { type: 'string', example: '100000.00' },
-            porcentajeAplicado: { type: 'string', nullable: true, example: '10.0000' },
-            comision: { type: 'string', nullable: true, example: '10000.00' },
-            valorNeto: { type: 'string', nullable: true, example: '90000.00' },
+            ...propiedadesVenta,
+            estadoOrigen: { type: 'string', example: 'CONFIRMADA' },
+            registradoEn: { type: 'string', format: 'date-time' },
+          },
+        },
+        ResumenSaldoVendedor: {
+          type: 'object',
+          properties: {
+            vendedorId: { type: 'string', example: 'V-1' },
+            vendedorNombre: { type: 'string', example: 'Artesanías del Valle S.A.S.' },
+            cuentas: { type: 'integer', example: 2, description: 'Quincenas sumadas' },
+            totalNeto: { type: 'string', example: '135000.00' },
+            valorPagado: { type: 'string', example: '0.00' },
+            saldoPendiente: { type: 'string', example: '135000.00' },
           },
         },
         CuentaPorPagar: {
           type: 'object',
           properties: {
             vendedorId: { type: 'string', example: 'V-1' },
+            vendedorNombre: { type: 'string', example: 'Artesanías del Valle S.A.S.' },
             periodo: { type: 'string', example: '2026-10-Q1' },
             totalNeto: { type: 'string', example: '135000.00' },
             valorPagado: { type: 'string', example: '0.00' },
@@ -523,6 +548,28 @@ export function buildOpenApi(version: string) {
           },
         },
       },
+      '/ventas/{id}': {
+        get: {
+          tags: ['Ventas'],
+          summary: 'Detalle de una venta: bruto, % aplicado, comisión y neto (HU-CON-02)',
+          security: [{ bearer: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } },
+          ],
+          responses: {
+            '200': {
+              description: 'Venta con el desglose de su comisión',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/VentaDetalle' } },
+              },
+            },
+            '400': problema('Identificador inválido'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '404': problema('La venta no existe'),
+          },
+        },
+      },
       '/periodos': {
         get: {
           tags: ['Ventas'],
@@ -579,6 +626,37 @@ export function buildOpenApi(version: string) {
               },
             },
             '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/cuentas-por-pagar/resumen': {
+        get: {
+          tags: ['Cuentas por pagar'],
+          summary: 'Saldo pendiente total por vendedor (HU-CON-03)',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'periodo',
+              in: 'query',
+              schema: { type: 'string', example: '2026-10-Q1' },
+              description: 'Quincena; sin ella suma todas las cuentas del vendedor',
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Un saldo por vendedor, ordenado por vendedor',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'array',
+                    items: { $ref: '#/components/schemas/ResumenSaldoVendedor' },
+                  },
+                },
+              },
+            },
+            '400': problema('Periodo inválido'),
             '401': problema('No autenticado'),
             '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
           },

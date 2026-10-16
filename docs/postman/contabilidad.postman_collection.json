@@ -846,7 +846,8 @@
                   "});",
                   "pm.test('bruto = comisión + neto', () => pm.expect(Number(v.comision) + Number(v.valorNeto)).to.eql(Number(v.valorBruto)));",
                   "pm.collectionVariables.set('periodo', v.periodo);",
-                  "pm.collectionVariables.set('netoVendedor1', v.valorNeto);"
+                  "pm.collectionVariables.set('netoVendedor1', v.valorNeto);",
+                  "pm.collectionVariables.set('ventaId', v.id);"
                 ]
               }
             }
@@ -933,6 +934,90 @@
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
                   "pm.test('Todas son del periodo', () => pm.response.json().items.forEach((v) => pm.expect(v.periodo).to.eql(pm.collectionVariables.get('periodo'))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Detalle de la venta del vendedor 1 (HU-CON-02)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ventas/{{ventaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ventas",
+                "{{ventaId}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const v = pm.response.json();",
+                  "pm.test('Desglose bruto = comisión + neto', () => pm.expect(Number(v.comision) + Number(v.valorNeto)).to.eql(Number(v.valorBruto)));",
+                  "pm.test('Neto igual al del listado', () => pm.expect(v.valorNeto).to.eql(pm.collectionVariables.get('netoVendedor1')));",
+                  "pm.test('Trae nombre del vendedor y estado de origen', () => {",
+                  "  pm.expect(v.vendedorNombre).to.be.a('string').and.not.empty;",
+                  "  pm.expect(v.estadoOrigen).to.eql('CONFIRMADA');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta inexistente -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ventas/00000000-0000-4000-8000-000000000000",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ventas",
+                "00000000-0000-4000-8000-000000000000"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Código NO_ENCONTRADO', () => pm.expect(pm.response.json().code).to.eql('NO_ENCONTRADO'));"
                 ]
               }
             }
@@ -1037,6 +1122,55 @@
                   "  pm.expect(ids).to.include(pm.collectionVariables.get('vendedor1'));",
                   "  pm.expect(ids).to.include(pm.collectionVariables.get('vendedor2'));",
                   "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumen de saldo por vendedor (HU-CON-03)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cuentas-por-pagar/resumen?periodo={{periodo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cuentas-por-pagar",
+                "resumen"
+              ],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "{{periodo}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const saldos = pm.response.json();",
+                  "const v1 = saldos.find((s) => s.vendedorId === pm.collectionVariables.get('vendedor1'));",
+                  "pm.test('Un saldo por vendedor', () => pm.expect(new Set(saldos.map((s) => s.vendedorId)).size).to.eql(saldos.length));",
+                  "pm.test('Saldo del vendedor 1 = neto de su venta', () => pm.expect(v1.saldoPendiente).to.eql(pm.collectionVariables.get('netoVendedor1')));",
+                  "pm.test('Trae el nombre del vendedor', () => pm.expect(v1.vendedorNombre).to.be.a('string').and.not.empty);"
                 ]
               }
             }

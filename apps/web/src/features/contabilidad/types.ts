@@ -1,6 +1,8 @@
 export type EstadoCuenta = 'PENDIENTE' | 'PAGADO';
 
 export interface ComisionFila {
+  /** Identificador de la venta (abre su detalle). */
+  id: string;
   numeroOrden: string;
   vendedorId: string;
   vendedorNombre: string;
@@ -10,6 +12,23 @@ export interface ComisionFila {
   porcentajeAplicado: string;
   comision: string;
   valorNeto: string;
+}
+
+/** HU-CON-02: detalle de una venta con su desglose. */
+export interface VentaDetalle extends ComisionFila {
+  estadoOrigen: string;
+  /** Instante en que contabilidad la registró (ISO 8601). */
+  registradoEn: string;
+}
+
+/** HU-CON-03: saldo total de un vendedor (de un periodo o de todos). */
+export interface SaldoVendedorFila {
+  vendedorId: string;
+  vendedorNombre: string;
+  cuentas: number;
+  totalNeto: string;
+  valorPagado: string;
+  saldoPendiente: string;
 }
 
 export interface CuentaPorPagarFila {

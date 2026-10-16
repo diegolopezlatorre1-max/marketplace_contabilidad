@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { TablaComisiones } from './components/TablaComisiones';
 import { TablaCuentasPorPagar } from './components/TablaCuentasPorPagar';
+import { TablaSaldosVendedor } from './components/TablaSaldosVendedor';
 import { contabilidadApiMock, type ContabilidadApi } from './data/contabilidadApi';
-import type { ComisionFila, CuentaPorPagarFila, EstadoCuenta } from './types';
+import type { ComisionFila, CuentaPorPagarFila, EstadoCuenta, SaldoVendedorFila } from './types';
 import './contabilidad.css';
 
 type Vista = 'comisiones' | 'cuentas';
@@ -19,11 +20,14 @@ const mensajeDe = (e: unknown) =>
 interface ContabilidadPanelProps {
   api?: ContabilidadApi;
   vistaInicial?: Vista;
+  /** Ruta al detalle de una venta; sin ella las órdenes no son enlaces. */
+  rutaVenta?: (id: string) => string;
 }
 
 export function ContabilidadPanel({
   api = contabilidadApiMock,
   vistaInicial = 'comisiones',
+  rutaVenta,
 }: ContabilidadPanelProps) {
   const [vista, setVista] = useState<Vista>(vistaInicial);
   const [periodos, setPeriodos] = useState<string[]>([]);
@@ -31,6 +35,9 @@ export function ContabilidadPanel({
   const [estado, setEstado] = useState<EstadoCuenta | ''>('');
   const [comisiones, setComisiones] = useState<ComisionFila[]>([]);
   const [cuentas, setCuentas] = useState<CuentaPorPagarFila[]>([]);
+  const [saldos, setSaldos] = useState<SaldoVendedorFila[]>([]);
+  const [cuentaAbierta, setCuentaAbierta] = useState<CuentaPorPagarFila | null>(null);
+  const [ventasCuenta, setVentasCuenta] = useState<ComisionFila[] | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +67,7 @@ export function ContabilidadPanel({
     let activo = true;
     setCargando(true);
     setError(null);
+    setCuentaAbierta(null);
 
     const cargar = async () => {
       try {
@@ -67,11 +75,14 @@ export function ContabilidadPanel({
           const datos = await api.listarComisiones(periodo);
           if (activo) setComisiones(datos);
         } else {
-          const datos = await api.listarCuentasPorPagar({
-            periodo,
-            estado: estado || undefined,
-          });
-          if (activo) setCuentas(datos);
+          const [datos, resumen] = await Promise.all([
+            api.listarCuentasPorPagar({ periodo, estado: estado || undefined }),
+            api.resumirPorVendedor(periodo),
+          ]);
+          if (activo) {
+            setCuentas(datos);
+            setSaldos(resumen);
+          }
         }
       } catch (e) {
         if (activo) setError(mensajeDe(e));
@@ -85,6 +96,24 @@ export function ContabilidadPanel({
       activo = false;
     };
   }, [api, vista, periodo, estado]);
+
+  // Ventas que componen la cuenta abierta (detalle de HU-CON-03).
+  useEffect(() => {
+    setVentasCuenta(null);
+    if (!cuentaAbierta) return;
+    let activo = true;
+    api
+      .listarComisiones(cuentaAbierta.periodo, cuentaAbierta.vendedorId)
+      .then((datos) => activo && setVentasCuenta(datos))
+      .catch((e: unknown) => activo && setError(mensajeDe(e)));
+    return () => {
+      activo = false;
+    };
+  }, [api, cuentaAbierta]);
+
+  const claveAbierta = cuentaAbierta && `${cuentaAbierta.vendedorId}-${cuentaAbierta.periodo}`;
+  const alternarCuenta = (fila: CuentaPorPagarFila) =>
+    setCuentaAbierta(`${fila.vendedorId}-${fila.periodo}` === claveAbierta ? null : fila);
 
   return (
     <section className="cp-panel">
@@ -140,8 +169,33 @@ export function ContabilidadPanel({
         </p>
       )}
       {cargando && !error && <p className="cp-vacio">Cargando…</p>}
-      {!cargando && !error && vista === 'comisiones' && <TablaComisiones filas={comisiones} />}
-      {!cargando && !error && vista === 'cuentas' && <TablaCuentasPorPagar filas={cuentas} />}
+      {!cargando && !error && vista === 'comisiones' && (
+        <TablaComisiones filas={comisiones} enlaceDetalle={rutaVenta} />
+      )}
+      {!cargando && !error && vista === 'cuentas' && (
+        <>
+          <h2 className="cp-subtitulo">Saldo por vendedor</h2>
+          <TablaSaldosVendedor filas={saldos} />
+          <h2 className="cp-subtitulo">Cuentas del periodo</h2>
+          <TablaCuentasPorPagar
+            filas={cuentas}
+            onSeleccionar={alternarCuenta}
+            seleccionada={claveAbierta ?? undefined}
+          />
+          {cuentaAbierta && (
+            <>
+              <h2 className="cp-subtitulo">
+                Ventas de {cuentaAbierta.vendedorNombre} en {cuentaAbierta.periodo}
+              </h2>
+              {ventasCuenta ? (
+                <TablaComisiones filas={ventasCuenta} enlaceDetalle={rutaVenta} />
+              ) : (
+                <p className="cp-vacio">Cargando…</p>
+              )}
+            </>
+          )}
+        </>
+      )}
     </section>
   );
 }

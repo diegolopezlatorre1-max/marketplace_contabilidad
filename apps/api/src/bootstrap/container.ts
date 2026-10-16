@@ -20,10 +20,13 @@ import { ListarPeriodosQuery } from '../application/queries/ListarPeriodosQuery'
 import { ListarVentasQuery } from '../application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../application/queries/ObtenerEstadoModulo';
+import { ObtenerVentaQuery } from '../application/queries/ObtenerVentaQuery';
+import { ResumenSaldoVendedorQuery } from '../application/queries/ResumenSaldoVendedorQuery';
 import type { AppConfig } from '../infrastructure/config/env';
 import { createContabilidadRouter } from '../infrastructure/http/express/createContabilidadRouter';
 import { JwtAuthContext } from '../infrastructure/integration/auth/JwtAuthContext';
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
+import { MockSellersGateway } from '../infrastructure/integration/sellers/MockSellersGateway';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
 import { PgConfiguracionComisionRepository } from '../infrastructure/persistence/postgres/PgConfiguracionComisionRepository';
 import { PgConciliacionRepository } from '../infrastructure/persistence/postgres/PgConciliacionRepository';
@@ -63,7 +66,9 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const unitOfWork = new PgUnitOfWork(pool);
   const dbHealth = new PgDatabaseHealth(pool);
   const configuracionComision = new PgConfiguracionComisionRepository(pool);
-  // INTEGRATION_MODE elegirá los gateways de Órdenes, Vendedores y Pagos (Sprint 1+).
+  // INTEGRATION_MODE elegirá los adaptadores HTTP/eventos cuando los otros módulos los expongan;
+  // por ahora Vendedores solo tiene mock.
+  const vendedores = new MockSellersGateway();
 
   // Casos de uso / consultas
   const obtenerEstado = new ObtenerEstadoModulo(dbHealth, clock);
@@ -71,11 +76,12 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const configurarComision = new ConfigurarComisionUseCase(unitOfWork, clock);
   const registrarVenta = new RegistrarVentaConfirmadaUseCase(unitOfWork, clock);
   const ventas = new PgVentaContableRepository(pool);
-  const listarVentas = new ListarVentasQuery(ventas);
+  const cuentasPorPagar = new PgCuentaPorPagarRepository(pool);
+  const listarVentas = new ListarVentasQuery(ventas, vendedores);
+  const obtenerVenta = new ObtenerVentaQuery(ventas, vendedores);
   const listarPeriodos = new ListarPeriodosQuery(ventas);
-  const listarCuentasPorPagar = new ListarCuentasPorPagarQuery(
-    new PgCuentaPorPagarRepository(pool),
-  );
+  const listarCuentasPorPagar = new ListarCuentasPorPagarQuery(cuentasPorPagar, vendedores);
+  const resumenSaldoVendedor = new ResumenSaldoVendedorQuery(cuentasPorPagar, vendedores);
 
   // HU-CON-04. Tolerancia de conciliación 0 hasta que el contador defina otra (D-08).
   const politicaConciliacion = new PoliticaConciliacion();
@@ -96,11 +102,13 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       obtenerEstado,
       obtenerComision,
       listarVentas,
+      obtenerVenta,
       listarPeriodos,
       listarCuentasPorPagar,
       listarPagos,
       listarConciliaciones,
       obtenerConciliacion,
+      resumenSaldoVendedor,
     },
     commands: { configurarComision, registrarVenta, registrarPago, importarPagos, conciliarPago },
   });

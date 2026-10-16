@@ -3,11 +3,13 @@ import type {
   CuentaPorPagarDto,
   Pagina,
   PeriodosResponse,
+  ResumenSaldoVendedorDto,
+  VentaDetalleDto,
   VentaDto,
   VigenciaComisionDto,
 } from '@contabilidad/contracts';
 import type { ApiClient } from '../../../shared/api/client';
-import type { ComisionFila, CuentaPorPagarFila, VigenciaPorcentaje } from '../types';
+import type { ComisionFila, VigenciaPorcentaje } from '../types';
 import type { ContabilidadApi } from './puerto';
 
 /** Máximo que acepta GET /ventas por página. */
@@ -28,14 +30,12 @@ function query(params: Record<string, string | undefined>): string {
   return texto ? `?${texto}` : '';
 }
 
-// Mientras no exista el SellersGateway (T-23), el nombre del vendedor es su identificador.
-const nombreVendedor = (vendedorId: string) => vendedorId;
-
 function aComisionFila(v: VentaDto): ComisionFila {
   return {
+    id: v.id,
     numeroOrden: v.numeroOrden,
     vendedorId: v.vendedorId,
-    vendedorNombre: nombreVendedor(v.vendedorId),
+    vendedorNombre: v.vendedorNombre,
     periodo: v.periodo,
     fecha: v.fechaContable,
     valorBruto: v.valorBruto,
@@ -43,10 +43,6 @@ function aComisionFila(v: VentaDto): ComisionFila {
     comision: v.comision ?? '0.00',
     valorNeto: v.valorNeto ?? '0.00',
   };
-}
-
-function aCuentaFila(c: CuentaPorPagarDto): CuentaPorPagarFila {
-  return { ...c, vendedorNombre: nombreVendedor(c.vendedorId) };
 }
 
 function aVigencia(v: VigenciaComisionDto): VigenciaPorcentaje {
@@ -88,11 +84,11 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
       );
     },
 
-    async listarComisiones(periodo) {
+    async listarComisiones(periodo, vendedorId) {
       const filas: ComisionFila[] = [];
       for (let page = 1; ; page++) {
         const pagina = await api.get<Pagina<VentaDto>>(
-          `/ventas${query({ periodo, page: String(page), size: String(TAMANO_PAGINA) })}`,
+          `/ventas${query({ periodo, vendedorId, page: String(page), size: String(TAMANO_PAGINA) })}`,
         );
         filas.push(...pagina.items.map(aComisionFila));
         if (filas.length >= pagina.total || pagina.items.length === 0) break;
@@ -102,11 +98,17 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
       );
     },
 
+    async obtenerVenta(id) {
+      const v = await api.get<VentaDetalleDto>(`/ventas/${encodeURIComponent(id)}`);
+      return { ...aComisionFila(v), estadoOrigen: v.estadoOrigen, registradoEn: v.registradoEn };
+    },
+
     async listarCuentasPorPagar({ periodo, estado }) {
-      const cuentas = await api.get<CuentaPorPagarDto[]>(
-        `/cuentas-por-pagar${query({ periodo, estado })}`,
-      );
-      return cuentas.map(aCuentaFila);
+      return api.get<CuentaPorPagarDto[]>(`/cuentas-por-pagar${query({ periodo, estado })}`);
+    },
+
+    async resumirPorVendedor(periodo) {
+      return api.get<ResumenSaldoVendedorDto[]>(`/cuentas-por-pagar/resumen${query({ periodo })}`);
     },
 
     async registrarPago() {

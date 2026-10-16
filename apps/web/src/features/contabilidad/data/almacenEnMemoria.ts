@@ -4,6 +4,8 @@ import type {
   CuentaPorPagarFila,
   NuevaVenta,
   NuevoPago,
+  SaldoVendedorFila,
+  VentaDetalle,
   VigenciaPorcentaje,
 } from '../types';
 import type { ContabilidadApi, FiltroCuentas } from './puerto';
@@ -89,6 +91,7 @@ interface CuentaInterna {
 export class AlmacenContabilidad {
   private vigencias: VigenciaPorcentaje[] = [];
   private comisiones: ComisionFila[] = [];
+  private registradas = new Map<string, string>();
   private cuentas = new Map<string, CuentaInterna>();
 
   // ---- HU-CON-09: porcentaje con vigencia ----
@@ -136,6 +139,7 @@ export class AlmacenContabilidad {
     const periodo = periodoDe(venta.fecha);
 
     const fila: ComisionFila = {
+      id: `venta-${this.comisiones.length + 1}`,
       numeroOrden,
       vendedorId,
       vendedorNombre,
@@ -147,6 +151,7 @@ export class AlmacenContabilidad {
       valorNeto: deCentavos(neto),
     };
     this.comisiones.push(fila);
+    this.registradas.set(fila.id, new Date().toISOString());
 
     // ---- HU-CON-03: la venta alimenta la cuenta del vendedor en esa quincena ----
     const clave = `${vendedorId}|${periodo}`;
@@ -162,10 +167,18 @@ export class AlmacenContabilidad {
     return fila;
   }
 
-  listarComisiones(periodo?: string): ComisionFila[] {
+  listarComisiones(periodo?: string, vendedorId?: string): ComisionFila[] {
     return this.comisiones
-      .filter((c) => !periodo || c.periodo === periodo)
+      .filter(
+        (c) => (!periodo || c.periodo === periodo) && (!vendedorId || c.vendedorId === vendedorId),
+      )
       .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.numeroOrden.localeCompare(b.numeroOrden));
+  }
+
+  obtenerVenta(id: string): VentaDetalle {
+    const fila = this.comisiones.find((c) => c.id === id);
+    if (!fila) throw new ErrorDeNegocio(`No existe la venta ${id}`);
+    return { ...fila, estadoOrigen: 'CONFIRMADA', registradoEn: this.registradas.get(id) ?? '' };
   }
 
   listarPeriodos(): string[] {
@@ -194,6 +207,36 @@ export class AlmacenContabilidad {
         (a, b) =>
           a.periodo.localeCompare(b.periodo) || a.vendedorNombre.localeCompare(b.vendedorNombre),
       );
+  }
+
+  resumirPorVendedor(periodo?: string): SaldoVendedorFila[] {
+    const porVendedor = new Map<
+      string,
+      { nombre: string; cuentas: number; total: bigint; pagado: bigint }
+    >();
+    for (const c of this.cuentas.values()) {
+      if (periodo && c.periodo !== periodo) continue;
+      const a = porVendedor.get(c.vendedorId) ?? {
+        nombre: c.vendedorNombre,
+        cuentas: 0,
+        total: 0n,
+        pagado: 0n,
+      };
+      a.cuentas += 1;
+      a.total += c.totalNeto;
+      a.pagado += c.pagado;
+      porVendedor.set(c.vendedorId, a);
+    }
+    return [...porVendedor.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([vendedorId, a]) => ({
+        vendedorId,
+        vendedorNombre: a.nombre,
+        cuentas: a.cuentas,
+        totalNeto: deCentavos(a.total),
+        valorPagado: deCentavos(a.pagado),
+        saldoPendiente: deCentavos(a.total - a.pagado),
+      }));
   }
 
   registrarPago(pago: NuevoPago): CuentaPorPagarFila {
@@ -232,13 +275,21 @@ export function crearApiEnMemoria(almacen: AlmacenContabilidad, retardoMs = 0): 
       await espera();
       return almacen.registrarVenta(venta);
     },
-    async listarComisiones(periodo) {
+    async listarComisiones(periodo, vendedorId) {
       await espera();
-      return almacen.listarComisiones(periodo);
+      return almacen.listarComisiones(periodo, vendedorId);
+    },
+    async obtenerVenta(id) {
+      await espera();
+      return almacen.obtenerVenta(id);
     },
     async listarCuentasPorPagar(filtro) {
       await espera();
       return almacen.listarCuentasPorPagar(filtro);
+    },
+    async resumirPorVendedor(periodo) {
+      await espera();
+      return almacen.resumirPorVendedor(periodo);
     },
     async registrarPago(pago) {
       await espera();
