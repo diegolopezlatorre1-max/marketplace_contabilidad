@@ -31,6 +31,7 @@ describe('Fase 1 - el módulo atraviesa todas las capas contra PostgreSQL', () =
       `SELECT tablename FROM pg_tables WHERE schemaname = 'contabilidad' ORDER BY tablename`,
     );
     expect(rows.map((r) => r.tablename)).toEqual([
+      'ajuste_contable',
       'auditoria',
       'comision',
       'conciliacion',

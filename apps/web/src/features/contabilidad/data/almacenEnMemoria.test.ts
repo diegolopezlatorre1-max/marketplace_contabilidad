@@ -107,6 +107,96 @@ describe('AlmacenContabilidad (reglas de HU-09, 01, 02 y 03)', () => {
     expect(() => a.obtenerVenta('no-existe')).toThrow(ErrorDeNegocio);
   });
 
+  it('ajustes (HU-CON-06): parcial + cancelación cuadran y descuentan el saldo', () => {
+    const a = nuevo('12.5');
+    const v = a.registrarVenta(venta('ORD-1', '100.05')); // comisión 12.51, neto 87.54
+    const parcial = a.registrarAjuste({
+      ventaId: v.id,
+      tipo: 'DEVOLUCION',
+      motivo: 'Defectuoso',
+      valor: '50.03',
+      fecha: '2026-10-06',
+    });
+    expect(parcial).toMatchObject({ comisionRevertida: '6.25', netoRevertido: '43.78' });
+    expect(() =>
+      a.registrarAjuste({
+        ventaId: v.id,
+        tipo: 'DEVOLUCION',
+        motivo: 'x',
+        valor: '50.03',
+        fecha: '2026-10-06',
+      }),
+    ).toThrow(ErrorDeNegocio);
+
+    const cierre = a.registrarAjuste({
+      ventaId: v.id,
+      tipo: 'CANCELACION',
+      motivo: 'Resto',
+      fecha: '2026-10-07',
+    });
+    expect(cierre).toMatchObject({
+      valor: '50.02',
+      comisionRevertida: '6.26',
+      netoRevertido: '43.76',
+    });
+    expect(a.listarAjustes(v.id).map((x) => x.id)).toEqual([cierre.id, parcial.id]);
+    expect(a.listarCuentasPorPagar({ periodo: '2026-10-Q1' })[0]?.saldoPendiente).toBe('0.00');
+    expect(() =>
+      a.registrarAjuste({ ventaId: v.id, tipo: 'CANCELACION', motivo: 'x', fecha: '2026-10-07' }),
+    ).toThrow('ajustada por completo');
+  });
+
+  it('ajustes: rechaza ventas inexistentes y fechas anteriores a la venta', () => {
+    const a = nuevo();
+    const v = a.registrarVenta(venta('ORD-1', '1000'));
+    expect(() =>
+      a.registrarAjuste({
+        ventaId: 'no-existe',
+        tipo: 'CANCELACION',
+        motivo: 'x',
+        fecha: '2026-10-06',
+      }),
+    ).toThrow(ErrorDeNegocio);
+    expect(() =>
+      a.registrarAjuste({ ventaId: v.id, tipo: 'CANCELACION', motivo: 'x', fecha: '2026-10-04' }),
+    ).toThrow('anterior a la venta');
+  });
+
+  it('reporte (HU-CON-05): totales del rango con los ajustes por su propia fecha', () => {
+    const a = nuevo();
+    const v1 = a.registrarVenta(venta('ORD-1', '100000', '2026-10-05'));
+    a.registrarVenta(venta('ORD-2', '50000', '2026-10-07', 'V-2'));
+    a.registrarVenta(venta('ORD-3', '30000', '2026-10-20'));
+    a.registrarAjuste({
+      ventaId: v1.id,
+      tipo: 'DEVOLUCION',
+      motivo: 'Defectuoso',
+      valor: '20000',
+      fecha: '2026-10-18',
+    });
+
+    const q1 = a.obtenerReporte({ desde: '2026-10-01', hasta: '2026-10-15' });
+    expect(q1.ventas).toMatchObject({ cantidad: 2, valorBruto: '150000.00' });
+    expect(q1.ajustes.cantidad).toBe(0);
+
+    const q2 = a.obtenerReporte({ desde: '2026-10-16', hasta: '2026-10-31' });
+    expect(q2.totales).toEqual({
+      valorBruto: '10000.00',
+      comision: '1000.00',
+      valorNeto: '9000.00',
+    });
+    expect(q2.porDia.map((d) => d.fecha)).toEqual(['2026-10-18', '2026-10-20']);
+    expect(q2.control.cuadra).toBe(true);
+
+    expect(
+      a.obtenerReporte({ desde: '2026-10-01', hasta: '2026-10-31', vendedorId: 'V-2' }).totales
+        .valorBruto,
+    ).toBe('50000.00');
+    expect(() => a.obtenerReporte({ desde: '2026-10-31', hasta: '2026-10-01' })).toThrow(
+      ErrorDeNegocio,
+    );
+  });
+
   it('separa las quincenas: día 15 es Q1 y día 16 es Q2', () => {
     const a = nuevo();
     expect(a.registrarVenta(venta('ORD-1', '1000', '2026-10-15')).periodo).toBe('2026-10-Q1');

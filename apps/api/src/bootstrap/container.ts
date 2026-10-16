@@ -14,6 +14,9 @@ import {
   ObtenerConciliacionQuery,
 } from '../application/queries/ConciliacionQueries';
 import { PoliticaConciliacion } from '../domain/conciliacion/Conciliacion';
+import { ProcesarAjusteOrdenUseCase } from '../application/commands/ProcesarAjusteOrdenUseCase';
+import { RegistrarAjusteUseCase } from '../application/commands/RegistrarAjusteUseCase';
+import { ListarAjustesQuery } from '../application/queries/ListarAjustesQuery';
 import { RegistrarVentaConfirmadaUseCase } from '../application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentasPorPagarQuery';
 import { ListarPeriodosQuery } from '../application/queries/ListarPeriodosQuery';
@@ -21,6 +24,7 @@ import { ListarVentasQuery } from '../application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../application/queries/ObtenerEstadoModulo';
 import { ObtenerVentaQuery } from '../application/queries/ObtenerVentaQuery';
+import { ReporteIngresosQuery } from '../application/queries/ReporteIngresosQuery';
 import { ResumenSaldoVendedorQuery } from '../application/queries/ResumenSaldoVendedorQuery';
 import type { AppConfig } from '../infrastructure/config/env';
 import { createContabilidadRouter } from '../infrastructure/http/express/createContabilidadRouter';
@@ -28,11 +32,13 @@ import { JwtAuthContext } from '../infrastructure/integration/auth/JwtAuthContex
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
 import { MockSellersGateway } from '../infrastructure/integration/sellers/MockSellersGateway';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
+import { PgAjusteContableRepository } from '../infrastructure/persistence/postgres/PgAjusteContableRepository';
 import { PgConfiguracionComisionRepository } from '../infrastructure/persistence/postgres/PgConfiguracionComisionRepository';
 import { PgConciliacionRepository } from '../infrastructure/persistence/postgres/PgConciliacionRepository';
 import { PgCuentaPorPagarRepository } from '../infrastructure/persistence/postgres/PgCuentaPorPagarRepository';
 import { PgPagoRecibidoRepository } from '../infrastructure/persistence/postgres/PgPagoRecibidoRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
+import { PgReporteIngresosRepository } from '../infrastructure/persistence/postgres/PgReporteIngresosRepository';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
 import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWork';
 
@@ -82,6 +88,10 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const listarPeriodos = new ListarPeriodosQuery(ventas);
   const listarCuentasPorPagar = new ListarCuentasPorPagarQuery(cuentasPorPagar, vendedores);
   const resumenSaldoVendedor = new ResumenSaldoVendedorQuery(cuentasPorPagar, vendedores);
+  const registrarAjuste = new RegistrarAjusteUseCase(unitOfWork, clock);
+  const procesarAjusteOrden = new ProcesarAjusteOrdenUseCase(unitOfWork, clock);
+  const listarAjustes = new ListarAjustesQuery(new PgAjusteContableRepository(pool));
+  const reporteIngresos = new ReporteIngresosQuery(new PgReporteIngresosRepository(pool));
 
   // HU-CON-04. Tolerancia de conciliación 0 hasta que el contador defina otra (D-08).
   const politicaConciliacion = new PoliticaConciliacion();
@@ -109,8 +119,18 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       listarConciliaciones,
       obtenerConciliacion,
       resumenSaldoVendedor,
+      listarAjustes,
+      reporteIngresos,
     },
-    commands: { configurarComision, registrarVenta, registrarPago, importarPagos, conciliarPago },
+    commands: {
+      configurarComision,
+      registrarVenta,
+      registrarPago,
+      importarPagos,
+      conciliarPago,
+      registrarAjuste,
+      procesarAjusteOrden,
+    },
   });
 
   return { router, unitOfWork };

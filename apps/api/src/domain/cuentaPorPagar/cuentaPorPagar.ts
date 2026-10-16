@@ -71,6 +71,17 @@ export class CuentaPorPagar {
     this.pagado = this.pagado.add(valor);
   }
 
+  /**
+   * HU-CON-06 (D-07): resta el neto revertido por un ajuste. Solo se descuenta del saldo
+   * pendiente; lo que ya se pagó al vendedor se devuelve como saldo a favor del marketplace.
+   */
+  revertir(neto: Money): Money {
+    if (neto.isNegative()) throw new InvalidValueError('El neto revertido no puede ser negativo');
+    const aplicable = neto.greaterThan(this.saldoPendiente) ? this.saldoPendiente : neto;
+    this.totalNeto = this.totalNeto.subtract(aplicable);
+    return neto.subtract(aplicable);
+  }
+
   get saldoPendiente(): Money {
     return this.totalNeto.subtract(this.pagado);
   }

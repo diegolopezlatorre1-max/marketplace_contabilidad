@@ -1,3 +1,4 @@
+import type { AjusteContableRepository } from './AjusteContableRepository';
 import type { AuditLogger } from './AuditLogger';
 import type { ComisionRepository } from './ComisionRepository';
 import type { ConciliacionRepository } from './ConciliacionRepository';
@@ -22,6 +23,7 @@ export interface TransactionalRepositories {
   cuentasPorPagar: CuentaPorPagarRepository;
   pagosRecibidos: PagoRecibidoRepository;
   conciliaciones: ConciliacionRepository;
+  ajustes: AjusteContableRepository;
 }
 
 /** Ejecuta un trabajo de forma atómica: todo se confirma o todo se revierte. */

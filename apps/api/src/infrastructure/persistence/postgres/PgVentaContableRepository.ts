@@ -108,12 +108,23 @@ export class PgVentaContableRepository implements VentaContableRepository {
     };
   }
 
-  async obtener(id: string): Promise<VentaDetalle | null> {
+  obtener(id: string): Promise<VentaDetalle | null> {
+    return this.buscarDetalle('v.id = $1', [id]);
+  }
+
+  obtenerPorOrden(numeroOrden: string, vendedorId: string): Promise<VentaDetalle | null> {
+    return this.buscarDetalle('v.numero_orden = $1 AND v.vendedor_id = $2', [
+      numeroOrden,
+      vendedorId,
+    ]);
+  }
+
+  private async buscarDetalle(condicion: string, params: unknown[]): Promise<VentaDetalle | null> {
     const { rows } = await this.db.query<Fila & { estado_origen: string; registrado_en: Date }>(
       `SELECT ${COLUMNAS}, v.estado_origen, v.registrado_en
          ${DESDE}
-        WHERE v.id = $1`,
-      [id],
+        WHERE ${condicion}`,
+      params,
     );
     const f = rows[0];
     if (!f) return null;

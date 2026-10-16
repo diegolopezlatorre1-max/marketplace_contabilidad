@@ -7,6 +7,7 @@ import { ConfiguracionComisionPanel } from './features/contabilidad/Configuracio
 import { ContabilidadPanel } from './features/contabilidad/ContabilidadPanel';
 import { crearContabilidadApiRest } from './features/contabilidad/data/contabilidadApiRest';
 import { DetalleVentaPage } from './features/contabilidad/DetalleVentaPage';
+import { ReporteIngresosPage } from './features/contabilidad/ReporteIngresosPage';
 import { DocumentacionApiPage } from './features/documentacion/DocumentacionApiPage';
 import { InicioPage } from './features/inicio/InicioPage';
 import { ApiError, createApiClient, type ApiClient } from './shared/api/client';
@@ -141,6 +142,14 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
             element={
               <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
                 <ConciliacionesPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="reportes/ingresos"
+            element={
+              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+                <ReporteIngresosPage api={contabilidad} />
               </RequireRole>
             }
           />
