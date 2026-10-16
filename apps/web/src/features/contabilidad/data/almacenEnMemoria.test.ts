@@ -85,6 +85,28 @@ describe('AlmacenContabilidad (reglas de HU-09, 01, 02 y 03)', () => {
     expect(cuenta()?.estado).toBe('PAGADO');
   });
 
+  it('resume el saldo por vendedor y abre el detalle de cada venta', () => {
+    const a = nuevo();
+    const f1 = a.registrarVenta(venta('ORD-1', '100000'));
+    a.registrarVenta(venta('ORD-2', '50000'));
+    a.registrarVenta(venta('ORD-3', '20000', '2026-10-20'));
+    a.registrarVenta(venta('ORD-4', '10000', '2026-10-05', 'V-2'));
+
+    expect(a.resumirPorVendedor('2026-10-Q1')).toEqual([
+      expect.objectContaining({ vendedorId: 'V-1', cuentas: 1, saldoPendiente: '135000.00' }),
+      expect.objectContaining({ vendedorId: 'V-2', saldoPendiente: '9000.00' }),
+    ]);
+    expect(a.resumirPorVendedor()[0]).toMatchObject({ cuentas: 2, saldoPendiente: '153000.00' });
+
+    expect(a.listarComisiones('2026-10-Q1', 'V-2').map((c) => c.numeroOrden)).toEqual(['ORD-4']);
+    expect(a.obtenerVenta(f1.id)).toMatchObject({
+      numeroOrden: 'ORD-1',
+      comision: '10000.00',
+      estadoOrigen: 'CONFIRMADA',
+    });
+    expect(() => a.obtenerVenta('no-existe')).toThrow(ErrorDeNegocio);
+  });
+
   it('separa las quincenas: día 15 es Q1 y día 16 es Q2', () => {
     const a = nuevo();
     expect(a.registrarVenta(venta('ORD-1', '1000', '2026-10-15')).periodo).toBe('2026-10-Q1');

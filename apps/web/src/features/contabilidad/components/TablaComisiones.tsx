@@ -1,7 +1,14 @@
+import { Link } from 'react-router-dom';
 import { formatoCOP, formatoPorcentaje, sumar } from '../lib/formato';
 import type { ComisionFila } from '../types';
 
-export function TablaComisiones({ filas }: { filas: ComisionFila[] }) {
+interface Props {
+  filas: ComisionFila[];
+  /** Ruta al detalle de una venta (HU-CON-02); sin ella la orden no es un enlace. */
+  enlaceDetalle?: ((id: string) => string) | undefined;
+}
+
+export function TablaComisiones({ filas, enlaceDetalle }: Props) {
   if (filas.length === 0) return <p className="cp-vacio">No hay ventas en este periodo.</p>;
   return (
     <div className="cp-scroll">
@@ -20,7 +27,15 @@ export function TablaComisiones({ filas }: { filas: ComisionFila[] }) {
         <tbody>
           {filas.map((f) => (
             <tr key={`${f.numeroOrden}-${f.vendedorId}`}>
-              <td>{f.numeroOrden}</td>
+              <td>
+                {enlaceDetalle ? (
+                  <Link className="cp-enlace" to={enlaceDetalle(f.id)}>
+                    {f.numeroOrden}
+                  </Link>
+                ) : (
+                  f.numeroOrden
+                )}
+              </td>
               <td>{f.vendedorNombre}</td>
               <td>{f.fecha}</td>
               <td className="cp-num">{formatoCOP(f.valorBruto)}</td>

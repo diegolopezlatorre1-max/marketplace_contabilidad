@@ -19,6 +19,15 @@ export interface CuentaPorPagarResumen {
   estado: EstadoCuentaPorPagar;
 }
 
+/** Saldo de un vendedor sumando sus cuentas (HU-CON-03, ResumenSaldoVendedorQuery). */
+export interface SaldoVendedor {
+  vendedorId: string;
+  cuentas: number;
+  totalNeto: string;
+  valorPagado: string;
+  saldoPendiente: string;
+}
+
 /** Persistencia de las cuentas por pagar a vendedores (HU-CON-03). Acordado en T-27. */
 export interface CuentaPorPagarRepository {
   /**
@@ -29,4 +38,6 @@ export interface CuentaPorPagarRepository {
   guardar(cuenta: CuentaPorPagar): Promise<void>;
   /** Ordenadas por periodo (más reciente primero) y vendedor. */
   listar(filtro: FiltroCuentasPorPagar): Promise<CuentaPorPagarResumen[]>;
+  /** Un saldo por vendedor, del periodo indicado o de todos; ordenado por vendedor. */
+  resumirPorVendedor(periodo?: string): Promise<SaldoVendedor[]>;
 }

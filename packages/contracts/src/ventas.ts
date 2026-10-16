@@ -11,11 +11,18 @@ export const listarVentasQuerySchema = paginacionQuerySchema.extend({
 });
 export type ListarVentasQuery = z.infer<typeof listarVentasQuerySchema>;
 
+/** GET /ventas/{id} */
+export const ventaIdParamSchema = z.object({
+  id: z.string().uuid('Identificador de venta inválido'),
+});
+
 /** Venta registrada (HU-CON-01) con el desglose de su comisión (HU-CON-02). */
 export interface VentaDto {
   id: string;
   numeroOrden: string;
   vendedorId: string;
+  /** Nombre o razón social del módulo de Vendedores; el id si no se conoce. */
+  vendedorNombre: string;
   categoriaId: string | null;
   /** Instante de la orden (ISO 8601). */
   fecha: string;
@@ -27,4 +34,12 @@ export interface VentaDto {
   porcentajeAplicado: string | null;
   comision: string | null;
   valorNeto: string | null;
+}
+
+/** GET /ventas/{id}: detalle de la venta con el desglose bruto / % / comisión / neto (HU-CON-02). */
+export interface VentaDetalleDto extends VentaDto {
+  /** Estado de la orden al registrarse (siempre CONFIRMADA en el Sprint 1). */
+  estadoOrigen: string;
+  /** Instante en que contabilidad registró la venta (ISO 8601). */
+  registradoEn: string;
 }

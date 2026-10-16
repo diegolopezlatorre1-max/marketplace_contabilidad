@@ -9,6 +9,8 @@ import type { ListarPeriodosQuery } from '../../../application/queries/ListarPer
 import type { ListarVentasQuery } from '../../../application/queries/ListarVentasQuery';
 import type { ObtenerComisionVigenteQuery } from '../../../application/queries/ObtenerComisionVigenteQuery';
 import type { ObtenerEstadoModulo } from '../../../application/queries/ObtenerEstadoModulo';
+import type { ObtenerVentaQuery } from '../../../application/queries/ObtenerVentaQuery';
+import type { ResumenSaldoVendedorQuery } from '../../../application/queries/ResumenSaldoVendedorQuery';
 import type { AuthContext } from '../../../application/ports/out/AuthContext';
 import { authenticate } from '../middlewares/auth';
 import { correlationId } from '../middlewares/correlationId';
@@ -28,8 +30,10 @@ export interface RouterDeps {
     obtenerEstado: ObtenerEstadoModulo;
     obtenerComision: ObtenerComisionVigenteQuery;
     listarVentas: ListarVentasQuery;
+    obtenerVenta: ObtenerVentaQuery;
     listarPeriodos: ListarPeriodosQuery;
     listarCuentasPorPagar: ListarCuentasPorPagarQuery;
+    resumenSaldoVendedor: ResumenSaldoVendedorQuery;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
@@ -73,10 +77,16 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
     ventasRoutes({
       registrarVenta: deps.commands.registrarVenta,
       listarVentas: deps.queries.listarVentas,
+      obtenerVenta: deps.queries.obtenerVenta,
       listarPeriodos: deps.queries.listarPeriodos,
     }),
   );
-  router.use(cuentasPorPagarRoutes({ listarCuentasPorPagar: deps.queries.listarCuentasPorPagar }));
+  router.use(
+    cuentasPorPagarRoutes({
+      listarCuentasPorPagar: deps.queries.listarCuentasPorPagar,
+      resumenSaldoVendedor: deps.queries.resumenSaldoVendedor,
+    }),
+  );
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

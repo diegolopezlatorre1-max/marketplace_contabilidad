@@ -5,6 +5,7 @@ import {
 } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarVentasQuery } from '../../../src/application/queries/ListarVentasQuery';
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
+import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
 import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
 
 const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Órdenes', roles: ['SISTEMA'] };
@@ -28,7 +29,7 @@ function crearEntorno({ conComision = true } = {}) {
   if (conComision) db.datos.configuraciones.push(comisionGlobal('10'));
   let n = 0;
   const registrar = new RegistrarVentaConfirmadaUseCase(uow, reloj, () => `venta-${++n}`);
-  const listar = new ListarVentasQuery(repos.ventas);
+  const listar = new ListarVentasQuery(repos.ventas, new MockSellersGateway());
   return { db, registrar, listar };
 }
 

@@ -23,6 +23,7 @@ const venta = (numeroOrden: string, fechaContable: string) => ({
   id: `id-${numeroOrden}`,
   numeroOrden,
   vendedorId: 'V-1',
+  vendedorNombre: 'Artesanías del Valle S.A.S.',
   categoriaId: null,
   fecha: `${fechaContable}T15:00:00.000Z`,
   fechaContable,
@@ -52,9 +53,10 @@ describe('crearContabilidadApiRest', () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
     expect(filas.map((f) => f.numeroOrden)).toEqual(['ORD-1', 'ORD-2']);
     expect(filas[0]).toEqual({
+      id: 'id-ORD-1',
       numeroOrden: 'ORD-1',
       vendedorId: 'V-1',
-      vendedorNombre: 'V-1',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
       periodo: '2026-10-Q1',
       fecha: '2026-10-03',
       valorBruto: '100000.00',
@@ -64,9 +66,55 @@ describe('crearContabilidadApiRest', () => {
     });
   });
 
+  it('filtra comisiones por vendedor (ventas de una cuenta)', async () => {
+    const { contabilidad } = crear({
+      '/api/ventas?periodo=2026-10-Q1&vendedorId=V-1&page=1&size=200': {
+        body: { items: [venta('ORD-1', '2026-10-03')], page: 1, size: 200, total: 1 },
+      },
+    });
+    const filas = await contabilidad.listarComisiones('2026-10-Q1', 'V-1');
+    expect(filas.map((f) => f.numeroOrden)).toEqual(['ORD-1']);
+  });
+
+  it('obtiene el detalle de una venta', async () => {
+    const { contabilidad } = crear({
+      '/api/ventas/id-ORD-1': {
+        body: {
+          ...venta('ORD-1', '2026-10-03'),
+          estadoOrigen: 'CONFIRMADA',
+          registradoEn: '2026-10-03T15:00:01.000Z',
+        },
+      },
+    });
+    await expect(contabilidad.obtenerVenta('id-ORD-1')).resolves.toMatchObject({
+      id: 'id-ORD-1',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
+      comision: '10000.00',
+      valorNeto: '90000.00',
+      estadoOrigen: 'CONFIRMADA',
+      registradoEn: '2026-10-03T15:00:01.000Z',
+    });
+  });
+
+  it('obtiene el resumen de saldos por vendedor', async () => {
+    const saldo = {
+      vendedorId: 'V-1',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
+      cuentas: 1,
+      totalNeto: '135000.00',
+      valorPagado: '0.00',
+      saldoPendiente: '135000.00',
+    };
+    const { contabilidad } = crear({
+      '/api/cuentas-por-pagar/resumen?periodo=2026-10-Q1': { body: [saldo] },
+    });
+    await expect(contabilidad.resumirPorVendedor('2026-10-Q1')).resolves.toEqual([saldo]);
+  });
+
   it('lista cuentas por pagar con filtros', async () => {
     const cuenta = {
       vendedorId: 'V-1',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
       periodo: '2026-10-Q1',
       totalNeto: '90000.00',
       valorPagado: '0.00',
@@ -78,7 +126,7 @@ describe('crearContabilidadApiRest', () => {
     });
     await expect(
       contabilidad.listarCuentasPorPagar({ periodo: '2026-10-Q1', estado: 'PENDIENTE' }),
-    ).resolves.toEqual([{ ...cuenta, vendedorNombre: 'V-1' }]);
+    ).resolves.toEqual([cuenta]);
   });
 
   it('lee y configura vigencias del porcentaje', async () => {

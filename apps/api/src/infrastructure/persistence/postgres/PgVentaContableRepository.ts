@@ -2,6 +2,7 @@ import type {
   FiltroVentas,
   PaginaVentas,
   VentaContableRepository,
+  VentaDetalle,
   VentaRegistrada,
 } from '../../../application/ports/out/VentaContableRepository';
 import type { VentaContable } from '../../../domain/venta/VentaContable';
@@ -36,6 +37,11 @@ function aVentaRegistrada(f: Fila): VentaRegistrada {
     valorNeto: f.valor_neto,
   };
 }
+
+const COLUMNAS = `v.id, v.numero_orden, v.vendedor_id, v.categoria_id, v.fecha, v.fecha_contable,
+       v.periodo, v.valor_bruto, c.porcentaje_aplicado, c.valor_comision, c.valor_neto`;
+const DESDE = `FROM contabilidad.venta_contable v
+  LEFT JOIN contabilidad.comision c ON c.venta_id = v.id`;
 
 export class PgVentaContableRepository implements VentaContableRepository {
   constructor(private readonly db: Queryable) {}
@@ -87,10 +93,8 @@ export class PgVentaContableRepository implements VentaContableRepository {
       params,
     );
     const { rows } = await this.db.query<Fila>(
-      `SELECT v.id, v.numero_orden, v.vendedor_id, v.categoria_id, v.fecha, v.fecha_contable,
-              v.periodo, v.valor_bruto, c.porcentaje_aplicado, c.valor_comision, c.valor_neto
-         FROM contabilidad.venta_contable v
-         LEFT JOIN contabilidad.comision c ON c.venta_id = v.id
+      `SELECT ${COLUMNAS}
+         ${DESDE}
          ${where}
         ORDER BY v.fecha DESC, v.numero_orden, v.vendedor_id
         LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
@@ -101,6 +105,22 @@ export class PgVentaContableRepository implements VentaContableRepository {
       page: filtro.page,
       size: filtro.size,
       total: Number(total.rows[0]?.total ?? 0),
+    };
+  }
+
+  async obtener(id: string): Promise<VentaDetalle | null> {
+    const { rows } = await this.db.query<Fila & { estado_origen: string; registrado_en: Date }>(
+      `SELECT ${COLUMNAS}, v.estado_origen, v.registrado_en
+         ${DESDE}
+        WHERE v.id = $1`,
+      [id],
+    );
+    const f = rows[0];
+    if (!f) return null;
+    return {
+      ...aVentaRegistrada(f),
+      estadoOrigen: f.estado_origen,
+      registradoEn: f.registrado_en.toISOString(),
     };
   }
 
