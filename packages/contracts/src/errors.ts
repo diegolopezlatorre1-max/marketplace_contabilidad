@@ -23,6 +23,7 @@ export const CODIGOS_ERROR = [
   'ORDEN_DUPLICADA',
   'ORDEN_INEXISTENTE',
   'AJUSTE_EXCEDE_SALDO',
+  'COMISION_NO_CONFIGURADA',
 ] as const;
 
 export type CodigoError = (typeof CODIGOS_ERROR)[number];

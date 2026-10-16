@@ -4,12 +4,15 @@ import type { Router } from 'express';
 import type { AuthContext } from '../application/ports/out/AuthContext';
 import type { Clock } from '../application/ports/out/Clock';
 import type { UnitOfWork } from '../application/ports/out/UnitOfWork';
+import { ConfigurarComisionUseCase } from '../application/commands/ConfigurarComisionUseCase';
+import { ObtenerComisionVigenteQuery } from '../application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../application/queries/ObtenerEstadoModulo';
 import type { AppConfig } from '../infrastructure/config/env';
 import { createContabilidadRouter } from '../infrastructure/http/express/createContabilidadRouter';
 import { JwtAuthContext } from '../infrastructure/integration/auth/JwtAuthContext';
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
+import { PgConfiguracionComisionRepository } from '../infrastructure/persistence/postgres/PgConfiguracionComisionRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
 import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWork';
 
@@ -42,17 +45,21 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
     overrides?.auth ?? (config.AUTH_MODE === 'jwt' ? new JwtAuthContext() : new MockAuthContext());
   const unitOfWork = new PgUnitOfWork(pool);
   const dbHealth = new PgDatabaseHealth(pool);
+  const configuracionComision = new PgConfiguracionComisionRepository(pool);
   // INTEGRATION_MODE elegirá los gateways de Órdenes, Vendedores y Pagos (Sprint 1+).
 
   // Casos de uso / consultas
   const obtenerEstado = new ObtenerEstadoModulo(dbHealth, clock);
+  const obtenerComision = new ObtenerComisionVigenteQuery(configuracionComision, clock);
+  const configurarComision = new ConfigurarComisionUseCase(unitOfWork, clock);
 
   const router = createContabilidadRouter({
     logger,
     auth,
     version: VERSION_MODULO,
     integrationMode: config.INTEGRATION_MODE,
-    queries: { obtenerEstado },
+    queries: { obtenerEstado, obtenerComision },
+    commands: { configurarComision },
   });
 
   return { router, unitOfWork };

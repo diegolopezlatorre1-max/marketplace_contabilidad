@@ -3,6 +3,10 @@ import { pino } from 'pino';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { ConfigurarComisionUseCase } from '../../../src/application/commands/ConfigurarComisionUseCase';
+import type { ConfiguracionComisionRepository } from '../../../src/application/ports/out/ConfiguracionComisionRepository';
+import type { UnitOfWork } from '../../../src/application/ports/out/UnitOfWork';
+import { ObtenerComisionVigenteQuery } from '../../../src/application/queries/ObtenerComisionVigenteQuery';
 import { ObtenerEstadoModulo } from '../../../src/application/queries/ObtenerEstadoModulo';
 import { InvalidValueError } from '../../../src/domain/shared';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
@@ -12,13 +16,28 @@ import { MockAuthContext } from '../../../src/infrastructure/integration/auth/Mo
 const logger = pino({ level: 'silent' });
 const reloj = { now: () => new Date('2026-10-05T10:00:00Z') };
 
+// Sin configuraciones: las pruebas de este archivo solo cubren la capa HTTP.
+const repoVacio = {
+  vigenteEn: async () => null,
+  historial: async () => [],
+} as unknown as ConfiguracionComisionRepository;
+const uowQueFalla: UnitOfWork = {
+  run: async () => {
+    throw Object.assign(new Error('solapada'), { code: '23P01' });
+  },
+};
+
 function app(dbOk = true) {
   const router = createContabilidadRouter({
     logger,
     auth: new MockAuthContext(),
     version: 'test',
     integrationMode: 'mock',
-    queries: { obtenerEstado: new ObtenerEstadoModulo({ ping: async () => dbOk }, reloj) },
+    queries: {
+      obtenerEstado: new ObtenerEstadoModulo({ ping: async () => dbOk }, reloj),
+      obtenerComision: new ObtenerComisionVigenteQuery(repoVacio, reloj),
+    },
+    commands: { configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj) },
   });
   return express().use('/api/v1/contabilidad', router);
 }
@@ -89,6 +108,63 @@ describe('Router del módulo', () => {
     expect(res.status).toBe(200);
     expect(res.body.openapi).toBe('3.0.3');
     expect(Object.keys(res.body.paths)).toContain('/health');
+    expect(Object.keys(res.body.paths)).toContain('/comisiones/configuracion');
+  });
+});
+
+describe('Rutas de comisión', () => {
+  const URL = '/api/v1/contabilidad/comisiones/configuracion';
+  const valido = { porcentaje: '12.5', vigenteDesde: '2026-10-16' };
+
+  it('GET exige autenticación', async () => {
+    expect((await request(app()).get(URL)).status).toBe(401);
+  });
+
+  it('GET responde al contador aunque no haya configuración', async () => {
+    const res = await request(app()).get(URL).set('authorization', 'Bearer mock-contador');
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ fecha: '2026-10-05', vigente: null, historial: [] });
+  });
+
+  it('GET rechaza una fecha mal formada', async () => {
+    const res = await request(app())
+      .get(`${URL}?fecha=16-10-2026`)
+      .set('authorization', 'Bearer mock-contador');
+    expect(res.status).toBe(400);
+  });
+
+  it('PUT es exclusivo del ADMIN_FINANCIERO', async () => {
+    const res = await request(app())
+      .put(URL)
+      .set('authorization', 'Bearer mock-contador')
+      .send(valido);
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('NO_AUTORIZADO');
+  });
+
+  it('PUT valida el cuerpo', async () => {
+    for (const body of [
+      {},
+      { ...valido, porcentaje: '101' },
+      { ...valido, porcentaje: '10.12345' },
+      { ...valido, porcentaje: 12 },
+      { ...valido, vigenteDesde: '2026-02-30' },
+    ]) {
+      const res = await request(app())
+        .put(URL)
+        .set('authorization', 'Bearer mock-admin')
+        .send(body);
+      expect(res.status, JSON.stringify(body)).toBe(400);
+    }
+  });
+
+  it('PUT responde 409 si la BD detecta vigencias solapadas', async () => {
+    const res = await request(app())
+      .put(URL)
+      .set('authorization', 'Bearer mock-admin')
+      .send(valido);
+    expect(res.status).toBe(409);
+    expect(res.body.code).toBe('CONFLICTO');
   });
 });
 

@@ -1,6 +1,8 @@
 export type * from './AuditLogger';
 export type * from './AuthContext';
 export type * from './Clock';
+export type * from './CommissionConfigProvider';
+export type * from './ConfiguracionComisionRepository';
 export type * from './DatabaseHealth';
 export type * from './EventPublisher';
 export type * from './InboxRepository';

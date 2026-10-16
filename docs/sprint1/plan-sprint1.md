@@ -27,12 +27,12 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
-| T-01 | `ConfiguracionComision` (porcentaje, alcance, vigencias) y regla de no solapamiento; al crear una nueva se cierra la anterior. Pruebas unitarias. | Dominio | ⬜ |
-| T-02 | Migración `002_configuracion_comision.sql` y `PgConfiguracionComisionRepository` (implementa el puerto `CommissionConfigProvider`). | BD / Infra | ⬜ |
-| T-03 | `ConfigurarComisionUseCase` (con auditoría) y `ObtenerComisionVigenteQuery`. | Aplicación | ⬜ |
-| T-04 | `GET/PUT /comisiones/configuracion` (PUT solo ADMIN_FINANCIERO), DTOs en `packages/contracts`, OpenAPI, pruebas de integración. | API | ⬜ |
-| T-05 | Pantalla `/configuracion/comision` con historial de vigencias. | Web | ⬜ |
-| T-06 | Seed `010_comision_global.sql` (10 % global desde 2026-01-01). | Seeds | ⬜ |
+| T-01 | `ConfiguracionComision` (porcentaje, alcance, vigencias) y regla de no solapamiento; al crear una nueva se cierra la anterior. Pruebas unitarias. | Dominio | ✅ |
+| T-02 | Migración `002_configuracion_comision.sql` y `PgConfiguracionComisionRepository` (implementa el puerto `CommissionConfigProvider`). | BD / Infra | ✅ |
+| T-03 | `ConfigurarComisionUseCase` (con auditoría) y `ObtenerComisionVigenteQuery`. | Aplicación | ✅ |
+| T-04 | `GET/PUT /comisiones/configuracion` (PUT solo ADMIN_FINANCIERO), DTOs en `packages/contracts`, OpenAPI, pruebas de integración. | API | ✅ |
+| T-05 | Pantalla `/configuracion/comision` con historial de vigencias. Se desarrolla en otra rama. | Web | ⬜ |
+| T-06 | Seed `010_comision_global.sql` (10 % global desde 2026-01-01). | Seeds | ✅ |
 
 ### HU-CON-01 — Carlos
 
