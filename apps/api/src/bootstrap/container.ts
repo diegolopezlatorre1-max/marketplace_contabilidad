@@ -5,6 +5,9 @@ import type { AuthContext } from '../application/ports/out/AuthContext';
 import type { Clock } from '../application/ports/out/Clock';
 import type { UnitOfWork } from '../application/ports/out/UnitOfWork';
 import { ConfigurarComisionUseCase } from '../application/commands/ConfigurarComisionUseCase';
+import { ProcesarAjusteOrdenUseCase } from '../application/commands/ProcesarAjusteOrdenUseCase';
+import { RegistrarAjusteUseCase } from '../application/commands/RegistrarAjusteUseCase';
+import { ListarAjustesQuery } from '../application/queries/ListarAjustesQuery';
 import { RegistrarVentaConfirmadaUseCase } from '../application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentasPorPagarQuery';
 import { ListarPeriodosQuery } from '../application/queries/ListarPeriodosQuery';
@@ -19,6 +22,7 @@ import { JwtAuthContext } from '../infrastructure/integration/auth/JwtAuthContex
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
 import { MockSellersGateway } from '../infrastructure/integration/sellers/MockSellersGateway';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
+import { PgAjusteContableRepository } from '../infrastructure/persistence/postgres/PgAjusteContableRepository';
 import { PgConfiguracionComisionRepository } from '../infrastructure/persistence/postgres/PgConfiguracionComisionRepository';
 import { PgCuentaPorPagarRepository } from '../infrastructure/persistence/postgres/PgCuentaPorPagarRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
@@ -71,6 +75,9 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const listarPeriodos = new ListarPeriodosQuery(ventas);
   const listarCuentasPorPagar = new ListarCuentasPorPagarQuery(cuentasPorPagar, vendedores);
   const resumenSaldoVendedor = new ResumenSaldoVendedorQuery(cuentasPorPagar, vendedores);
+  const registrarAjuste = new RegistrarAjusteUseCase(unitOfWork, clock);
+  const procesarAjusteOrden = new ProcesarAjusteOrdenUseCase(unitOfWork, clock);
+  const listarAjustes = new ListarAjustesQuery(new PgAjusteContableRepository(pool));
 
   const router = createContabilidadRouter({
     logger,
@@ -85,8 +92,9 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       listarPeriodos,
       listarCuentasPorPagar,
       resumenSaldoVendedor,
+      listarAjustes,
     },
-    commands: { configurarComision, registrarVenta },
+    commands: { configurarComision, registrarVenta, registrarAjuste, procesarAjusteOrden },
   });
 
   return { router, unitOfWork };

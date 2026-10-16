@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Contabilidad - Marketplace (API v1)",
-    "description": "Pruebas de la API del módulo de contabilidad (HU-CON-09, HU-CON-01, consultas).\n\nRequisitos: `npm run db:migrate && npm run db:seed` y `npm run dev:api` (AUTH_MODE=mock).\nEjecute la colección completa en orden (Run collection) o con Newman. Ver docs/postman/README.md.",
+    "description": "Pruebas de la API del módulo de contabilidad (HU-CON-09, HU-CON-01, consultas, HU-CON-06 ajustes).\n\nRequisitos: `npm run db:migrate && npm run db:seed` y `npm run dev:api` (AUTH_MODE=mock).\nEjecute la colección completa en orden (Run collection) o con Newman. Ver docs/postman/README.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1214,6 +1214,394 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5. HU-CON-06 Ajustes",
+      "description": "Ajustes por devolución o cancelación (reglas D-07 provisionales). Usa la venta del vendedor 1 ({{ventaId}}, bruto 100.000) y la línea del vendedor 2 de la orden creada en la carpeta 3.",
+      "item": [
+        {
+          "name": "Devolución parcial de 30.000 -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ventaId\": \"{{ventaId}}\",\n  \"tipo\": \"DEVOLUCION\",\n  \"motivo\": \"Producto defectuoso\",\n  \"valor\": \"30000.00\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ajustes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ajustes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const a = pm.response.json();",
+                  "const pct = Number(pm.collectionVariables.get('porcentajeVigente'));",
+                  "pm.test('Comisión revertida con el % original', () => pm.expect(Number(a.comisionRevertida)).to.eql(Math.round(30000 * pct) / 100));",
+                  "pm.test('valor = comisión revertida + neto revertido', () => pm.expect(Number(a.comisionRevertida) + Number(a.netoRevertido)).to.eql(30000));",
+                  "pm.test('Guarda motivo y fecha', () => { pm.expect(a.motivo).to.eql('Producto defectuoso'); pm.expect(a.fechaContable).to.match(/^\\d{4}-\\d{2}-\\d{2}$/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Devolución mayor a lo pendiente -> 422",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ventaId\": \"{{ventaId}}\",\n  \"tipo\": \"DEVOLUCION\",\n  \"motivo\": \"Excede\",\n  \"valor\": \"70000.01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ajustes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ajustes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Código AJUSTE_EXCEDE_SALDO', () => pm.expect(pm.response.json().code).to.eql('AJUSTE_EXCEDE_SALDO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancelación del resto -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ventaId\": \"{{ventaId}}\",\n  \"tipo\": \"CANCELACION\",\n  \"motivo\": \"Cancelación del resto\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ajustes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ajustes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Revierte los 70.000 pendientes', () => pm.expect(pm.response.json().valor).to.eql('70000.00'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta inexistente -> 404",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ventaId\": \"00000000-0000-4000-8000-000000000000\",\n  \"tipo\": \"CANCELACION\",\n  \"motivo\": \"No existe\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/ajustes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ajustes"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));",
+                  "pm.test('Código ORDEN_INEXISTENTE', () => pm.expect(pm.response.json().code).to.eql('ORDEN_INEXISTENTE'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Historial de ajustes de la venta",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/ajustes?ventaId={{ventaId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ajustes"
+              ],
+              "query": [
+                {
+                  "key": "ventaId",
+                  "value": "{{ventaId}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Dos ajustes que suman el valor bruto', () => {",
+                  "  pm.expect(r.total).to.eql(2);",
+                  "  pm.expect(r.items.reduce((s, a) => s + Number(a.valor), 0)).to.eql(100000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Evento orden.cancelada (vendedor 2) -> 201",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}-cancelada\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.cancelada\",\n  \"numeroOrden\": \"{{numeroOrden}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"motivo\": \"Cancelada por el comprador\",\n  \"lineas\": [\n    {\n      \"vendedorId\": \"{{vendedor2}}\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-cancelada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-cancelada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "pm.test('PROCESADO', () => pm.expect(pm.response.json().resultado).to.eql('PROCESADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mismo evento otra vez -> 200 YA_PROCESADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventId}}-cancelada\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.cancelada\",\n  \"numeroOrden\": \"{{numeroOrden}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"motivo\": \"Cancelada por el comprador\",\n  \"lineas\": [\n    {\n      \"vendedorId\": \"{{vendedor2}}\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-cancelada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-cancelada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('YA_PROCESADO', () => pm.expect(pm.response.json().resultado).to.eql('YA_PROCESADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Saldo del vendedor 2 queda en cero",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cuentas-por-pagar/resumen?periodo={{periodo}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cuentas-por-pagar",
+                "resumen"
+              ],
+              "query": [
+                {
+                  "key": "periodo",
+                  "value": "{{periodo}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const v2 = pm.response.json().find((s) => s.vendedorId === pm.collectionVariables.get('vendedor2'));",
+                  "pm.test('Saldo pendiente 0', () => pm.expect(v2.saldoPendiente).to.eql('0.00'));"
                 ]
               }
             }

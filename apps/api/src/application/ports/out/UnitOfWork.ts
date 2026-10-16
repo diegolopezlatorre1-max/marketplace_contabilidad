@@ -1,3 +1,4 @@
+import type { AjusteContableRepository } from './AjusteContableRepository';
 import type { AuditLogger } from './AuditLogger';
 import type { ComisionRepository } from './ComisionRepository';
 import type { ConfiguracionComisionRepository } from './ConfiguracionComisionRepository';
@@ -18,6 +19,7 @@ export interface TransactionalRepositories {
   ventas: VentaContableRepository;
   comisiones: ComisionRepository;
   cuentasPorPagar: CuentaPorPagarRepository;
+  ajustes: AjusteContableRepository;
 }
 
 /** Ejecuta un trabajo de forma atómica: todo se confirma o todo se revierte. */

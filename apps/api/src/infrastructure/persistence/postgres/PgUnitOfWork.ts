@@ -3,6 +3,7 @@ import type {
   TransactionalRepositories,
   UnitOfWork,
 } from '../../../application/ports/out/UnitOfWork';
+import { PgAjusteContableRepository } from './PgAjusteContableRepository';
 import { PgAuditLogger } from './PgAuditLogger';
 import { PgComisionRepository } from './PgComisionRepository';
 import { PgConfiguracionComisionRepository } from './PgConfiguracionComisionRepository';
@@ -22,6 +23,7 @@ export function createRepositories(db: Queryable): TransactionalRepositories {
     ventas: new PgVentaContableRepository(db),
     comisiones: new PgComisionRepository(db),
     cuentasPorPagar: new PgCuentaPorPagarRepository(db),
+    ajustes: new PgAjusteContableRepository(db),
   };
 }
 

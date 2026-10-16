@@ -1,3 +1,4 @@
+export type * from './AjusteContableRepository';
 export type * from './AuditLogger';
 export type * from './AuthContext';
 export type * from './Clock';

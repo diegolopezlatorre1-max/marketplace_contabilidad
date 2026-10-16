@@ -1,3 +1,5 @@
+import { aAjusteRegistrado } from '../../../src/application/commands/aplicarAjuste';
+import type { AjusteContableRepository } from '../../../src/application/ports/out/AjusteContableRepository';
 import type { RegistroAuditoria } from '../../../src/application/ports/out/AuditLogger';
 import type { EventoDeIntegracion } from '../../../src/application/ports/out/EventPublisher';
 import type {
@@ -8,6 +10,7 @@ import type {
   FiltroVentas,
   VentaContableRepository,
 } from '../../../src/application/ports/out/VentaContableRepository';
+import type { AjusteContable } from '../../../src/domain/ajuste/AjusteContable';
 import type { ComisionVenta } from '../../../src/domain/comision/ComisionVenta';
 import {
   ComisionNoConfiguradaError,
@@ -29,6 +32,7 @@ export interface DatosEnMemoria {
   ventas: Array<{ venta: VentaContable; eventId: string }>;
   comisiones: Array<{ ventaId: string; comision: ComisionVenta }>;
   cuentas: Array<{ vendedorId: string; periodo: string; totalNeto: Money; pagado: Money }>;
+  ajustes: Array<{ ajuste: AjusteContable; registradoEn: Date }>;
 }
 
 function vacio(): DatosEnMemoria {
@@ -41,6 +45,7 @@ function vacio(): DatosEnMemoria {
     ventas: [],
     comisiones: [],
     cuentas: [],
+    ajustes: [],
   };
 }
 
@@ -63,6 +68,44 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
       comision: c?.comision.toString() ?? null,
       valorNeto: c?.valorNeto.toString() ?? null,
     };
+  };
+
+  // En memoria no hay instante de registro aparte: se usa el de la orden.
+  const detalle = (venta: VentaContable | undefined) =>
+    venta ? { ...conComision(venta), registradoEn: venta.fecha.toISOString() } : null;
+
+  const ajustes: AjusteContableRepository = {
+    guardar: async (ajuste, registradoEn) => void db.datos.ajustes.push({ ajuste, registradoEn }),
+    previosDeVenta: async (ventaId) =>
+      db.datos.ajustes
+        .filter(({ ajuste }) => ajuste.ventaId === ventaId)
+        .reduce(
+          (acc, { ajuste }) => ({
+            valor: acc.valor.add(ajuste.valor),
+            comision: acc.comision.add(ajuste.comisionRevertida),
+            neto: acc.neto.add(ajuste.netoRevertido),
+          }),
+          { valor: Money.CERO, comision: Money.CERO, neto: Money.CERO },
+        ),
+    listar: async (f) => {
+      const items = db.datos.ajustes
+        .filter(
+          ({ ajuste: a }) =>
+            (!f.ventaId || a.ventaId === f.ventaId) &&
+            (!f.vendedorId || a.vendedorId === f.vendedorId) &&
+            (!f.desde || a.fechaContable >= f.desde) &&
+            (!f.hasta || a.fechaContable <= f.hasta),
+        )
+        .sort((x, y) => y.ajuste.fecha.getTime() - x.ajuste.fecha.getTime())
+        .map(({ ajuste, registradoEn }) => aAjusteRegistrado(ajuste, registradoEn));
+      const inicio = (f.page - 1) * f.size;
+      return {
+        items: items.slice(inicio, inicio + f.size),
+        page: f.page,
+        size: f.size,
+        total: items.length,
+      };
+    },
   };
 
   const ventas: VentaContableRepository = {
@@ -92,11 +135,13 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
         total: items.length,
       };
     },
-    obtener: async (id) => {
-      const venta = db.datos.ventas.find(({ venta: v }) => v.id === id)?.venta;
-      // En memoria no hay instante de registro aparte: se usa el de la orden.
-      return venta ? { ...conComision(venta), registradoEn: venta.fecha.toISOString() } : null;
-    },
+    obtener: async (id) => detalle(db.datos.ventas.find(({ venta: v }) => v.id === id)?.venta),
+    obtenerPorOrden: async (numeroOrden, vendedorId) =>
+      detalle(
+        db.datos.ventas.find(
+          ({ venta: v }) => v.numeroOrden === numeroOrden && v.vendedorId === vendedorId,
+        )?.venta,
+      ),
     listarPeriodos: async () =>
       [...new Set(db.datos.ventas.map(({ venta }) => venta.periodo.codigo))].sort().reverse(),
   };
@@ -128,6 +173,7 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
       },
     },
     ventas,
+    ajustes,
     comisiones: {
       guardar: async (ventaId, comision) => void db.datos.comisiones.push({ ventaId, comision }),
     },
