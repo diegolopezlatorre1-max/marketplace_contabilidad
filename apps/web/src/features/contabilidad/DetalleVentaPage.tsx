@@ -147,11 +147,11 @@ function TablaAjustes({ filas }: { filas: AjusteFila[] }) {
           <tr>
             <th>Fecha</th>
             <th>Tipo</th>
-            <th>Motivo</th>
+            <th className="cp-envolver">Motivo</th>
             <th className="cp-num">Valor</th>
-            <th className="cp-num">Comisión revertida</th>
-            <th className="cp-num">Neto revertido</th>
-            <th className="cp-num">Saldo a favor</th>
+            <th className="cp-num cp-envolver">Comisión revertida</th>
+            <th className="cp-num cp-envolver">Neto revertido</th>
+            <th className="cp-num cp-envolver">Saldo a favor</th>
             <th>Origen</th>
           </tr>
         </thead>
@@ -160,12 +160,14 @@ function TablaAjustes({ filas }: { filas: AjusteFila[] }) {
             <tr key={a.id}>
               <td>{a.fechaContable}</td>
               <td>{a.tipo === 'DEVOLUCION' ? 'Devolución' : 'Cancelación'}</td>
-              <td>{a.motivo}</td>
+              <td className="cp-envolver">{a.motivo}</td>
               <td className="cp-num">{formatoCOP(a.valor)}</td>
               <td className="cp-num">{formatoCOP(a.comisionRevertida)}</td>
               <td className="cp-num">{formatoCOP(a.netoRevertido)}</td>
               <td className="cp-num">{formatoCOP(a.saldoAFavor)}</td>
-              <td>{a.origen === 'MANUAL' ? `Manual (${a.registradoPor})` : 'Módulo de Órdenes'}</td>
+              <td className="cp-envolver">
+                {a.origen === 'MANUAL' ? `Manual (${a.registradoPor})` : 'Módulo de Órdenes'}
+              </td>
             </tr>
           ))}
         </tbody>
