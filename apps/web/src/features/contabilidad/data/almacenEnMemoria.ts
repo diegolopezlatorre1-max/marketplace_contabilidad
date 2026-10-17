@@ -1,10 +1,12 @@
 import { aCentavos, deCentavos } from '../lib/formato';
 import type {
+  AjusteDeVenta,
   AjusteFila,
   ComisionFila,
   CuentaPorPagarFila,
   NuevaVenta,
   NuevoAjuste,
+  FiltroAjustes,
   FiltroReporte,
   NuevoPago,
   ReporteIngresos,
@@ -252,6 +254,21 @@ export class AlmacenContabilidad {
       .reverse();
   }
 
+  buscarAjustes({ desde, hasta, vendedorId }: FiltroAjustes): AjusteDeVenta[] {
+    return this.ajustes
+      .map(({ ventaId, fila }) => {
+        const venta = this.comisiones.find((c) => c.id === ventaId)!;
+        return { ...fila, ventaId, numeroOrden: venta.numeroOrden, vendedorId: venta.vendedorId };
+      })
+      .filter(
+        (a) =>
+          (!desde || a.fechaContable >= desde) &&
+          (!hasta || a.fechaContable <= hasta) &&
+          (!vendedorId || a.vendedorId === vendedorId),
+      )
+      .reverse();
+  }
+
   registrarAjuste(nuevo: NuevoAjuste): AjusteFila {
     const venta = this.comisiones.find((c) => c.id === nuevo.ventaId);
     if (!venta) throw new ErrorDeNegocio(`No existe la venta ${nuevo.ventaId}`);
@@ -456,6 +473,10 @@ export function crearApiEnMemoria(almacen: AlmacenContabilidad, retardoMs = 0): 
     async registrarAjuste(ajuste) {
       await espera();
       return almacen.registrarAjuste(ajuste);
+    },
+    async buscarAjustes(filtro) {
+      await espera();
+      return almacen.buscarAjustes(filtro);
     },
     async obtenerReporte(filtro) {
       await espera();

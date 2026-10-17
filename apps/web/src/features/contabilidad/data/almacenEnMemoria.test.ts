@@ -140,6 +140,10 @@ describe('AlmacenContabilidad (reglas de HU-09, 01, 02 y 03)', () => {
       netoRevertido: '43.76',
     });
     expect(a.listarAjustes(v.id).map((x) => x.id)).toEqual([cierre.id, parcial.id]);
+    expect(a.buscarAjustes({ desde: '2026-10-07' })).toEqual([
+      { ...cierre, ventaId: v.id, numeroOrden: 'ORD-1', vendedorId: v.vendedorId },
+    ]);
+    expect(a.buscarAjustes({ vendedorId: 'otro' })).toEqual([]);
     expect(a.listarCuentasPorPagar({ periodo: '2026-10-Q1' })[0]?.saldoPendiente).toBe('0.00');
     expect(() =>
       a.registrarAjuste({ ventaId: v.id, tipo: 'CANCELACION', motivo: 'x', fecha: '2026-10-07' }),

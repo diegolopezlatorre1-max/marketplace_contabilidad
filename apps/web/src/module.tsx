@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { Route, Routes, useLocation, useParams } from 'react-router-dom';
 import type { UsuarioActualResponse } from '@contabilidad/contracts';
 import { ConciliacionesPage } from './features/conciliacion/ConciliacionesPage';
+import { AjustesPage } from './features/contabilidad/AjustesPage';
 import { ConfiguracionComisionPanel } from './features/contabilidad/ConfiguracionComisionPanel';
 import { ContabilidadPanel } from './features/contabilidad/ContabilidadPanel';
 import { crearContabilidadApiRest } from './features/contabilidad/data/contabilidadApiRest';
@@ -142,6 +143,14 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
             element={
               <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
                 <ConciliacionesPage />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="ajustes"
+            element={
+              <RequireRole roles={['CONTADOR']}>
+                <AjustesPage api={contabilidad} rutaVenta={rutaVenta} />
               </RequireRole>
             }
           />

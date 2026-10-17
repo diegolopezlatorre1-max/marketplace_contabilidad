@@ -154,6 +154,9 @@ describe('crearContabilidadApiRest', () => {
         body: { items: [ajuste], page: 1, size: 200, total: 1 },
       },
       '/api/ajustes': { status: 201, body: ajuste },
+      '/api/ajustes?desde=2026-10-01&hasta=2026-10-31&vendedorId=V-1&page=1&size=200': {
+        body: { items: [ajuste], page: 1, size: 200, total: 1 },
+      },
     });
     const fila = {
       id: 'aj-1',
@@ -168,6 +171,9 @@ describe('crearContabilidadApiRest', () => {
       registradoPor: 'u-contador',
     };
     await expect(contabilidad.listarAjustes('id-ORD-1')).resolves.toEqual([fila]);
+    await expect(
+      contabilidad.buscarAjustes({ desde: '2026-10-01', hasta: '2026-10-31', vendedorId: 'V-1' }),
+    ).resolves.toEqual([{ ...fila, ventaId: 'id-ORD-1', numeroOrden: 'ORD-1', vendedorId: 'V-1' }]);
 
     const nuevo = {
       ventaId: 'id-ORD-1',

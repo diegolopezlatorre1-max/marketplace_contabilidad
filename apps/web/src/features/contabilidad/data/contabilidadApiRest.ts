@@ -11,7 +11,7 @@ import type {
   VigenciaComisionDto,
 } from '@contabilidad/contracts';
 import type { ApiClient } from '../../../shared/api/client';
-import type { AjusteFila, ComisionFila, VigenciaPorcentaje } from '../types';
+import type { AjusteDeVenta, AjusteFila, ComisionFila, VigenciaPorcentaje } from '../types';
 import type { ContabilidadApi } from './puerto';
 
 /** Máximo que acepta GET /ventas por página. */
@@ -137,6 +137,24 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
 
     async registrarAjuste(ajuste) {
       return aAjusteFila(await api.post<AjusteDto>('/ajustes', ajuste));
+    },
+
+    async buscarAjustes({ desde, hasta, vendedorId }) {
+      const filas: AjusteDeVenta[] = [];
+      for (let page = 1; ; page++) {
+        const pagina = await api.get<Pagina<AjusteDto>>(
+          `/ajustes${query({ desde, hasta, vendedorId, page: String(page), size: String(TAMANO_PAGINA) })}`,
+        );
+        filas.push(
+          ...pagina.items.map((a) => ({
+            ...aAjusteFila(a),
+            ventaId: a.ventaId,
+            numeroOrden: a.numeroOrden,
+            vendedorId: a.vendedorId,
+          })),
+        );
+        if (filas.length >= pagina.total || pagina.items.length === 0) return filas;
+      }
     },
 
     async obtenerReporte({ desde, hasta, vendedorId }) {

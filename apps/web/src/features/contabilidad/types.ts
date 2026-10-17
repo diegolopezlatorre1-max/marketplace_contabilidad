@@ -12,6 +12,13 @@ export interface FiltroReporte {
   vendedorId?: string | undefined;
 }
 
+/** HU-CON-06: filtros del historial general de ajustes (fechas del ajuste, inclusive). */
+export interface FiltroAjustes {
+  desde?: string | undefined;
+  hasta?: string | undefined;
+  vendedorId?: string | undefined;
+}
+
 export interface ComisionFila {
   /** Identificador de la venta (abre su detalle). */
   id: string;
@@ -49,6 +56,13 @@ export interface AjusteFila {
   saldoAFavor: string;
   origen: 'MANUAL' | 'EVENTO';
   registradoPor: string;
+}
+
+/** HU-CON-06: ajuste con la venta a la que pertenece (historial general). */
+export interface AjusteDeVenta extends AjusteFila {
+  ventaId: string;
+  numeroOrden: string;
+  vendedorId: string;
 }
 
 /** HU-CON-06: ajuste que registra el contador. La cancelación no lleva valor. */

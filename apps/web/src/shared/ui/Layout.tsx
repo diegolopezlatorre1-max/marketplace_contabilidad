@@ -17,7 +17,7 @@ const MENU: ItemMenu[] = [
   { to: 'configuracion/comision', label: 'Comisión', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
   { to: 'cuentas-por-pagar', label: 'Cuentas por pagar', roles: ['CONTADOR'] },
   { to: 'conciliaciones', label: 'Conciliación', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
-  { to: 'ajustes', label: 'Ajustes', roles: ['CONTADOR'], sprint: 2 },
+  { to: 'ajustes', label: 'Ajustes', roles: ['CONTADOR'] },
   { to: 'reportes/ingresos', label: 'Reportes', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
   { to: 'auditoria', label: 'Auditoría', roles: ['ADMIN_FINANCIERO'], sprint: 3 },
   { to: 'documentacion-api', label: 'Documentación API', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
