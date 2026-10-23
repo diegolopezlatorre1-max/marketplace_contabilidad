@@ -129,6 +129,83 @@ describe('crearContabilidadApiRest', () => {
     ).resolves.toEqual([cuenta]);
   });
 
+  it('lista y registra ajustes de una venta (HU-CON-06)', async () => {
+    const ajuste = {
+      id: 'aj-1',
+      ventaId: 'id-ORD-1',
+      numeroOrden: 'ORD-1',
+      vendedorId: 'V-1',
+      tipo: 'DEVOLUCION',
+      motivo: 'Producto defectuoso',
+      fecha: '2026-10-10T17:00:00.000Z',
+      fechaContable: '2026-10-10',
+      periodo: '2026-10-Q1',
+      valor: '30000.00',
+      porcentajeAplicado: '10.0000',
+      comisionRevertida: '3000.00',
+      netoRevertido: '27000.00',
+      saldoAFavor: '0.00',
+      origen: 'MANUAL',
+      registradoPor: 'u-contador',
+      registradoEn: '2026-10-10T17:00:01.000Z',
+    };
+    const { contabilidad, fetchFn } = crear({
+      '/api/ajustes?ventaId=id-ORD-1&size=200': {
+        body: { items: [ajuste], page: 1, size: 200, total: 1 },
+      },
+      '/api/ajustes': { status: 201, body: ajuste },
+      '/api/ajustes?desde=2026-10-01&hasta=2026-10-31&vendedorId=V-1&page=1&size=200': {
+        body: { items: [ajuste], page: 1, size: 200, total: 1 },
+      },
+    });
+    const fila = {
+      id: 'aj-1',
+      tipo: 'DEVOLUCION',
+      motivo: 'Producto defectuoso',
+      fechaContable: '2026-10-10',
+      valor: '30000.00',
+      comisionRevertida: '3000.00',
+      netoRevertido: '27000.00',
+      saldoAFavor: '0.00',
+      origen: 'MANUAL',
+      registradoPor: 'u-contador',
+    };
+    await expect(contabilidad.listarAjustes('id-ORD-1')).resolves.toEqual([fila]);
+    await expect(
+      contabilidad.buscarAjustes({ desde: '2026-10-01', hasta: '2026-10-31', vendedorId: 'V-1' }),
+    ).resolves.toEqual([{ ...fila, ventaId: 'id-ORD-1', numeroOrden: 'ORD-1', vendedorId: 'V-1' }]);
+
+    const nuevo = {
+      ventaId: 'id-ORD-1',
+      tipo: 'DEVOLUCION' as const,
+      motivo: 'Producto defectuoso',
+      valor: '30000',
+    };
+    await expect(contabilidad.registrarAjuste(nuevo)).resolves.toEqual(fila);
+    const [, opciones] = fetchFn.mock.calls.at(-1) as unknown as [string, RequestInit];
+    expect(opciones.method).toBe('POST');
+    expect(JSON.parse(String(opciones.body))).toEqual(nuevo);
+  });
+
+  it('obtiene el reporte de ingresos del rango (HU-CON-05)', async () => {
+    const reporte = {
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
+      vendedorId: 'V-1',
+      ventas: { cantidad: 1, valorBruto: '100000.00', comision: '10000.00', valorNeto: '90000.00' },
+      ajustes: { cantidad: 0, valorBruto: '0.00', comision: '0.00', valorNeto: '0.00' },
+      totales: { valorBruto: '100000.00', comision: '10000.00', valorNeto: '90000.00' },
+      control: { cuadra: true, detalle: 'ok' },
+      porDia: [],
+    };
+    const { contabilidad } = crear({
+      '/api/reportes/ingresos?desde=2026-10-01&hasta=2026-10-31&vendedorId=V-1': { body: reporte },
+    });
+    await expect(
+      contabilidad.obtenerReporte({ desde: '2026-10-01', hasta: '2026-10-31', vendedorId: 'V-1' }),
+    ).resolves.toEqual(reporte);
+  });
+
   it('lee y configura vigencias del porcentaje', async () => {
     const historial = [
       {

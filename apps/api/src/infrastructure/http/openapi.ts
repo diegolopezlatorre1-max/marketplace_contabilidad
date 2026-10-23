@@ -67,6 +67,16 @@ export function buildOpenApi(version: string) {
           'Pagos recibidos de la pasarela y su conciliación contra órdenes; la diferencia ' +
           'decide el estado CONCILIADA o PENDIENTE (HU-CON-04).',
       },
+      {
+        name: 'Reportes',
+        description:
+          'Ingresos y comisiones por rango de días contables en hora de Colombia (HU-CON-05).',
+      },
+      {
+        name: 'Ajustes',
+        description:
+          'Devoluciones y cancelaciones: revierten comisión y neto con el % original (HU-CON-06, D-07 provisional).',
+      },
     ],
     components: {
       securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } },
@@ -366,6 +376,195 @@ export function buildOpenApi(version: string) {
             },
           },
         },
+        RegistrarAjuste: {
+          type: 'object',
+          required: ['ventaId', 'tipo', 'motivo'],
+          properties: {
+            ventaId: { type: 'string', format: 'uuid' },
+            tipo: { type: 'string', enum: ['DEVOLUCION', 'CANCELACION'] },
+            motivo: { type: 'string', example: 'Producto defectuoso', maxLength: 500 },
+            valor: {
+              type: 'string',
+              example: '30000.00',
+              description:
+                'Obligatorio en DEVOLUCION (puede ser parcial); no se envía en CANCELACION, que revierte todo lo no ajustado',
+            },
+            fecha: {
+              type: 'string',
+              format: 'date',
+              description: 'Día del ajuste (hora de Colombia); por defecto, hoy',
+            },
+          },
+        },
+        Ajuste: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            ventaId: { type: 'string', format: 'uuid' },
+            numeroOrden: { type: 'string', example: 'ORD-1001' },
+            vendedorId: { type: 'string', example: 'V-1' },
+            tipo: { type: 'string', enum: ['DEVOLUCION', 'CANCELACION'] },
+            motivo: { type: 'string' },
+            fecha: { type: 'string', format: 'date-time' },
+            fechaContable: {
+              type: 'string',
+              format: 'date',
+              description: 'Día del ajuste; el reporte de ingresos lo ubica por esta fecha',
+            },
+            periodo: { type: 'string', example: '2026-10-Q2', description: 'Quincena del ajuste' },
+            valor: { type: 'string', example: '30000.00' },
+            porcentajeAplicado: {
+              type: 'string',
+              example: '10.0000',
+              description: 'El de la venta original',
+            },
+            comisionRevertida: { type: 'string', example: '3000.00' },
+            netoRevertido: { type: 'string', example: '27000.00' },
+            saldoAFavor: {
+              type: 'string',
+              example: '0.00',
+              description: 'Parte del neto revertido que ya se había pagado al vendedor',
+            },
+            origen: { type: 'string', enum: ['MANUAL', 'EVENTO'] },
+            registradoPor: { type: 'string' },
+            registradoEn: { type: 'string', format: 'date-time' },
+          },
+        },
+        PaginaAjustes: {
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { $ref: '#/components/schemas/Ajuste' } },
+            page: { type: 'integer' },
+            size: { type: 'integer' },
+            total: { type: 'integer' },
+          },
+        },
+        OrdenCancelada: {
+          type: 'object',
+          description: 'Evento orden.cancelada v1 (docs/fase0/contratos-integracion.md)',
+          required: [
+            'eventId',
+            'version',
+            'ocurridoEn',
+            'tipo',
+            'numeroOrden',
+            'fecha',
+            'motivo',
+            'lineas',
+          ],
+          properties: {
+            eventId: { type: 'string', example: 'evt-002' },
+            version: { type: 'integer', enum: [1] },
+            ocurridoEn: { type: 'string', format: 'date-time' },
+            tipo: { type: 'string', enum: ['orden.cancelada'] },
+            numeroOrden: { type: 'string', example: 'ORD-1001' },
+            fecha: { type: 'string', format: 'date-time', example: '2026-10-08T10:00:00-05:00' },
+            motivo: { type: 'string', example: 'Cancelada por el comprador' },
+            lineas: {
+              type: 'array',
+              minItems: 1,
+              items: {
+                type: 'object',
+                required: ['vendedorId'],
+                properties: { vendedorId: { type: 'string', example: 'V-1' } },
+              },
+            },
+          },
+        },
+        OrdenDevuelta: {
+          type: 'object',
+          description: 'Evento orden.devuelta v1; admite devoluciones parciales',
+          required: [
+            'eventId',
+            'version',
+            'ocurridoEn',
+            'tipo',
+            'numeroOrden',
+            'fecha',
+            'motivo',
+            'lineas',
+          ],
+          properties: {
+            eventId: { type: 'string', example: 'evt-003' },
+            version: { type: 'integer', enum: [1] },
+            ocurridoEn: { type: 'string', format: 'date-time' },
+            tipo: { type: 'string', enum: ['orden.devuelta'] },
+            numeroOrden: { type: 'string', example: 'ORD-1001' },
+            fecha: { type: 'string', format: 'date-time', example: '2026-10-08T10:00:00-05:00' },
+            motivo: { type: 'string', example: 'Producto defectuoso' },
+            lineas: {
+              type: 'array',
+              minItems: 1,
+              items: {
+                type: 'object',
+                required: ['vendedorId', 'valorDevuelto'],
+                properties: {
+                  vendedorId: { type: 'string', example: 'V-1' },
+                  valorDevuelto: { type: 'string', example: '30000.00' },
+                },
+              },
+            },
+          },
+        },
+        Montos: {
+          type: 'object',
+          properties: {
+            valorBruto: { type: 'string', example: '150000.00' },
+            comision: { type: 'string', example: '15000.00' },
+            valorNeto: { type: 'string', example: '135000.00' },
+          },
+        },
+        TotalesMovimientos: {
+          type: 'object',
+          properties: {
+            cantidad: { type: 'integer', example: 2 },
+            valorBruto: { type: 'string', example: '150000.00' },
+            comision: { type: 'string', example: '15000.00' },
+            valorNeto: { type: 'string', example: '135000.00' },
+          },
+        },
+        ReporteIngresosDia: {
+          type: 'object',
+          properties: {
+            fecha: {
+              type: 'string',
+              format: 'date',
+              description: 'Día contable (hora de Colombia)',
+            },
+            ventas: { $ref: '#/components/schemas/TotalesMovimientos' },
+            ajustes: { $ref: '#/components/schemas/TotalesMovimientos' },
+            totales: { $ref: '#/components/schemas/Montos' },
+          },
+        },
+        ReporteIngresos: {
+          type: 'object',
+          properties: {
+            desde: { type: 'string', format: 'date' },
+            hasta: { type: 'string', format: 'date' },
+            vendedorId: { type: 'string', nullable: true },
+            ventas: { $ref: '#/components/schemas/TotalesMovimientos' },
+            ajustes: {
+              allOf: [{ $ref: '#/components/schemas/TotalesMovimientos' }],
+              description:
+                'Lo revertido por ajustes con fecha dentro del rango (valores positivos)',
+            },
+            totales: {
+              allOf: [{ $ref: '#/components/schemas/Montos' }],
+              description: 'Ventas menos ajustes',
+            },
+            control: {
+              type: 'object',
+              properties: {
+                cuadra: { type: 'boolean' },
+                detalle: { type: 'string' },
+              },
+            },
+            porDia: {
+              type: 'array',
+              items: { $ref: '#/components/schemas/ReporteIngresosDia' },
+            },
+          },
+        },
         PaginaVentas: {
           type: 'object',
           properties: {
@@ -628,6 +827,176 @@ export function buildOpenApi(version: string) {
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
             '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/reportes/ingresos': {
+        get: {
+          tags: ['Reportes'],
+          summary: 'Ingresos y comisiones por rango de fechas (HU-CON-05)',
+          description:
+            'Días contables en hora de Colombia (America/Bogota), inclusive; máximo 366 días. ' +
+            'Las ventas se ubican por su fecha y los ajustes por la fecha del ajuste. ' +
+            'totales = ventas − ajustes; control verifica bruto = comisión + neto.',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'desde',
+              in: 'query',
+              required: true,
+              schema: { type: 'string', format: 'date' },
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              required: true,
+              schema: { type: 'string', format: 'date' },
+            },
+            { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
+          ],
+          responses: {
+            '200': {
+              description: 'Reporte del rango',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ReporteIngresos' } },
+              },
+            },
+            '400': problema('Rango inválido (falta una fecha, desde > hasta o más de 366 días)'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+      },
+      '/ajustes': {
+        get: {
+          tags: ['Ajustes'],
+          summary: 'Historial de ajustes por venta, vendedor y fecha del ajuste (HU-CON-06)',
+          security: [{ bearer: [] }],
+          parameters: [
+            { name: 'ventaId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+            { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'desde',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha del ajuste inicial (inclusive)',
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha del ajuste final (inclusive)',
+            },
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            {
+              name: 'size',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Página de ajustes, del más reciente al más antiguo',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/PaginaAjustes' } },
+              },
+            },
+            '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+        post: {
+          tags: ['Ajustes'],
+          summary: 'Registra una devolución o cancelación sobre una venta existente (HU-CON-06)',
+          description:
+            'Revierte comisión y neto con el % aplicado en la venta y actualiza el saldo de la cuenta ' +
+            'por pagar. Reglas D-07 provisionales, pendientes de validar con el Contador.',
+          security: [{ bearer: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/RegistrarAjuste' } },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Ajuste registrado',
+              content: { 'application/json': { schema: { $ref: '#/components/schemas/Ajuste' } } },
+            },
+            '400': problema('Datos inválidos (p. ej. fecha anterior a la venta o futura)'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR'),
+            '404': problema('ORDEN_INEXISTENTE: la venta no existe'),
+            '422': problema('AJUSTE_EXCEDE_SALDO: supera lo que queda por ajustar'),
+          },
+        },
+      },
+      '/eventos/orden-cancelada': {
+        post: {
+          tags: ['Ajustes'],
+          summary:
+            'Cancelación de una orden: revierte todo lo no ajustado de cada línea (HU-CON-06)',
+          description:
+            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId. Una orden que ' +
+            'nunca se registró (p. ej. cancelada antes de confirmarse) responde IGNORADO.',
+          security: [{ bearer: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/OrdenCancelada' } },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'PROCESADO: ajustes registrados',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EventoProcesado' } },
+              },
+            },
+            '200': {
+              description: 'YA_PROCESADO (evento repetido) o IGNORADO (sin ventas que ajustar)',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EventoProcesado' } },
+              },
+            },
+            '400': problema('El evento no cumple el contrato v1'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol SISTEMA'),
+          },
+        },
+      },
+      '/eventos/orden-devuelta': {
+        post: {
+          tags: ['Ajustes'],
+          summary: 'Devolución total o parcial de una orden (HU-CON-06)',
+          description:
+            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId. Si una línea ' +
+            'supera lo que queda por ajustar, responde 422 y no registra nada del evento.',
+          security: [{ bearer: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': { schema: { $ref: '#/components/schemas/OrdenDevuelta' } },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'PROCESADO: ajustes registrados',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EventoProcesado' } },
+              },
+            },
+            '200': {
+              description: 'YA_PROCESADO (evento repetido) o IGNORADO (sin ventas que ajustar)',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EventoProcesado' } },
+              },
+            },
+            '400': problema('El evento no cumple el contrato v1'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol SISTEMA'),
+            '422': problema('AJUSTE_EXCEDE_SALDO: una línea supera lo que queda por ajustar'),
           },
         },
       },

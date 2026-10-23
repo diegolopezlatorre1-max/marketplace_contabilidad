@@ -11,6 +11,9 @@ import type {
   ListarPagosRecibidosQuery,
   ObtenerConciliacionQuery,
 } from '../../../application/queries/ConciliacionQueries';
+import type { ProcesarAjusteOrdenUseCase } from '../../../application/commands/ProcesarAjusteOrdenUseCase';
+import type { RegistrarAjusteUseCase } from '../../../application/commands/RegistrarAjusteUseCase';
+import type { ListarAjustesQuery } from '../../../application/queries/ListarAjustesQuery';
 import type { RegistrarVentaConfirmadaUseCase } from '../../../application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ListarCuentasPorPagarQuery } from '../../../application/queries/ListarCuentasPorPagarQuery';
 import type { ListarPeriodosQuery } from '../../../application/queries/ListarPeriodosQuery';
@@ -18,15 +21,18 @@ import type { ListarVentasQuery } from '../../../application/queries/ListarVenta
 import type { ObtenerComisionVigenteQuery } from '../../../application/queries/ObtenerComisionVigenteQuery';
 import type { ObtenerEstadoModulo } from '../../../application/queries/ObtenerEstadoModulo';
 import type { ObtenerVentaQuery } from '../../../application/queries/ObtenerVentaQuery';
+import type { ReporteIngresosQuery } from '../../../application/queries/ReporteIngresosQuery';
 import type { ResumenSaldoVendedorQuery } from '../../../application/queries/ResumenSaldoVendedorQuery';
 import type { AuthContext } from '../../../application/ports/out/AuthContext';
 import { authenticate } from '../middlewares/auth';
 import { correlationId } from '../middlewares/correlationId';
 import { errorHandler, notFound } from '../middlewares/errorHandler';
 import { buildOpenApi } from '../openapi';
+import { ajustesRoutes } from '../routes/ajustesRoutes';
 import { comisionesRoutes } from '../routes/comisionesRoutes';
 import { conciliacionesRoutes } from '../routes/conciliacionesRoutes';
 import { cuentasPorPagarRoutes } from '../routes/cuentasPorPagarRoutes';
+import { reportesRoutes } from '../routes/reportesRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
 import { ventasRoutes } from '../routes/ventasRoutes';
 
@@ -46,6 +52,8 @@ export interface RouterDeps {
     listarConciliaciones: ListarConciliacionesQuery;
     obtenerConciliacion: ObtenerConciliacionQuery;
     resumenSaldoVendedor: ResumenSaldoVendedorQuery;
+    listarAjustes: ListarAjustesQuery;
+    reporteIngresos: ReporteIngresosQuery;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
@@ -53,6 +61,8 @@ export interface RouterDeps {
     registrarPago: RegistrarPagoRecibidoUseCase;
     importarPagos: ImportarPagosRecibidosUseCase;
     conciliarPago: ConciliarPagoUseCase;
+    registrarAjuste: RegistrarAjusteUseCase;
+    procesarAjusteOrden: ProcesarAjusteOrdenUseCase;
   };
 }
 
@@ -112,6 +122,14 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
       obtenerConciliacion: deps.queries.obtenerConciliacion,
     }),
   );
+  router.use(
+    ajustesRoutes({
+      registrarAjuste: deps.commands.registrarAjuste,
+      procesarAjusteOrden: deps.commands.procesarAjusteOrden,
+      listarAjustes: deps.queries.listarAjustes,
+    }),
+  );
+  router.use(reportesRoutes({ reporteIngresos: deps.queries.reporteIngresos }));
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

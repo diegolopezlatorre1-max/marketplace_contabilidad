@@ -1,15 +1,17 @@
 import type {
+  AjusteDto,
   ConfiguracionComisionResponse,
   CuentaPorPagarDto,
   Pagina,
   PeriodosResponse,
+  ReporteIngresosDto,
   ResumenSaldoVendedorDto,
   VentaDetalleDto,
   VentaDto,
   VigenciaComisionDto,
 } from '@contabilidad/contracts';
 import type { ApiClient } from '../../../shared/api/client';
-import type { ComisionFila, VigenciaPorcentaje } from '../types';
+import type { AjusteDeVenta, AjusteFila, ComisionFila, VigenciaPorcentaje } from '../types';
 import type { ContabilidadApi } from './puerto';
 
 /** Máximo que acepta GET /ventas por página. */
@@ -42,6 +44,21 @@ function aComisionFila(v: VentaDto): ComisionFila {
     porcentajeAplicado: v.porcentajeAplicado ?? '0',
     comision: v.comision ?? '0.00',
     valorNeto: v.valorNeto ?? '0.00',
+  };
+}
+
+function aAjusteFila(a: AjusteDto): AjusteFila {
+  return {
+    id: a.id,
+    tipo: a.tipo,
+    motivo: a.motivo,
+    fechaContable: a.fechaContable,
+    valor: a.valor,
+    comisionRevertida: a.comisionRevertida,
+    netoRevertido: a.netoRevertido,
+    saldoAFavor: a.saldoAFavor,
+    origen: a.origen,
+    registradoPor: a.registradoPor,
   };
 }
 
@@ -109,6 +126,41 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
 
     async resumirPorVendedor(periodo) {
       return api.get<ResumenSaldoVendedorDto[]>(`/cuentas-por-pagar/resumen${query({ periodo })}`);
+    },
+
+    async listarAjustes(ventaId) {
+      const pagina = await api.get<Pagina<AjusteDto>>(
+        `/ajustes${query({ ventaId, size: String(TAMANO_PAGINA) })}`,
+      );
+      return pagina.items.map(aAjusteFila);
+    },
+
+    async registrarAjuste(ajuste) {
+      return aAjusteFila(await api.post<AjusteDto>('/ajustes', ajuste));
+    },
+
+    async buscarAjustes({ desde, hasta, vendedorId }) {
+      const filas: AjusteDeVenta[] = [];
+      for (let page = 1; ; page++) {
+        const pagina = await api.get<Pagina<AjusteDto>>(
+          `/ajustes${query({ desde, hasta, vendedorId, page: String(page), size: String(TAMANO_PAGINA) })}`,
+        );
+        filas.push(
+          ...pagina.items.map((a) => ({
+            ...aAjusteFila(a),
+            ventaId: a.ventaId,
+            numeroOrden: a.numeroOrden,
+            vendedorId: a.vendedorId,
+          })),
+        );
+        if (filas.length >= pagina.total || pagina.items.length === 0) return filas;
+      }
+    },
+
+    async obtenerReporte({ desde, hasta, vendedorId }) {
+      return api.get<ReporteIngresosDto>(
+        `/reportes/ingresos${query({ desde, hasta, vendedorId })}`,
+      );
     },
 
     async registrarPago() {
