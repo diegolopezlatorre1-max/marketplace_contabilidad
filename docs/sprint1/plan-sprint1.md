@@ -76,7 +76,7 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 | T-27 | Acordar las interfaces del día 1 (ver "Acuerdos") y dejarlas en código como puertos vacíos. | Carlos + Diego | ✅ |
 | T-28 | Prueba de integración del flujo completo: evento → venta → comisión → cuenta por pagar (`test/integration/ventas.test.ts`). | Carlos + Diego | ✅ |
 | T-29 | Revisión cruzada: cada PR lo aprueba el otro integrante. | Carlos + Diego | ⬜ |
-| T-30 | Demo con datos de ejemplo y validación del Contador. | Carlos (presenta) + Diego | ⬜ |
+| T-30 | Demo con datos de ejemplo y validación del Contador. | Carlos (presenta) + Diego | ✅ |
 
 ## Calendario sugerido
 
