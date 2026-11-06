@@ -3340,7 +3340,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.collectionVariables.set('hoy', new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date()));"
+                  "pm.collectionVariables.set('hoy', new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10));"
                 ]
               }
             },
