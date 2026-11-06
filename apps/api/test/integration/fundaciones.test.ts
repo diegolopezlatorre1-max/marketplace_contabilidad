@@ -42,6 +42,8 @@ describe('Fase 1 - el módulo atraviesa todas las capas contra PostgreSQL', () =
       'inbox',
       'outbox',
       'pago_recibido',
+      'pago_vendedor',
+      'pago_vendedor_detalle',
       'venta_contable',
     ]);
   });

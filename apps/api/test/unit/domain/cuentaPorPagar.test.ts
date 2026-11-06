@@ -35,12 +35,12 @@ describe('CuentaPorPagar', () => {
     expect(c.estado).toBe('PENDIENTE');
   });
 
-  it('pasa a PAGADO solo cuando el saldo llega a cero', () => {
+  it('queda PARCIAL con un pago incompleto y pasa a PAGADO cuando el saldo llega a cero', () => {
     const c = CuentaPorPagar.abrir('V-1', Q1);
     c.acumular(comision('ORD-1', '100000'), VENTA_Q1);
     c.registrarPago(Money.of('40000'));
     expect(c.saldoPendiente.toString()).toBe('50000.00');
-    expect(c.estado).toBe('PENDIENTE');
+    expect(c.estado).toBe('PARCIAL');
     c.registrarPago(Money.of('50000'));
     expect(c.estado).toBe('PAGADO');
   });

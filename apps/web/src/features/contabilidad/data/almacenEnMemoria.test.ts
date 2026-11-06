@@ -76,11 +76,11 @@ describe('AlmacenContabilidad (reglas de HU-09, 01, 02 y 03)', () => {
     expect(cuenta()?.saldoPendiente).toBe('135000.00');
     expect(cuenta()?.estado).toBe('PENDIENTE');
 
-    a.registrarPago({ vendedorId: 'V-1', periodo: '2026-10-Q1', valor: '40000' });
+    a.registrarPago({ vendedorId: 'V-1', valor: '40000', referencia: 'A', fecha: '2026-10-20' });
     expect(cuenta()?.saldoPendiente).toBe('95000.00');
-    expect(cuenta()?.estado).toBe('PENDIENTE');
+    expect(cuenta()?.estado).toBe('PARCIAL');
 
-    a.registrarPago({ vendedorId: 'V-1', periodo: '2026-10-Q1', valor: '95000' });
+    a.registrarPago({ vendedorId: 'V-1', valor: '95000', referencia: 'B', fecha: '2026-10-20' });
     expect(cuenta()?.saldoPendiente).toBe('0.00');
     expect(cuenta()?.estado).toBe('PAGADO');
   });
@@ -207,15 +207,15 @@ describe('AlmacenContabilidad (reglas de HU-09, 01, 02 y 03)', () => {
     expect(a.registrarVenta(venta('ORD-2', '1000', '2026-10-16')).periodo).toBe('2026-10-Q2');
   });
 
-  it('rechaza un pago mayor al saldo o a una cuenta inexistente', () => {
+  it('rechaza un pago mayor al saldo, a un vendedor sin saldo o con la referencia repetida', () => {
     const a = nuevo();
     a.registrarVenta(venta('ORD-1', '1000'));
-    expect(() =>
-      a.registrarPago({ vendedorId: 'V-1', periodo: '2026-10-Q1', valor: '901' }),
-    ).toThrow(ErrorDeNegocio);
-    expect(() => a.registrarPago({ vendedorId: 'V-9', periodo: '2026-10-Q1', valor: '1' })).toThrow(
-      ErrorDeNegocio,
-    );
+    const pagar = (vendedorId: string, valor: string, referencia = 'A') =>
+      a.registrarPago({ vendedorId, valor, referencia, fecha: '2026-10-20' });
+    expect(() => pagar('V-1', '901')).toThrow(ErrorDeNegocio);
+    expect(() => pagar('V-9', '1')).toThrow(ErrorDeNegocio);
+    pagar('V-1', '100');
+    expect(() => pagar('V-1', '100')).toThrow(/referencia/);
   });
 
   it('rechaza montos en cero, con 3 decimales o con formato inválido', () => {
@@ -233,5 +233,72 @@ describe('AlmacenContabilidad (reglas de HU-09, 01, 02 y 03)', () => {
     expect(() => a.configurarPorcentaje({ desde: '2026-01-01', porcentaje: '11' })).toThrow(
       ErrorDeNegocio,
     );
+  });
+});
+
+describe('AlmacenContabilidad (HU-CON-10, pago al vendedor)', () => {
+  it('docx: cuentas de 90.000 y 45.000, un pago de 90.000 deja la primera PAGADA y saldo 45.000', () => {
+    const a = nuevo();
+    a.registrarVenta(venta('ORD-1', '100000', '2026-10-05'));
+    a.registrarVenta(venta('ORD-2', '50000', '2026-10-20'));
+    const pago = a.registrarPago({
+      vendedorId: 'V-1',
+      valor: '90000',
+      referencia: 'TRF-1',
+      fecha: '2026-11-09',
+    });
+    expect(pago.aplicaciones).toEqual([
+      {
+        periodo: '2026-10-Q1',
+        valorAplicado: '90000.00',
+        saldoAnterior: '90000.00',
+        saldoNuevo: '0.00',
+        estado: 'PAGADO',
+      },
+    ]);
+    expect(a.listarCuentasPorPagar({}).map((c) => [c.periodo, c.estado, c.saldoPendiente])).toEqual(
+      [
+        ['2026-10-Q1', 'PAGADO', '0.00'],
+        ['2026-10-Q2', 'PENDIENTE', '45000.00'],
+      ],
+    );
+    expect(a.listarPagos({ vendedorId: 'V-1' }).map((p) => p.referencia)).toEqual(['TRF-1']);
+    expect(a.listarPagos({ desde: '2026-11-10' })).toEqual([]);
+  });
+
+  it('descuenta primero el saldo a favor que dejó un ajuste sobre una cuenta pagada', () => {
+    const a = nuevo();
+    const v1 = a.registrarVenta(venta('ORD-1', '100000', '2026-10-05'));
+    a.registrarVenta(venta('ORD-2', '50000', '2026-10-20'));
+    a.registrarPago({
+      vendedorId: 'V-1',
+      valor: '90000',
+      referencia: 'TRF-1',
+      fecha: '2026-10-21',
+    });
+    const ajuste = a.registrarAjuste({
+      ventaId: v1.id,
+      tipo: 'DEVOLUCION',
+      motivo: 'Devolución tras el pago',
+      valor: '20000',
+      fecha: '2026-10-22',
+    });
+    expect(ajuste.saldoAFavor).toBe('18000.00');
+    expect(() =>
+      a.registrarPago({
+        vendedorId: 'V-1',
+        valor: '27000.01',
+        referencia: 'TRF-2',
+        fecha: '2026-10-23',
+      }),
+    ).toThrow(/27000\.00/);
+    const pago = a.registrarPago({
+      vendedorId: 'V-1',
+      valor: '27000',
+      referencia: 'TRF-2',
+      fecha: '2026-10-23',
+    });
+    expect(pago.saldoAFavorAplicado).toBe('18000.00');
+    expect(a.listarCuentasPorPagar({ periodo: '2026-10-Q2' })[0]?.estado).toBe('PAGADO');
   });
 });

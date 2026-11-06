@@ -2562,6 +2562,432 @@
           ]
         }
       ]
+    },
+    {
+      "name": "8. HU-CON-10 Pagos a vendedores",
+      "item": [
+        {
+          "name": "Orden de 100.000 (para pagar al vendedor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoOrdenPago}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{ordenPago}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [{ \"vendedorId\": \"{{vendedorPago}}\", \"valorBruto\": \"100000.00\" }]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = Date.now();",
+                  "pm.collectionVariables.set('ahoraIso', new Date().toISOString());",
+                  "pm.collectionVariables.set('eventoOrdenPago', 'evt-pm-pago-' + s);",
+                  "pm.collectionVariables.set('ordenPago', 'ORD-PM-P-' + s);",
+                  "pm.collectionVariables.set('vendedorPago', 'V-PM-P-' + s);",
+                  "pm.collectionVariables.set('referenciaPago', 'TRF-PM-' + s);",
+                  "const pct = Number(pm.collectionVariables.get('porcentajeVigente'));",
+                  "const neto = 100000 - Math.round(100000 * pct) / 100;",
+                  "pm.collectionVariables.set('restoPago', (neto - 40000).toFixed(2));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago parcial de 40.000 -> 201 PARCIAL",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedorId\": \"{{vendedorPago}}\",\n  \"valor\": \"40000.00\",\n  \"referencia\": \"{{referenciaPago}}-1\",\n  \"soporte\": \"Comprobante Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.test('Guarda referencia y soporte', () => { pm.expect(p.referencia).to.eql(pm.collectionVariables.get('referenciaPago') + '-1'); pm.expect(p.soporte).to.eql('Comprobante Postman'); });",
+                  "pm.test('La cuenta queda PARCIAL', () => pm.expect(p.aplicaciones[0].estado).to.eql('PARCIAL'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Misma referencia -> 409 REFERENCIA_DUPLICADA",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedorId\": \"{{vendedorPago}}\",\n  \"valor\": \"1.00\",\n  \"referencia\": \"{{referenciaPago}}-1\",\n  \"soporte\": \"Comprobante Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Código REFERENCIA_DUPLICADA', () => pm.expect(pm.response.json().code).to.eql('REFERENCIA_DUPLICADA'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago mayor al saldo -> 422 PAGO_EXCEDE_SALDO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedorId\": \"{{vendedorPago}}\",\n  \"valor\": \"100000.00\",\n  \"referencia\": \"{{referenciaPago}}-x\",\n  \"soporte\": \"Comprobante Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Código PAGO_EXCEDE_SALDO', () => pm.expect(pm.response.json().code).to.eql('PAGO_EXCEDE_SALDO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago como administrador -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedorId\": \"{{vendedorPago}}\",\n  \"valor\": \"1.00\",\n  \"referencia\": \"{{referenciaPago}}-adm\",\n  \"soporte\": \"Comprobante Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago del resto -> 201 PAGADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedorId\": \"{{vendedorPago}}\",\n  \"valor\": \"{{restoPago}}\",\n  \"referencia\": \"{{referenciaPago}}-2\",\n  \"soporte\": \"Comprobante Postman\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+                  "const p = pm.response.json();",
+                  "pm.test('La cuenta queda PAGADO con saldo 0', () => { pm.expect(p.aplicaciones[0].estado).to.eql('PAGADO'); pm.expect(p.aplicaciones[0].saldoNuevo).to.eql('0.00'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Historial de pagos del vendedor",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor?vendedorId={{vendedorPago}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ],
+              "query": [
+                {
+                  "key": "vendedorId",
+                  "value": "{{vendedorPago}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Dos pagos, del más reciente al más antiguo', () => { pm.expect(r.total).to.eql(2); pm.expect(r.items[0].referencia).to.match(/-2$/); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cuenta del vendedor queda PAGADO",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/cuentas-por-pagar?vendedorId={{vendedorPago}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cuentas-por-pagar"
+              ],
+              "query": [
+                {
+                  "key": "vendedorId",
+                  "value": "{{vendedorPago}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test('Estado PAGADO y saldo 0', () => { pm.expect(c[0].estado).to.eql('PAGADO'); pm.expect(c[0].saldoPendiente).to.eql('0.00'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

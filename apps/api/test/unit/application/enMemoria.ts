@@ -1,4 +1,7 @@
 import { aAjusteRegistrado } from '../../../src/application/commands/aplicarAjuste';
+import { aPagoVendedorRegistrado } from '../../../src/application/commands/RegistrarPagoVendedorUseCase';
+import type { PagoVendedorRepository } from '../../../src/application/ports/out/PagoVendedorRepository';
+import type { PagoVendedor } from '../../../src/domain/pagoVendedor/PagoVendedor';
 import type { AjusteContableRepository } from '../../../src/application/ports/out/AjusteContableRepository';
 import type { RegistroAuditoria } from '../../../src/application/ports/out/AuditLogger';
 import type { EventoDeIntegracion } from '../../../src/application/ports/out/EventPublisher';
@@ -23,7 +26,7 @@ import {
   type AlcanceComision,
 } from '../../../src/domain/comision/ConfiguracionComision';
 import { CuentaPorPagar } from '../../../src/domain/cuentaPorPagar/cuentaPorPagar';
-import { Money, Porcentaje, type Periodo } from '../../../src/domain/shared';
+import { Money, Periodo, Porcentaje } from '../../../src/domain/shared';
 import type { VentaContable } from '../../../src/domain/venta/VentaContable';
 import type {
   ConciliacionRepository,
@@ -49,6 +52,7 @@ export interface DatosEnMemoria {
   pagos: Array<{ pago: PagoRecibido; registradoPor: string }>;
   conciliaciones: Conciliacion[];
   ajustes: Array<{ ajuste: AjusteContable; registradoEn: Date }>;
+  pagosVendedor: Array<{ pago: PagoVendedor; registradoEn: Date }>;
 }
 
 function vacio(): DatosEnMemoria {
@@ -64,6 +68,7 @@ function vacio(): DatosEnMemoria {
     pagos: [],
     conciliaciones: [],
     ajustes: [],
+    pagosVendedor: [],
   };
 }
 
@@ -116,6 +121,60 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
         )
         .sort((x, y) => y.ajuste.fecha.getTime() - x.ajuste.fecha.getTime())
         .map(({ ajuste, registradoEn }) => aAjusteRegistrado(ajuste, registradoEn));
+      const inicio = (f.page - 1) * f.size;
+      return {
+        items: items.slice(inicio, inicio + f.size),
+        page: f.page,
+        size: f.size,
+        total: items.length,
+      };
+    },
+  };
+
+  const obtenerCuenta = (vendedorId: string, periodo: Periodo) => {
+    const fila = db.datos.cuentas.find(
+      (c) => c.vendedorId === vendedorId && c.periodo === periodo.codigo,
+    );
+    return CuentaPorPagar.reconstituir({
+      vendedorId,
+      periodo,
+      totalNeto: fila?.totalNeto ?? Money.CERO,
+      pagado: fila?.pagado ?? Money.CERO,
+      ordenes: db.datos.ventas
+        .filter(({ venta }) => venta.vendedorId === vendedorId && venta.periodo.equals(periodo))
+        .map(({ venta }) => venta.numeroOrden),
+    });
+  };
+
+  // HU-CON-10: misma lógica que PgPagoVendedorRepository.
+  const pagosVendedor: PagoVendedorRepository = {
+    guardar: async (pago, registradoEn) => void db.datos.pagosVendedor.push({ pago, registradoEn }),
+    existeReferencia: async (vendedorId, referencia) =>
+      db.datos.pagosVendedor.some(
+        ({ pago }) => pago.vendedorId === vendedorId && pago.referencia === referencia,
+      ),
+    saldoAFavorDisponible: async (vendedorId) =>
+      Money.sum(
+        db.datos.ajustes
+          .filter(({ ajuste }) => ajuste.vendedorId === vendedorId)
+          .map(({ ajuste }) => ajuste.saldoAFavor),
+      ).subtract(
+        Money.sum(
+          db.datos.pagosVendedor
+            .filter(({ pago }) => pago.vendedorId === vendedorId)
+            .map(({ pago }) => pago.saldoAFavorAplicado),
+        ),
+      ),
+    listar: async (f) => {
+      const items = db.datos.pagosVendedor
+        .filter(
+          ({ pago: p }) =>
+            (!f.vendedorId || p.vendedorId === f.vendedorId) &&
+            (!f.desde || p.fechaContable >= f.desde) &&
+            (!f.hasta || p.fechaContable <= f.hasta),
+        )
+        .sort((x, y) => y.pago.fecha.getTime() - x.pago.fecha.getTime())
+        .map(({ pago, registradoEn }) => aPagoVendedorRegistrado(pago, registradoEn));
       const inicio = (f.page - 1) * f.size;
       return {
         items: items.slice(inicio, inicio + f.size),
@@ -252,24 +311,19 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
     },
     ventas,
     ajustes,
+    pagosVendedor,
     comisiones: {
       guardar: async (ventaId, comision) => void db.datos.comisiones.push({ ventaId, comision }),
     },
     cuentasPorPagar: {
-      obtenerParaActualizar: async (vendedorId, periodo: Periodo) => {
-        const fila = db.datos.cuentas.find(
-          (c) => c.vendedorId === vendedorId && c.periodo === periodo.codigo,
-        );
-        return CuentaPorPagar.reconstituir({
-          vendedorId,
-          periodo,
-          totalNeto: fila?.totalNeto ?? Money.CERO,
-          pagado: fila?.pagado ?? Money.CERO,
-          ordenes: db.datos.ventas
-            .filter(({ venta }) => venta.vendedorId === vendedorId && venta.periodo.equals(periodo))
-            .map(({ venta }) => venta.numeroOrden),
-        });
-      },
+      obtenerParaActualizar: async (vendedorId, periodo: Periodo) =>
+        obtenerCuenta(vendedorId, periodo),
+      pendientesParaActualizar: async (vendedorId) =>
+        db.datos.cuentas
+          .filter((c) => c.vendedorId === vendedorId && c.totalNeto.greaterThan(c.pagado))
+          .map((c) => c.periodo)
+          .sort()
+          .map((periodo) => obtenerCuenta(vendedorId, Periodo.parse(periodo))),
       guardar: async (cuenta) => {
         const otras = db.datos.cuentas.filter(
           (c) => !(c.vendedorId === cuenta.vendedorId && c.periodo === cuenta.periodo.codigo),
@@ -312,8 +366,12 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
         db.datos.cuentas
           .map((c) => {
             const saldo = c.totalNeto.subtract(c.pagado);
-            const estado: 'PENDIENTE' | 'PAGADO' =
-              c.totalNeto.isPositive() && saldo.isZero() ? 'PAGADO' : 'PENDIENTE';
+            const estado: 'PENDIENTE' | 'PARCIAL' | 'PAGADO' =
+              c.totalNeto.isPositive() && saldo.isZero()
+                ? 'PAGADO'
+                : c.pagado.isPositive()
+                  ? 'PARCIAL'
+                  : 'PENDIENTE';
             return {
               vendedorId: c.vendedorId,
               periodo: c.periodo,

@@ -1,7 +1,7 @@
 import type { CuentaPorPagar } from '../../../domain/cuentaPorPagar/cuentaPorPagar';
 import type { Periodo } from '../../../domain/shared';
 
-export type EstadoCuentaPorPagar = 'PENDIENTE' | 'PAGADO';
+export type EstadoCuentaPorPagar = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
 
 export interface FiltroCuentasPorPagar {
   periodo?: string | undefined;
@@ -35,6 +35,11 @@ export interface CuentaPorPagarRepository {
    * hasta el fin de la transacción (evita perder sumas con ventas simultáneas).
    */
   obtenerParaActualizar(vendedorId: string, periodo: Periodo): Promise<CuentaPorPagar>;
+  /**
+   * HU-CON-10: cuentas del vendedor con saldo pendiente, de la quincena más antigua a la más
+   * reciente, bloqueadas hasta el fin de la transacción.
+   */
+  pendientesParaActualizar(vendedorId: string): Promise<CuentaPorPagar[]>;
   guardar(cuenta: CuentaPorPagar): Promise<void>;
   /** Ordenadas por periodo (más reciente primero) y vendedor. */
   listar(filtro: FiltroCuentasPorPagar): Promise<CuentaPorPagarResumen[]>;

@@ -10,7 +10,7 @@ Planeación en Excel: [`Planeacion_Sprint3_Contabilidad.xlsx`](Planeacion_Sprint
 
 ## Antes de empezar (día 1)
 
-- [ ] **D-06:** validar con el Contador que el pago se aplica FIFO por periodo y que primero se
+- [x] **D-06** (confirmada 2026-11-06): validar con el Contador que el pago se aplica FIFO por periodo y que primero se
       descuenta el saldo a favor del marketplace. Bloquea la HU-CON-10.
 - [ ] **D-09:** validar con el Administrador financiero las columnas del Excel. Bloquea la
       HU-CON-08.
@@ -34,13 +34,13 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
-| T-52 | `PagoVendedor` (fecha, valor, referencia, soporte) y su aplicación FIFO por periodo a las cuentas pendientes, descontando primero el saldo a favor del marketplace; rechaza pagar más del saldo. Pruebas unitarias. | Dominio | ⬜ |
-| T-53 | Estado PARCIAL en `CuentaPorPagar` (hoy `EstadoCuenta = 'PENDIENTE' \| 'PAGADO'`) y un solo nombre para el estado pagado en dominio, API y web. | Dominio | ⬜ |
-| T-54 | Migración `007_pago_vendedor.sql` (`pago_vendedor`, `pago_vendedor_detalle` con la cuenta aplicada y el valor) y `PgPagoVendedorRepository`. | BD / Infra | ⬜ |
-| T-55 | `RegistrarPagoVendedorUseCase` (CONTADOR) en una `UnitOfWork`, con auditoría y outbox; `ListarPagosVendedorQuery`. Lee el saldo a favor de `ajuste_contable`. | Aplicación | ⬜ |
-| T-56 | `POST /pagos-vendedor` y `GET /pagos-vendedor?vendedorId=&desde=&hasta=`. DTOs en `packages/contracts/src/pagosVendedor.ts`, OpenAPI y Postman. | API | ⬜ |
-| T-57 | Acción "Registrar pago" en Cuentas por pagar e historial de pagos del vendedor. | Web | ⬜ |
-| T-58 | Pruebas: pago de 90.000 deja la cuenta PAGADA y el saldo en 45.000; pago parcial → PARCIAL; pago mayor al saldo rechazado; saldo a favor descontado; pagos simultáneos no superan el saldo. | Pruebas | ⬜ |
+| T-52 | `PagoVendedor` (fecha, valor, referencia, soporte) y su aplicación FIFO por periodo a las cuentas pendientes, descontando primero el saldo a favor del marketplace; rechaza pagar más del saldo. Pruebas unitarias. | Dominio | ✅ |
+| T-53 | Estado PARCIAL en `CuentaPorPagar`; se mantiene `PAGADO` como nombre único del estado pagado en dominio, API y web. | Dominio | ✅ |
+| T-54 | Migración `007_pago_vendedor.sql` (`pago_vendedor`, `pago_vendedor_detalle` con la cuenta aplicada y el valor) y `PgPagoVendedorRepository`. | BD / Infra | ✅ |
+| T-55 | `RegistrarPagoVendedorUseCase` (CONTADOR) en una `UnitOfWork`, con auditoría y outbox; `ListarPagosVendedorQuery`. Lee el saldo a favor de `ajuste_contable`. | Aplicación | ✅ |
+| T-56 | `POST /pagos-vendedor` y `GET /pagos-vendedor?vendedorId=&desde=&hasta=`. DTOs en `packages/contracts/src/pagosVendedor.ts`, OpenAPI y Postman. | API | ✅ |
+| T-57 | Pantalla "Pagos a vendedores" (`PagosVendedorPage`): registrar pago e historial; estado Parcial en Cuentas por pagar. | Web | ✅ |
+| T-58 | Pruebas: pago de 90.000 deja la cuenta PAGADA y el saldo en 45.000; pago parcial → PARCIAL; pago mayor al saldo rechazado; saldo a favor descontado; pagos simultáneos no superan el saldo. | Pruebas | ✅ |
 
 ### HU-CON-07 — Carlos
 

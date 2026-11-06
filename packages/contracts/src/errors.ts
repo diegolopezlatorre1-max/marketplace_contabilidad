@@ -28,6 +28,7 @@ export const CODIGOS_ERROR = [
   'REFERENCIA_DUPLICADA',
   'CONCILIACION_DUPLICADA',
   'APLICADO_EXCEDE_SALDO',
+  'PAGO_EXCEDE_SALDO',
 ] as const;
 
 export type CodigoError = (typeof CODIGOS_ERROR)[number];

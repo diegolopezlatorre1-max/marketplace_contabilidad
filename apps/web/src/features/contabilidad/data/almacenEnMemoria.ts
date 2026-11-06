@@ -7,8 +7,10 @@ import type {
   NuevaVenta,
   NuevoAjuste,
   FiltroAjustes,
+  FiltroPagos,
   FiltroReporte,
   NuevoPago,
+  PagoVendedorFila,
   ReporteIngresos,
   SaldoVendedorFila,
   VentaDetalle,
@@ -100,6 +102,7 @@ export class AlmacenContabilidad {
   private registradas = new Map<string, string>();
   private cuentas = new Map<string, CuentaInterna>();
   private ajustes: Array<{ ventaId: string; fila: AjusteFila }> = [];
+  private pagos: Array<{ pago: PagoVendedorFila; saldoAFavor: bigint }> = [];
 
   // ---- HU-CON-09: porcentaje con vigencia ----
   configurarPorcentaje(vigencia: VigenciaPorcentaje): VigenciaPorcentaje {
@@ -202,7 +205,7 @@ export class AlmacenContabilidad {
       totalNeto: deCentavos(c.totalNeto),
       valorPagado: deCentavos(c.pagado),
       saldoPendiente: deCentavos(saldo),
-      estado: c.totalNeto > 0n && saldo === 0n ? 'PAGADO' : 'PENDIENTE',
+      estado: c.totalNeto > 0n && saldo === 0n ? 'PAGADO' : c.pagado > 0n ? 'PARCIAL' : 'PENDIENTE',
     };
   }
 
@@ -410,15 +413,91 @@ export class AlmacenContabilidad {
     };
   }
 
-  registrarPago(pago: NuevoPago): CuentaPorPagarFila {
-    const cuenta = this.cuentas.get(`${pago.vendedorId}|${pago.periodo}`);
-    if (!cuenta) throw new ErrorDeNegocio('No existe una cuenta para ese vendedor y periodo');
-    const valor = montoPositivo(pago.valor, 'El pago');
-    if (valor > cuenta.totalNeto - cuenta.pagado) {
-      throw new ErrorDeNegocio('El pago supera el saldo pendiente');
+  // ---- HU-CON-10: pago al vendedor (D-06: saldo a favor primero y FIFO por periodo) ----
+  /** Saldo a favor del marketplace que dejaron los ajustes y aún no se ha descontado. */
+  private saldoAFavor(vendedorId: string): bigint {
+    const generado = this.ajustes
+      .filter(
+        ({ ventaId }) => this.comisiones.find((c) => c.id === ventaId)?.vendedorId === vendedorId,
+      )
+      .reduce((acc, { fila }) => acc + aCentavos(fila.saldoAFavor), 0n);
+    const descontado = this.pagos
+      .filter(({ pago }) => pago.vendedorId === vendedorId)
+      .reduce((acc, { saldoAFavor }) => acc + saldoAFavor, 0n);
+    return generado - descontado;
+  }
+
+  registrarPago(nuevo: NuevoPago): PagoVendedorFila {
+    const valor = montoPositivo(nuevo.valor, 'El pago');
+    const referencia = nuevo.referencia.trim();
+    if (!referencia) throw new ErrorDeNegocio('La referencia del pago es obligatoria');
+    const fecha = nuevo.fecha ?? new Date().toISOString().slice(0, 10);
+    validarFecha(fecha);
+    if (
+      this.pagos.some(
+        ({ pago }) => pago.vendedorId === nuevo.vendedorId && pago.referencia === referencia,
+      )
+    ) {
+      throw new ErrorDeNegocio(
+        `Ya existe un pago al vendedor ${nuevo.vendedorId} con la referencia ${referencia}`,
+      );
     }
-    cuenta.pagado += valor;
-    return this.aFila(cuenta);
+    const pendientes = [...this.cuentas.values()]
+      .filter((c) => c.vendedorId === nuevo.vendedorId && c.totalNeto > c.pagado)
+      .sort((a, b) => a.periodo.localeCompare(b.periodo));
+    const deuda = pendientes.reduce((acc, c) => acc + c.totalNeto - c.pagado, 0n);
+    const aFavor = this.saldoAFavor(nuevo.vendedorId);
+    const descuento = aFavor < deuda ? aFavor : deuda;
+    if (valor > deuda - descuento) {
+      throw new ErrorDeNegocio(
+        `El pago de ${deCentavos(valor)} supera lo que se le debe al vendedor ${nuevo.vendedorId}: ${deCentavos(deuda - descuento)}`,
+      );
+    }
+
+    let restante = valor + descuento;
+    const aplicaciones: PagoVendedorFila['aplicaciones'] = [];
+    for (const cuenta of pendientes) {
+      if (restante <= 0n) break;
+      const saldoAnterior = cuenta.totalNeto - cuenta.pagado;
+      const aplicado = restante < saldoAnterior ? restante : saldoAnterior;
+      cuenta.pagado += aplicado;
+      restante -= aplicado;
+      aplicaciones.push({
+        periodo: cuenta.periodo,
+        valorAplicado: deCentavos(aplicado),
+        saldoAnterior: deCentavos(saldoAnterior),
+        saldoNuevo: deCentavos(saldoAnterior - aplicado),
+        estado: saldoAnterior === aplicado ? 'PAGADO' : 'PARCIAL',
+      });
+    }
+
+    const pago: PagoVendedorFila = {
+      id: `pago-${this.pagos.length + 1}`,
+      vendedorId: nuevo.vendedorId,
+      fecha: `${fecha}T17:00:00.000Z`,
+      fechaContable: fecha,
+      valor: deCentavos(valor),
+      saldoAFavorAplicado: deCentavos(descuento),
+      referencia,
+      soporte: nuevo.soporte?.trim() || null,
+      aplicaciones,
+      registradoPor: 'contador',
+      registradoEn: new Date().toISOString(),
+    };
+    this.pagos.push({ pago, saldoAFavor: descuento });
+    return pago;
+  }
+
+  listarPagos({ vendedorId, desde, hasta }: FiltroPagos): PagoVendedorFila[] {
+    return this.pagos
+      .map(({ pago }) => pago)
+      .filter(
+        (p) =>
+          (!vendedorId || p.vendedorId === vendedorId) &&
+          (!desde || p.fechaContable >= desde) &&
+          (!hasta || p.fechaContable <= hasta),
+      )
+      .sort((a, b) => b.fechaContable.localeCompare(a.fechaContable) || b.id.localeCompare(a.id));
   }
 }
 
@@ -465,6 +544,10 @@ export function crearApiEnMemoria(almacen: AlmacenContabilidad, retardoMs = 0): 
     async registrarPago(pago) {
       await espera();
       return almacen.registrarPago(pago);
+    },
+    async listarPagos(filtro) {
+      await espera();
+      return almacen.listarPagos(filtro);
     },
     async listarAjustes(ventaId) {
       await espera();

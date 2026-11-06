@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { periodoSchema } from './common';
 
-export const ESTADOS_CUENTA_POR_PAGAR = ['PENDIENTE', 'PAGADO'] as const;
+/** PARCIAL (HU-CON-10): la cuenta tiene pagos, pero aún queda saldo pendiente. */
+export const ESTADOS_CUENTA_POR_PAGAR = ['PENDIENTE', 'PARCIAL', 'PAGADO'] as const;
 export type EstadoCuentaPorPagar = (typeof ESTADOS_CUENTA_POR_PAGAR)[number];
 
 /** GET /cuentas-por-pagar?periodo=&estado=&vendedorId= */

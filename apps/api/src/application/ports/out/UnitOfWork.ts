@@ -7,6 +7,7 @@ import type { CuentaPorPagarRepository } from './CuentaPorPagarRepository';
 import type { EventPublisher } from './EventPublisher';
 import type { InboxRepository } from './InboxRepository';
 import type { PagoRecibidoRepository } from './PagoRecibidoRepository';
+import type { PagoVendedorRepository } from './PagoVendedorRepository';
 import type { VentaContableRepository } from './VentaContableRepository';
 
 /**
@@ -24,6 +25,7 @@ export interface TransactionalRepositories {
   pagosRecibidos: PagoRecibidoRepository;
   conciliaciones: ConciliacionRepository;
   ajustes: AjusteContableRepository;
+  pagosVendedor: PagoVendedorRepository;
 }
 
 /** Ejecuta un trabajo de forma atómica: todo se confirma o todo se revierte. */

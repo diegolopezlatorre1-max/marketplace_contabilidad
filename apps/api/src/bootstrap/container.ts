@@ -16,6 +16,8 @@ import {
 import { PoliticaConciliacion } from '../domain/conciliacion/Conciliacion';
 import { ProcesarAjusteOrdenUseCase } from '../application/commands/ProcesarAjusteOrdenUseCase';
 import { RegistrarAjusteUseCase } from '../application/commands/RegistrarAjusteUseCase';
+import { RegistrarPagoVendedorUseCase } from '../application/commands/RegistrarPagoVendedorUseCase';
+import { ListarPagosVendedorQuery } from '../application/queries/ListarPagosVendedorQuery';
 import { ListarAjustesQuery } from '../application/queries/ListarAjustesQuery';
 import { RegistrarVentaConfirmadaUseCase } from '../application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentasPorPagarQuery';
@@ -37,6 +39,7 @@ import { PgConfiguracionComisionRepository } from '../infrastructure/persistence
 import { PgConciliacionRepository } from '../infrastructure/persistence/postgres/PgConciliacionRepository';
 import { PgCuentaPorPagarRepository } from '../infrastructure/persistence/postgres/PgCuentaPorPagarRepository';
 import { PgPagoRecibidoRepository } from '../infrastructure/persistence/postgres/PgPagoRecibidoRepository';
+import { PgPagoVendedorRepository } from '../infrastructure/persistence/postgres/PgPagoVendedorRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
 import { PgReporteIngresosRepository } from '../infrastructure/persistence/postgres/PgReporteIngresosRepository';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
@@ -92,6 +95,9 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const procesarAjusteOrden = new ProcesarAjusteOrdenUseCase(unitOfWork, clock);
   const listarAjustes = new ListarAjustesQuery(new PgAjusteContableRepository(pool));
   const reporteIngresos = new ReporteIngresosQuery(new PgReporteIngresosRepository(pool));
+  // HU-CON-10: pago al vendedor, FIFO por periodo (D-06).
+  const registrarPagoVendedor = new RegistrarPagoVendedorUseCase(unitOfWork, clock);
+  const listarPagosVendedor = new ListarPagosVendedorQuery(new PgPagoVendedorRepository(pool));
 
   // HU-CON-04. Tolerancia de conciliación 0 hasta que el contador defina otra (D-08).
   const politicaConciliacion = new PoliticaConciliacion();
@@ -121,6 +127,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       resumenSaldoVendedor,
       listarAjustes,
       reporteIngresos,
+      listarPagosVendedor,
     },
     commands: {
       configurarComision,
@@ -130,6 +137,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       conciliarPago,
       registrarAjuste,
       procesarAjusteOrden,
+      registrarPagoVendedor,
     },
   });
 

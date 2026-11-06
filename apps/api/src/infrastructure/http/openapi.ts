@@ -75,7 +75,13 @@ export function buildOpenApi(version: string) {
       {
         name: 'Ajustes',
         description:
-          'Devoluciones y cancelaciones: revierten comisión y neto con el % original (HU-CON-06, D-07 provisional).',
+          'Devoluciones y cancelaciones: revierten comisión y neto con el % original (HU-CON-06, D-07).',
+      },
+      {
+        name: 'Pagos a vendedores',
+        description:
+          'Pagos hechos a los vendedores: descuentan el saldo a favor del marketplace y se aplican ' +
+          'a las cuentas más antiguas primero (HU-CON-10, D-06).',
       },
     ],
     components: {
@@ -240,7 +246,7 @@ export function buildOpenApi(version: string) {
             totalNeto: { type: 'string', example: '135000.00' },
             valorPagado: { type: 'string', example: '0.00' },
             saldoPendiente: { type: 'string', example: '135000.00' },
-            estado: { type: 'string', enum: ['PENDIENTE', 'PAGADO'] },
+            estado: { type: 'string', enum: ['PENDIENTE', 'PARCIAL', 'PAGADO'] },
           },
         },
         PagoRecibido: {
@@ -428,6 +434,73 @@ export function buildOpenApi(version: string) {
             origen: { type: 'string', enum: ['MANUAL', 'EVENTO'] },
             registradoPor: { type: 'string' },
             registradoEn: { type: 'string', format: 'date-time' },
+          },
+        },
+        RegistrarPagoVendedor: {
+          type: 'object',
+          required: ['vendedorId', 'valor', 'referencia'],
+          properties: {
+            vendedorId: { type: 'string', example: 'V-1' },
+            valor: { type: 'string', example: '90000.00', description: 'Valor transferido' },
+            referencia: {
+              type: 'string',
+              example: 'TRF-2026-0001',
+              maxLength: 100,
+              description: 'Referencia bancaria; única por vendedor',
+            },
+            soporte: {
+              type: 'string',
+              maxLength: 500,
+              example: 'Comprobante 0001.pdf',
+              description: 'Soporte del pago (comprobante, enlace...)',
+            },
+            fecha: {
+              type: 'string',
+              format: 'date',
+              description: 'Día del pago (hora de Colombia); por defecto, hoy',
+            },
+          },
+        },
+        PagoVendedor: {
+          type: 'object',
+          properties: {
+            id: { type: 'string', format: 'uuid' },
+            vendedorId: { type: 'string', example: 'V-1' },
+            fecha: { type: 'string', format: 'date-time' },
+            fechaContable: { type: 'string', format: 'date' },
+            valor: { type: 'string', example: '90000.00' },
+            saldoAFavorAplicado: {
+              type: 'string',
+              example: '0.00',
+              description: 'Saldo a favor del marketplace descontado con este pago',
+            },
+            referencia: { type: 'string', example: 'TRF-2026-0001' },
+            soporte: { type: 'string', nullable: true },
+            aplicaciones: {
+              type: 'array',
+              description: 'Cuentas a las que se aplicó, de la más antigua a la más reciente',
+              items: {
+                type: 'object',
+                properties: {
+                  periodo: { type: 'string', example: '2026-10-Q1' },
+                  valorAplicado: { type: 'string', example: '90000.00' },
+                  saldoAnterior: { type: 'string', example: '90000.00' },
+                  saldoNuevo: { type: 'string', example: '0.00' },
+                  estado: { type: 'string', enum: ['PARCIAL', 'PAGADO'] },
+                },
+              },
+            },
+            registradoPor: { type: 'string' },
+            registradoEn: { type: 'string', format: 'date-time' },
+          },
+        },
+        PaginaPagosVendedor: {
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { $ref: '#/components/schemas/PagoVendedor' } },
+            page: { type: 'integer' },
+            size: { type: 'integer' },
+            total: { type: 'integer' },
           },
         },
         PaginaAjustes: {
@@ -811,7 +884,7 @@ export function buildOpenApi(version: string) {
             {
               name: 'estado',
               in: 'query',
-              schema: { type: 'string', enum: ['PENDIENTE', 'PAGADO'] },
+              schema: { type: 'string', enum: ['PENDIENTE', 'PARCIAL', 'PAGADO'] },
             },
             { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
           ],
@@ -911,7 +984,7 @@ export function buildOpenApi(version: string) {
           summary: 'Registra una devolución o cancelación sobre una venta existente (HU-CON-06)',
           description:
             'Revierte comisión y neto con el % aplicado en la venta y actualiza el saldo de la cuenta ' +
-            'por pagar. Reglas D-07 provisionales, pendientes de validar con el Contador.',
+            'por pagar (reglas D-07).',
           security: [{ bearer: [] }],
           requestBody: {
             required: true,
@@ -929,6 +1002,76 @@ export function buildOpenApi(version: string) {
             '403': problema('Requiere rol CONTADOR'),
             '404': problema('ORDEN_INEXISTENTE: la venta no existe'),
             '422': problema('AJUSTE_EXCEDE_SALDO: supera lo que queda por ajustar'),
+          },
+        },
+      },
+      '/pagos-vendedor': {
+        get: {
+          tags: ['Pagos a vendedores'],
+          summary: 'Historial de pagos a vendedores por vendedor y fecha del pago (HU-CON-10)',
+          security: [{ bearer: [] }],
+          parameters: [
+            { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'desde',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha del pago inicial (inclusive)',
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Fecha del pago final (inclusive)',
+            },
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            {
+              name: 'size',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Página de pagos, del más reciente al más antiguo',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/PaginaPagosVendedor' },
+                },
+              },
+            },
+            '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+          },
+        },
+        post: {
+          tags: ['Pagos a vendedores'],
+          summary: 'Registra un pago hecho a un vendedor (HU-CON-10)',
+          description:
+            'Descuenta primero el saldo a favor del marketplace y aplica el pago a las cuentas ' +
+            'pendientes más antiguas (FIFO por periodo, D-06). Cada cuenta queda PARCIAL o PAGADO.',
+          security: [{ bearer: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/RegistrarPagoVendedor' },
+              },
+            },
+          },
+          responses: {
+            '201': {
+              description: 'Pago registrado',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/PagoVendedor' } },
+              },
+            },
+            '400': problema('Datos inválidos (p. ej. fecha futura)'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR'),
+            '409': problema('REFERENCIA_DUPLICADA: ya hay un pago al vendedor con esa referencia'),
+            '422': problema('PAGO_EXCEDE_SALDO: supera lo que se le debe al vendedor'),
           },
         },
       },
