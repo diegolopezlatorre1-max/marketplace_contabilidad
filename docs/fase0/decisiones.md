@@ -39,7 +39,9 @@ Cierre del Sprint 2 (2026-11-06): el Contador validó D-07 y D-08 con datos de e
 - [~] Responsable con nombre por historia: Sprint 1 asignado (HU-CON-09 y 01 Carlos,
   HU-CON-02 y 03 Diego; tareas en [`docs/sprint1/plan-sprint1.md`](../sprint1/plan-sprint1.md)).
   Sprint 2 asignado (HU-CON-04 Carlos, HU-CON-05 y 06 Diego; tareas en
-  [`docs/sprint2/plan-sprint2.md`](../sprint2/plan-sprint2.md)). Sprint 3: `[POR DEFINIR]`.
+  [`docs/sprint2/plan-sprint2.md`](../sprint2/plan-sprint2.md)). Sprint 3 asignado (HU-CON-10
+  y 07 Carlos, HU-CON-08 y 11 Diego; tareas en
+  [`docs/sprint3/plan-sprint3.md`](../sprint3/plan-sprint3.md)).
 - [x] Fechas de inicio y fin de cada sprint (2 semanas, inicio 2026-10-12):
 
   | Sprint | Fase | Inicio | Fin | Historias |
