@@ -645,6 +645,12 @@ export function crearApiEnMemoria(almacen: AlmacenContabilidad, retardoMs = 0): 
       await espera();
       return almacen.listarPagos(filtro);
     },
+    async exportarExcel() {
+      await espera();
+      throw new ErrorDeNegocio(
+        'La exportación a Excel se genera en la API; conecte la interfaz al backend.',
+      );
+    },
     async obtenerEstadoVendedor(vendedorId, desde, hasta) {
       await espera();
       return almacen.obtenerEstadoVendedor(vendedorId, desde, hasta);

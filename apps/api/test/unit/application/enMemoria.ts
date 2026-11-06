@@ -3,6 +3,7 @@ import { aPagoVendedorRegistrado } from '../../../src/application/commands/Regis
 import type { PagoVendedorRepository } from '../../../src/application/ports/out/PagoVendedorRepository';
 import type { EstadoVendedorRepository } from '../../../src/application/ports/out/EstadoVendedorRepository';
 import type { AuditoriaRepository } from '../../../src/application/ports/out/AuditoriaRepository';
+import { exportacionEnMemoria } from './exportacionEnMemoria';
 import { fechaContable } from '../../../src/domain/shared';
 import type { PagoVendedor } from '../../../src/domain/pagoVendedor/PagoVendedor';
 import type { AjusteContableRepository } from '../../../src/application/ports/out/AjusteContableRepository';
@@ -569,6 +570,7 @@ export function crearBaseEnMemoria() {
     reporte: reporteEnMemoria(db),
     estado: estadoEnMemoria(db),
     auditoria: auditoriaEnMemoria(db),
+    exportacion: exportacionEnMemoria(db),
   };
 }
 

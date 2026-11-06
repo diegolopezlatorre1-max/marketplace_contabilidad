@@ -159,6 +159,10 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
       }
     },
 
+    async exportarExcel({ desde, hasta, vendedorId }) {
+      return api.descargar(`/exportaciones/excel${query({ desde, hasta, vendedorId })}`);
+    },
+
     async obtenerReporte({ desde, hasta, vendedorId }) {
       return api.get<ReporteIngresosDto>(
         `/reportes/ingresos${query({ desde, hasta, vendedorId })}`,

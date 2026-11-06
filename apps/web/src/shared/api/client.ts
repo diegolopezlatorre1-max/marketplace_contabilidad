@@ -51,8 +51,24 @@ export function createApiClient({ baseUrl, getToken, fetchFn = fetch }: ApiClien
     return data as T;
   }
 
+  /** Descarga un archivo (p. ej. un .xlsx) con el nombre que indica Content-Disposition. */
+  async function descargar(path: string): Promise<{ nombre: string; contenido: Blob }> {
+    const headers: Record<string, string> = {};
+    const token = getToken();
+    if (token) headers.authorization = `Bearer ${token}`;
+    const res = await fetchFn(`${baseUrl}${path}`, { method: 'GET', headers });
+    if (!res.ok) {
+      const esJson = res.headers.get('content-type')?.includes('json') ?? false;
+      throw new ApiError(res.status, esJson ? ((await res.json()) as ProblemDetails) : null);
+    }
+    const disposicion = res.headers.get('content-disposition') ?? '';
+    const nombre = /filename="?([^";]+)"?/.exec(disposicion)?.[1] ?? 'descarga';
+    return { nombre, contenido: await res.blob() };
+  }
+
   return {
     get: <T>(path: string) => request<T>('GET', path),
+    descargar,
     post: <T>(path: string, body: unknown) => request<T>('POST', path, body),
     put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
     /** POST de un archivo de texto (p. ej. text/csv). */

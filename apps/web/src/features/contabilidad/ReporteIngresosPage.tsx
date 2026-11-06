@@ -24,6 +24,31 @@ export function ReporteIngresosPage({ api }: { api: ContabilidadApi }) {
   const [reporte, setReporte] = useState<ReporteIngresos | null>(null);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [exportando, setExportando] = useState(false);
+  const [errorExportar, setErrorExportar] = useState<string | null>(null);
+
+  /** HU-CON-08: descarga el mismo rango en Excel. */
+  async function exportar() {
+    setExportando(true);
+    setErrorExportar(null);
+    try {
+      const archivo = await api.exportarExcel({
+        desde,
+        hasta,
+        vendedorId: vendedorId.trim() || undefined,
+      });
+      const url = URL.createObjectURL(archivo.contenido);
+      const enlace = document.createElement('a');
+      enlace.href = url;
+      enlace.download = archivo.nombre;
+      enlace.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErrorExportar(mensajeDe(e));
+    } finally {
+      setExportando(false);
+    }
+  }
 
   useEffect(() => {
     if (!desde || !hasta) return;
@@ -79,7 +104,20 @@ export function ReporteIngresosPage({ api }: { api: ContabilidadApi }) {
             onChange={(e) => setVendedorId(e.target.value)}
           />
         </label>
+        <button
+          type="button"
+          className="cp-boton"
+          disabled={exportando || !desde || !hasta || !!error}
+          onClick={() => void exportar()}
+        >
+          {exportando ? 'Generando…' : 'Exportar a Excel'}
+        </button>
       </div>
+      {errorExportar && (
+        <p role="alert" className="cp-error">
+          {errorExportar}
+        </p>
+      )}
 
       {error && (
         <p role="alert" className="cp-error">

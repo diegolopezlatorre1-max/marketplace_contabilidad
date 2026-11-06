@@ -280,6 +280,37 @@ describe('crearContabilidadApiRest', () => {
     ).rejects.toThrow(OperacionNoDisponibleError);
   });
 
+  it('descarga la exportación a Excel con su nombre de archivo (HU-CON-08)', async () => {
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(new Uint8Array([0x50, 0x4b]), {
+          status: 200,
+          headers: {
+            'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'content-disposition': 'attachment; filename="contabilidad_2026-10-01_2026-10-31.xlsx"',
+          },
+        }),
+    );
+    const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-admin', fetchFn });
+    const archivo = await crearContabilidadApiRest(api).exportarExcel({
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
+    });
+    expect(fetchFn).toHaveBeenCalledWith(
+      '/api/exportaciones/excel?desde=2026-10-01&hasta=2026-10-31',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(archivo.nombre).toBe('contabilidad_2026-10-01_2026-10-31.xlsx');
+    expect(archivo.contenido.size).toBe(2);
+  });
+
+  it('una exportación rechazada se traduce a ApiError', async () => {
+    const { contabilidad } = crear({});
+    await expect(
+      contabilidad.exportarExcel({ desde: '2026-10-31', hasta: '2026-10-01' }),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
+
   it('consulta el estado del vendedor por quincenas (HU-CON-07)', async () => {
     const cuerpo = { vendedorId: 'V 1', periodos: [] };
     const { contabilidad } = crear({

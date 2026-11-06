@@ -79,6 +79,11 @@ export function buildOpenApi(version: string) {
           'Devoluciones y cancelaciones: revierten comisión y neto con el % original (HU-CON-06, D-07).',
       },
       {
+        name: 'Exportaciones',
+        description:
+          'Información contable en Excel con los mismos números del reporte de ingresos (HU-CON-08).',
+      },
+      {
         name: 'Auditoría',
         description:
           'Quién hizo cada cambio contable, cuándo y con qué valores antes y después (HU-CON-11).',
@@ -1101,6 +1106,47 @@ export function buildOpenApi(version: string) {
             '403': problema('Requiere rol CONTADOR'),
             '404': problema('ORDEN_INEXISTENTE: la venta no existe'),
             '422': problema('AJUSTE_EXCEDE_SALDO: supera lo que queda por ajustar'),
+          },
+        },
+      },
+      '/exportaciones/excel': {
+        get: {
+          tags: ['Exportaciones'],
+          summary: 'Exporta a Excel la información contable de un rango de días (HU-CON-08)',
+          description:
+            'Hojas Ventas (columnas D-09: fecha, número de orden, vendedor, valor bruto, % comisión, ' +
+            'comisión, valor neto, estado de pago, estado de conciliación, ajustes), Ajustes, Resumen ' +
+            '(los mismos totales de /reportes/ingresos) y Metadatos. Las cifras son celdas numéricas.',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'desde',
+              in: 'query',
+              required: true,
+              schema: { type: 'string', format: 'date' },
+              description: 'Día inicial (hora de Colombia), inclusive',
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              required: true,
+              schema: { type: 'string', format: 'date' },
+              description: 'Día final (hora de Colombia), inclusive; máximo 366 días',
+            },
+            { name: 'vendedorId', in: 'query', schema: { type: 'string' } },
+          ],
+          responses: {
+            '200': {
+              description: 'Archivo .xlsx (Content-Disposition: attachment)',
+              content: {
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
+                  schema: { type: 'string', format: 'binary' },
+                },
+              },
+            },
+            '400': problema('Rango inválido, invertido o mayor a 366 días'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
           },
         },
       },
