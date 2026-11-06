@@ -16,6 +16,9 @@ propuestos. D-05 se adopta con el contrato v1 congelado
 
 Cierre del Sprint 2 (2026-11-06): el Contador validó D-07 y D-08 con datos de ejemplo.
 
+Cierre del Sprint 3 (2026-11-06): el Contador validó D-06 y el Administrador financiero, las
+columnas del Excel (D-09).
+
 | ID | Decisión | Valor adoptado | Estado | Validar con | Antes de | Dónde vive en el código |
 |----|----------|----------------|--------|-------------|----------|-------------------------|
 | D-01 | Moneda | COP única | CONFIRMADA 2026-10-08 | Contador | Sprint 1 | `domain/shared/Money.ts` (`MONEDA`) |
@@ -26,7 +29,7 @@ Cierre del Sprint 2 (2026-11-06): el Contador validó D-07 y D-08 con datos de e
 | D-06 | Pago al vendedor (H-04) | Nueva HU-CON-10; el pago descuenta primero el saldo a favor del marketplace y se aplica FIFO por periodo a las cuentas pendientes | CONFIRMADA 2026-11-06 | Contador | Sprint 3 | `domain/pagoVendedor/PagoVendedor.ts` |
 | D-07 | Ajustes (H-06) | Reverso proporcional de comisión y neto con el % aplicado originalmente; devoluciones parciales permitidas hasta el valor no ajustado; si la cuenta ya está pagada se genera saldo a favor del marketplace que se descuenta en la siguiente liquidación | CONFIRMADA 2026-11-06 | Contador | Sprint 2 | `domain/ajuste/AjusteContable.ts`, `CuentaPorPagar.revertir()` |
 | D-08 | Tolerancia de conciliación | 0 (exacta) hasta que el contador defina otra; configurable | CONFIRMADA 2026-11-06 | Contador / Pagos | Sprint 2 | `domain/conciliacion/Conciliacion.ts` (`PoliticaConciliacion`) |
-| D-09 | Columnas del Excel (H-07) | fecha, número de orden, vendedor, valor bruto, % comisión, comisión, valor neto, estado de pago, estado de conciliación, ajustes | PROVISIONAL | Admin. financiero | Sprint 3 | `application/queries/ExportarExcelUseCase.ts` (`COLUMNAS_VENTAS`) |
+| D-09 | Columnas del Excel (H-07) | fecha, número de orden, vendedor, valor bruto, % comisión, comisión, valor neto, estado de pago, estado de conciliación, ajustes | CONFIRMADA 2026-11-06 | Admin. financiero | Sprint 3 | `application/queries/ExportarExcelUseCase.ts` (`COLUMNAS_VENTAS`) |
 | D-10 | Impuestos y facturación (H-09, H-10) | Won't Have: facturación electrónica DIAN, IVA/retenciones, nómina, contabilidad general | PROVISIONAL | Contador | Fase 5 | — |
 | D-11 | Partida doble / PUC | Fuera del alcance de los sprints 1–3; opcional en la Fase 5 | PROVISIONAL | Contador | Fase 5 | — |
 | D-12 | Roles (H-11) | CONTADOR, ADMIN_FINANCIERO, SISTEMA (módulos) | ADOPTADA | Administración | Sprint 1 | `application/security.ts` |

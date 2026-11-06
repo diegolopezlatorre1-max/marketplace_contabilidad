@@ -9,7 +9,7 @@ cuentas por pagar a vendedores, conciliación de pagos y ajustes por devolucione
 - Decisiones de arquitectura: [`docs/adr/`](docs/adr)
 - Plan del Sprint 1 (tareas y responsables): [`docs/sprint1/plan-sprint1.md`](docs/sprint1/plan-sprint1.md)
 - Plan y cierre del Sprint 2: [`docs/sprint2/plan-sprint2.md`](docs/sprint2/plan-sprint2.md)
-- Plan del Sprint 3: [`docs/sprint3/plan-sprint3.md`](docs/sprint3/plan-sprint3.md) (Excel: [`Planeacion_Sprint3_Contabilidad.xlsx`](docs/sprint3/Planeacion_Sprint3_Contabilidad.xlsx))
+- Plan y cierre del Sprint 3: [`docs/sprint3/plan-sprint3.md`](docs/sprint3/plan-sprint3.md) (Excel: [`Planeacion_Sprint3_Contabilidad.xlsx`](docs/sprint3/Planeacion_Sprint3_Contabilidad.xlsx))
 
 ## Estado
 
@@ -19,7 +19,8 @@ cuentas por pagar a vendedores, conciliación de pagos y ajustes por devolucione
 | 1    | Fundaciones técnicas            | Hecha                                     |
 | 2    | Sprint 1: HU-CON-09, 01, 02, 03 | Hecha (2026-10-23)                        |
 | 3    | Sprint 2: HU-CON-06, 04, 05     | Hecha (2026-11-06)                        |
-| 4    | Sprint 3: HU-CON-10, 07, 08, 11 | Siguiente: 2026-11-09 a 2026-11-20        |
+| 4    | Sprint 3: HU-CON-10, 07, 08, 11 | Hecha (2026-11-06)                        |
+| 5    | Endurecimiento e integración    | Siguiente: 2026-11-23 a 2026-12-04        |
 
 ## Estructura
 
