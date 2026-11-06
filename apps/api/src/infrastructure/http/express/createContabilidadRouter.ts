@@ -16,6 +16,7 @@ import type { RegistrarAjusteUseCase } from '../../../application/commands/Regis
 import type { RegistrarPagoVendedorUseCase } from '../../../application/commands/RegistrarPagoVendedorUseCase';
 import type { ListarPagosVendedorQuery } from '../../../application/queries/ListarPagosVendedorQuery';
 import type { EstadoVendedorQuery } from '../../../application/queries/EstadoVendedorQuery';
+import type { ConsultarAuditoriaQuery } from '../../../application/queries/ConsultarAuditoriaQuery';
 import type { ListarAjustesQuery } from '../../../application/queries/ListarAjustesQuery';
 import type { RegistrarVentaConfirmadaUseCase } from '../../../application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ListarCuentasPorPagarQuery } from '../../../application/queries/ListarCuentasPorPagarQuery';
@@ -37,6 +38,7 @@ import { conciliacionesRoutes } from '../routes/conciliacionesRoutes';
 import { cuentasPorPagarRoutes } from '../routes/cuentasPorPagarRoutes';
 import { pagosVendedorRoutes } from '../routes/pagosVendedorRoutes';
 import { estadoVendedorRoutes } from '../routes/estadoVendedorRoutes';
+import { auditoriaRoutes } from '../routes/auditoriaRoutes';
 import { reportesRoutes } from '../routes/reportesRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
 import { ventasRoutes } from '../routes/ventasRoutes';
@@ -61,6 +63,7 @@ export interface RouterDeps {
     reporteIngresos: ReporteIngresosQuery;
     listarPagosVendedor: ListarPagosVendedorQuery;
     estadoVendedor: EstadoVendedorQuery;
+    consultarAuditoria: ConsultarAuditoriaQuery;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
@@ -145,6 +148,7 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
     }),
   );
   router.use(estadoVendedorRoutes({ estadoVendedor: deps.queries.estadoVendedor }));
+  router.use(auditoriaRoutes({ consultarAuditoria: deps.queries.consultarAuditoria }));
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

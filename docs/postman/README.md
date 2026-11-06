@@ -47,6 +47,7 @@ npx newman run docs/postman/contabilidad.postman_collection.json
 | 7. HU-CON-05 Reporte | reporte de hoy (hora de Colombia) del vendedor 1: ventas 100.000 − ajustes 100.000 = 0 y control cuadra; rango invertido → 400; rango mayor a 366 días → 400 |
 | 8. HU-CON-10 Pagos a vendedores | orden nueva de 100.000; pago parcial de 40.000 → 201 PARCIAL; misma referencia → 409 REFERENCIA_DUPLICADA; pago mayor al saldo → 422 PAGO_EXCEDE_SALDO; administrador → 403; pago del resto → 201 PAGADO; historial con 2 pagos; la cuenta queda PAGADO con saldo 0 |
 | 9. HU-CON-07 Estado por vendedor | orden nueva de 100.000 y pago de 40.000; estado: vendido, comisión con el % vigente, pagado 40.000, pendiente = neto − pagado, regla de control cuadra y quincena PARCIAL; quincena inválida → 400; sistema → 403 |
+| 10. HU-CON-11 Auditoría | el pago de la carpeta 9 aparece auditado por el contador con los valores antes (cuenta PENDIENTE) y después (PARCIAL); filtro por usuario y día de hoy; contador → 403; entidad inválida → 400 |
 
 Cada ejecución crea una orden nueva, con vendedores `V-PM-<marca de tiempo>`, así que se
 puede repetir las veces que haga falta.

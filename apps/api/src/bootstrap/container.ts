@@ -19,6 +19,7 @@ import { RegistrarAjusteUseCase } from '../application/commands/RegistrarAjusteU
 import { RegistrarPagoVendedorUseCase } from '../application/commands/RegistrarPagoVendedorUseCase';
 import { ListarPagosVendedorQuery } from '../application/queries/ListarPagosVendedorQuery';
 import { EstadoVendedorQuery } from '../application/queries/EstadoVendedorQuery';
+import { ConsultarAuditoriaQuery } from '../application/queries/ConsultarAuditoriaQuery';
 import { ListarAjustesQuery } from '../application/queries/ListarAjustesQuery';
 import { RegistrarVentaConfirmadaUseCase } from '../application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentasPorPagarQuery';
@@ -42,6 +43,7 @@ import { PgCuentaPorPagarRepository } from '../infrastructure/persistence/postgr
 import { PgPagoRecibidoRepository } from '../infrastructure/persistence/postgres/PgPagoRecibidoRepository';
 import { PgPagoVendedorRepository } from '../infrastructure/persistence/postgres/PgPagoVendedorRepository';
 import { PgEstadoVendedorRepository } from '../infrastructure/persistence/postgres/PgEstadoVendedorRepository';
+import { PgAuditoriaRepository } from '../infrastructure/persistence/postgres/PgAuditoriaRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
 import { PgReporteIngresosRepository } from '../infrastructure/persistence/postgres/PgReporteIngresosRepository';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
@@ -101,6 +103,8 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const registrarPagoVendedor = new RegistrarPagoVendedorUseCase(unitOfWork, clock);
   const pagosVendedor = new PgPagoVendedorRepository(pool);
   const listarPagosVendedor = new ListarPagosVendedorQuery(pagosVendedor);
+  // HU-CON-11: consulta de la auditoría (solo ADMIN_FINANCIERO).
+  const consultarAuditoria = new ConsultarAuditoriaQuery(new PgAuditoriaRepository(pool));
   // HU-CON-07: estado financiero por vendedor.
   const estadoVendedor = new EstadoVendedorQuery(
     new PgEstadoVendedorRepository(pool),
@@ -138,6 +142,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       reporteIngresos,
       listarPagosVendedor,
       estadoVendedor,
+      consultarAuditoria,
     },
     commands: {
       configurarComision,

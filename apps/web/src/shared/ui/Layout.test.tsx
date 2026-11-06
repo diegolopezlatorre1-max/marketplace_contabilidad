@@ -46,6 +46,7 @@ const MENU = [
   '/contabilidad/conciliaciones',
   '/contabilidad/ajustes',
   '/contabilidad/reportes/ingresos',
+  '/contabilidad/auditoria',
   '/contabilidad/documentacion-api',
 ];
 

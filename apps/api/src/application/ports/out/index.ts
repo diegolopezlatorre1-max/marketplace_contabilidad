@@ -1,5 +1,6 @@
 export type * from './AjusteContableRepository';
 export type * from './AuditLogger';
+export type * from './AuditoriaRepository';
 export type * from './AuthContext';
 export type * from './Clock';
 export type * from './ComisionRepository';
