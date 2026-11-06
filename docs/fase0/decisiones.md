@@ -14,6 +14,8 @@ Cierre previo al Sprint 1 (2026-10-08): se confirmaron D-01 a D-04 con los valor
 propuestos. D-05 se adopta con el contrato v1 congelado
 (ver [`contratos-integracion.md`](contratos-integracion.md)).
 
+Cierre del Sprint 2 (2026-11-06): el Contador validó D-07 y D-08 con datos de ejemplo.
+
 | ID | Decisión | Valor adoptado | Estado | Validar con | Antes de | Dónde vive en el código |
 |----|----------|----------------|--------|-------------|----------|-------------------------|
 | D-01 | Moneda | COP única | CONFIRMADA 2026-10-08 | Contador | Sprint 1 | `domain/shared/Money.ts` (`MONEDA`) |
@@ -22,8 +24,8 @@ propuestos. D-05 se adopta con el contrato v1 congelado
 | D-04 | Alcance del % de comisión (H-03) | Global con vigencias; modelo preparado para VENDEDOR y CATEGORIA (prioridad vendedor > categoría > global). Lo configura el rol ADMIN_FINANCIERO (HU-CON-09) | CONFIRMADA 2026-10-08 | Contador / Administración | Sprint 1 | Sprint 1: `ConfiguracionComision` |
 | D-05 | Órdenes multi-vendedor (H-12) | Un registro contable por (orden, vendedor) | ADOPTADA (contrato v1) | Equipo Órdenes | Sprint 1 | Contrato `orden.confirmada.lineas[]` |
 | D-06 | Pago al vendedor (H-04) | Nueva HU-CON-10; el pago se aplica FIFO por periodo a las cuentas pendientes | PROVISIONAL | Contador | Sprint 3 | Sprint 3 |
-| D-07 | Ajustes (H-06) | Reverso proporcional de comisión y neto con el % aplicado originalmente; devoluciones parciales permitidas hasta el valor no ajustado; si la cuenta ya está pagada se genera saldo a favor del marketplace que se descuenta en la siguiente liquidación | PROVISIONAL | Contador | Sprint 2 | Sprint 2: `PoliticaAjuste` |
-| D-08 | Tolerancia de conciliación | 0 (exacta) hasta que el contador defina otra; configurable | PROVISIONAL | Contador / Pagos | Sprint 2 | Sprint 2: `PoliticaConciliacion` |
+| D-07 | Ajustes (H-06) | Reverso proporcional de comisión y neto con el % aplicado originalmente; devoluciones parciales permitidas hasta el valor no ajustado; si la cuenta ya está pagada se genera saldo a favor del marketplace que se descuenta en la siguiente liquidación | CONFIRMADA 2026-11-06 | Contador | Sprint 2 | `domain/ajuste/AjusteContable.ts`, `CuentaPorPagar.revertir()` |
+| D-08 | Tolerancia de conciliación | 0 (exacta) hasta que el contador defina otra; configurable | CONFIRMADA 2026-11-06 | Contador / Pagos | Sprint 2 | `domain/conciliacion/Conciliacion.ts` (`PoliticaConciliacion`) |
 | D-09 | Columnas del Excel (H-07) | fecha, número de orden, vendedor, valor bruto, % comisión, comisión, valor neto, estado de pago, estado de conciliación, ajustes | PROVISIONAL | Admin. financiero | Sprint 3 | Sprint 3 |
 | D-10 | Impuestos y facturación (H-09, H-10) | Won't Have: facturación electrónica DIAN, IVA/retenciones, nómina, contabilidad general | PROVISIONAL | Contador | Fase 5 | — |
 | D-11 | Partida doble / PUC | Fuera del alcance de los sprints 1–3; opcional en la Fase 5 | PROVISIONAL | Contador | Fase 5 | — |
@@ -36,7 +38,8 @@ propuestos. D-05 se adopta con el contrato v1 congelado
 - [x] Integrantes: Carlos y Diego. Nombre del equipo: `[POR DEFINIR]`.
 - [~] Responsable con nombre por historia: Sprint 1 asignado (HU-CON-09 y 01 Carlos,
   HU-CON-02 y 03 Diego; tareas en [`docs/sprint1/plan-sprint1.md`](../sprint1/plan-sprint1.md)).
-  Sprints 2 y 3: `[POR DEFINIR]`.
+  Sprint 2 asignado (HU-CON-04 Carlos, HU-CON-05 y 06 Diego; tareas en
+  [`docs/sprint2/plan-sprint2.md`](../sprint2/plan-sprint2.md)). Sprint 3: `[POR DEFINIR]`.
 - [x] Fechas de inicio y fin de cada sprint (2 semanas, inicio 2026-10-12):
 
   | Sprint | Fase | Inicio | Fin | Historias |

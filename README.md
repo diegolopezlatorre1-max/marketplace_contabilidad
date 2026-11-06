@@ -8,6 +8,7 @@ cuentas por pagar a vendedores, conciliación de pagos y ajustes por devolucione
 - Contratos con otros módulos: [`docs/fase0/contratos-integracion.md`](docs/fase0/contratos-integracion.md)
 - Decisiones de arquitectura: [`docs/adr/`](docs/adr)
 - Plan del Sprint 1 (tareas y responsables): [`docs/sprint1/plan-sprint1.md`](docs/sprint1/plan-sprint1.md)
+- Plan y cierre del Sprint 2: [`docs/sprint2/plan-sprint2.md`](docs/sprint2/plan-sprint2.md)
 
 ## Estado
 
@@ -15,9 +16,9 @@ cuentas por pagar a vendedores, conciliación de pagos y ajustes por devolucione
 | ---- | ------------------------------- | ----------------------------------------- |
 | 0    | Decisiones y contratos          | Hecha; Sprint 1 desbloqueado (2026-10-08) |
 | 1    | Fundaciones técnicas            | Hecha                                     |
-| 2    | Sprint 1: HU-CON-09, 01, 02, 03 | Planeado: 2026-10-12 a 2026-10-23         |
-| 3    | Sprint 2: HU-CON-06, 04, 05     | Pendiente                                 |
-| 4    | Sprint 3: HU-CON-10, 07, 08, 11 | Pendiente                                 |
+| 2    | Sprint 1: HU-CON-09, 01, 02, 03 | Hecha (2026-10-23)                        |
+| 3    | Sprint 2: HU-CON-06, 04, 05     | Hecha (2026-11-06)                        |
+| 4    | Sprint 3: HU-CON-10, 07, 08, 11 | Siguiente: 2026-11-09 a 2026-11-20        |
 
 ## Estructura
 
