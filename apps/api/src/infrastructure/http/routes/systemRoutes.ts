@@ -35,7 +35,8 @@ export function meRoutes(): Router {
     const body: UsuarioActualResponse = {
       id: actor.id,
       nombre: actor.nombre,
-      roles: [...actor.roles],
+      // VENDEDOR (HU-CON-07) está preparado pero aún no forma parte del contrato.
+      roles: actor.roles.filter((r) => r !== 'VENDEDOR'),
     };
     res.json(body);
   });

@@ -1,6 +1,7 @@
 import { aAjusteRegistrado } from '../../../src/application/commands/aplicarAjuste';
 import { aPagoVendedorRegistrado } from '../../../src/application/commands/RegistrarPagoVendedorUseCase';
 import type { PagoVendedorRepository } from '../../../src/application/ports/out/PagoVendedorRepository';
+import type { EstadoVendedorRepository } from '../../../src/application/ports/out/EstadoVendedorRepository';
 import type { PagoVendedor } from '../../../src/domain/pagoVendedor/PagoVendedor';
 import type { AjusteContableRepository } from '../../../src/application/ports/out/AjusteContableRepository';
 import type { RegistroAuditoria } from '../../../src/application/ports/out/AuditLogger';
@@ -451,6 +452,55 @@ function reporteEnMemoria(db: { datos: DatosEnMemoria }): ReporteIngresosReposit
   };
 }
 
+/** HU-CON-07: misma agrupación que PgEstadoVendedorRepository (quincena de la venta). */
+function estadoEnMemoria(db: { datos: DatosEnMemoria }): EstadoVendedorRepository {
+  return {
+    movimientosPorPeriodo: async (vendedorId, desde, hasta) =>
+      db.datos.cuentas
+        .filter(
+          (c) =>
+            c.vendedorId === vendedorId &&
+            (!desde || c.periodo >= desde) &&
+            (!hasta || c.periodo <= hasta),
+        )
+        .sort((a, b) => a.periodo.localeCompare(b.periodo))
+        .map((c) => {
+          const ventas = db.datos.ventas
+            .map(({ venta }) => venta)
+            .filter((v) => v.vendedorId === vendedorId && v.periodo.codigo === c.periodo);
+          const ids = new Set(ventas.map((v) => v.id));
+          const comisiones = db.datos.comisiones
+            .filter((x) => ids.has(x.ventaId))
+            .map((x) => x.comision);
+          const ajustes = db.datos.ajustes
+            .map(({ ajuste }) => ajuste)
+            .filter((a) => ids.has(a.ventaId));
+          const cuenta = CuentaPorPagar.reconstituir({
+            vendedorId,
+            periodo: Periodo.parse(c.periodo),
+            totalNeto: c.totalNeto,
+            pagado: c.pagado,
+            ordenes: [],
+          });
+          return {
+            periodo: c.periodo,
+            ventas: ventas.length,
+            vendido: Money.sum(ventas.map((v) => v.valorBruto)),
+            comision: Money.sum(comisiones.map((x) => x.comision)),
+            ajustes: {
+              valor: Money.sum(ajustes.map((a) => a.valor)),
+              comisionRevertida: Money.sum(ajustes.map((a) => a.comisionRevertida)),
+              netoRevertido: Money.sum(ajustes.map((a) => a.netoRevertido)),
+              saldoAFavor: Money.sum(ajustes.map((a) => a.saldoAFavor)),
+            },
+            pagado: c.pagado,
+            pendiente: cuenta.saldoPendiente,
+            estado: cuenta.estado,
+          };
+        }),
+  };
+}
+
 export function crearBaseEnMemoria() {
   const db = { datos: vacio() };
   const repos = repositorios(db);
@@ -465,7 +515,7 @@ export function crearBaseEnMemoria() {
       }
     },
   };
-  return { db, repos, uow, reporte: reporteEnMemoria(db) };
+  return { db, repos, uow, reporte: reporteEnMemoria(db), estado: estadoEnMemoria(db) };
 }
 
 /** Comisión GLOBAL vigente desde 2026-01-01 (igual que el seed 010). */

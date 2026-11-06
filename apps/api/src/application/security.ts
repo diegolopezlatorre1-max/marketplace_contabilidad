@@ -1,12 +1,18 @@
 import { DomainError } from '../domain/shared';
 
-export type Rol = 'CONTADOR' | 'ADMIN_FINANCIERO' | 'SISTEMA';
+/**
+ * VENDEDOR (HU-CON-07) queda preparado para cuando el marketplace lo requiera: solo puede ver su
+ * propio estado y todavía no lo emite la autenticación ni lo acepta ninguna ruta.
+ */
+export type Rol = 'CONTADOR' | 'ADMIN_FINANCIERO' | 'SISTEMA' | 'VENDEDOR';
 
 /** Usuario (persona o sistema) que ejecuta un caso de uso. */
 export interface Actor {
   id: string;
   nombre: string;
   roles: readonly Rol[];
+  /** Vendedor que representa el usuario (solo con el rol VENDEDOR). */
+  vendedorId?: string;
 }
 
 export class NoAutorizadoError extends DomainError {

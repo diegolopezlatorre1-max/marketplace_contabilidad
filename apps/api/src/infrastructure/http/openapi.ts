@@ -59,7 +59,8 @@ export function buildOpenApi(version: string) {
       },
       {
         name: 'Cuentas por pagar',
-        description: 'Saldos a pagar a cada vendedor por quincena (HU-CON-03).',
+        description:
+          'Saldos a pagar a cada vendedor por quincena (HU-CON-03) y estado financiero por vendedor (HU-CON-07).',
       },
       {
         name: 'Conciliación',
@@ -434,6 +435,76 @@ export function buildOpenApi(version: string) {
             origen: { type: 'string', enum: ['MANUAL', 'EVENTO'] },
             registradoPor: { type: 'string' },
             registradoEn: { type: 'string', format: 'date-time' },
+          },
+        },
+        EstadoVendedor: {
+          type: 'object',
+          description:
+            'Regla de control: vendido − comisión − ajustes descontados del saldo = pagado + pendiente',
+          properties: {
+            vendedorId: { type: 'string', example: 'V-1' },
+            vendedorNombre: { type: 'string', example: 'Artesanías del Valle S.A.S.' },
+            desde: { type: 'string', nullable: true, example: '2026-10-Q1' },
+            hasta: { type: 'string', nullable: true, example: '2026-10-Q2' },
+            totales: {
+              type: 'object',
+              properties: {
+                ventas: { type: 'integer', example: 2 },
+                vendido: { type: 'string', example: '150000.00' },
+                comision: { type: 'string', example: '15000.00' },
+                ajustes: {
+                  type: 'object',
+                  properties: {
+                    valor: { type: 'string', example: '0.00' },
+                    comisionRevertida: { type: 'string', example: '0.00' },
+                    netoRevertido: { type: 'string', example: '0.00' },
+                    descontadoDelSaldo: {
+                      type: 'string',
+                      example: '0.00',
+                      description: 'Parte del neto revertido que bajó el saldo de las cuentas',
+                    },
+                    saldoAFavor: {
+                      type: 'string',
+                      example: '0.00',
+                      description: 'Parte ya pagada: se descuenta en el siguiente pago',
+                    },
+                  },
+                },
+                pagado: { type: 'string', example: '90000.00' },
+                pendiente: { type: 'string', example: '45000.00' },
+              },
+            },
+            saldoAFavorDisponible: {
+              type: 'string',
+              example: '0.00',
+              description: 'Saldo a favor del marketplace aún no descontado (todas las quincenas)',
+            },
+            control: {
+              type: 'object',
+              properties: {
+                cuadra: { type: 'boolean' },
+                generado: { type: 'string', example: '135000.00' },
+                liquidado: { type: 'string', example: '135000.00' },
+                detalle: { type: 'string' },
+              },
+            },
+            periodos: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  periodo: { type: 'string', example: '2026-10-Q1' },
+                  ventas: { type: 'integer' },
+                  vendido: { type: 'string' },
+                  comision: { type: 'string' },
+                  ajustesNeto: { type: 'string' },
+                  saldoAFavor: { type: 'string' },
+                  pagado: { type: 'string' },
+                  pendiente: { type: 'string' },
+                  estado: { type: 'string', enum: ['PENDIENTE', 'PARCIAL', 'PAGADO'] },
+                },
+              },
+            },
           },
         },
         RegistrarPagoVendedor: {
@@ -1002,6 +1073,42 @@ export function buildOpenApi(version: string) {
             '403': problema('Requiere rol CONTADOR'),
             '404': problema('ORDEN_INEXISTENTE: la venta no existe'),
             '422': problema('AJUSTE_EXCEDE_SALDO: supera lo que queda por ajustar'),
+          },
+        },
+      },
+      '/vendedores/{id}/estado': {
+        get: {
+          tags: ['Cuentas por pagar'],
+          summary: 'Estado financiero de un vendedor por quincenas (HU-CON-07)',
+          description:
+            'Total vendido, comisión, ajustes, pagado y pendiente, agrupados por la quincena de las ' +
+            'ventas (la de su cuenta por pagar), con la regla de control.',
+          security: [{ bearer: [] }],
+          parameters: [
+            { name: 'id', in: 'path', required: true, schema: { type: 'string', example: 'V-1' } },
+            {
+              name: 'desde',
+              in: 'query',
+              schema: { type: 'string', example: '2026-10-Q1' },
+              description: 'Quincena inicial (AAAA-MM-Q1 o AAAA-MM-Q2), inclusive',
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              schema: { type: 'string', example: '2026-10-Q2' },
+              description: 'Quincena final, inclusive',
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Estado del vendedor',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EstadoVendedor' } },
+              },
+            },
+            '400': problema('Quincenas inválidas o rango invertido'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
           },
         },
       },

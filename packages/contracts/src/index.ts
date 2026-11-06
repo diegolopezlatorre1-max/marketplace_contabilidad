@@ -4,6 +4,7 @@ export * from './conciliaciones';
 export * from './common';
 export * from './cuentasPorPagar';
 export * from './errors';
+export * from './estadoVendedor';
 export * from './pagosVendedor';
 export * from './events';
 export * from './reportes';

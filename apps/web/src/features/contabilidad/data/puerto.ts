@@ -3,6 +3,7 @@ import type {
   AjusteFila,
   ComisionFila,
   CuentaPorPagarFila,
+  EstadoVendedor,
   EstadoCuenta,
   FiltroAjustes,
   FiltroPagos,
@@ -36,6 +37,12 @@ export interface ContabilidadApi {
   registrarPago(pago: NuevoPago): Promise<PagoVendedorFila>;
   /** HU-CON-10: pagos a vendedores, del más reciente al más antiguo. */
   listarPagos(filtro: FiltroPagos): Promise<PagoVendedorFila[]>;
+  /** HU-CON-07: estado financiero del vendedor entre dos quincenas (inclusive). */
+  obtenerEstadoVendedor(
+    vendedorId: string,
+    desde?: string,
+    hasta?: string,
+  ): Promise<EstadoVendedor>;
   /** HU-CON-06: ajustes de una venta, del más reciente al más antiguo. */
   listarAjustes(ventaId: string): Promise<AjusteFila[]>;
   registrarAjuste(ajuste: NuevoAjuste): Promise<AjusteFila>;

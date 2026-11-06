@@ -2988,6 +2988,257 @@
           ]
         }
       ]
+    },
+    {
+      "name": "9. HU-CON-07 Estado por vendedor",
+      "item": [
+        {
+          "name": "Orden de 100.000 (vendedor nuevo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoOrdenEstado}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{ordenEstado}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [{ \"vendedorId\": \"{{vendedorEstado}}\", \"valorBruto\": \"100000.00\" }]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = Date.now();",
+                  "pm.collectionVariables.set('ahoraIso', new Date().toISOString());",
+                  "pm.collectionVariables.set('eventoOrdenEstado', 'evt-pm-est-' + s);",
+                  "pm.collectionVariables.set('ordenEstado', 'ORD-PM-E-' + s);",
+                  "pm.collectionVariables.set('vendedorEstado', 'V-PM-E-' + s);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago parcial de 40.000",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedorId\": \"{{vendedorEstado}}\",\n  \"valor\": \"40000.00\",\n  \"referencia\": \"TRF-{{ordenEstado}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Estado del vendedor -> vendido, comisión, pagado, pendiente y control",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vendedores/{{vendedorEstado}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vendedores",
+                "{{vendedorEstado}}",
+                "estado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const e = pm.response.json();",
+                  "const pct = Number(pm.collectionVariables.get('porcentajeVigente'));",
+                  "const comision = Math.round(100000 * pct) / 100;",
+                  "pm.test('Total vendido 100.000 y comisión con el % vigente', () => { pm.expect(Number(e.totales.vendido)).to.eql(100000); pm.expect(Number(e.totales.comision)).to.eql(comision); });",
+                  "pm.test('Pagado 40.000 y pendiente = neto − pagado', () => { pm.expect(Number(e.totales.pagado)).to.eql(40000); pm.expect(Number(e.totales.pendiente)).to.eql(100000 - comision - 40000); });",
+                  "pm.test('Regla de control cuadra', () => pm.expect(e.control.cuadra).to.eql(true));",
+                  "pm.test('La quincena queda PARCIAL', () => pm.expect(e.periodos[0].estado).to.eql('PARCIAL'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Quincena inválida -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vendedores/{{vendedorEstado}}/estado?desde=2026-10-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vendedores",
+                "{{vendedorEstado}}",
+                "estado"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "2026-10-01"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar como sistema -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/vendedores/{{vendedorEstado}}/estado",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "vendedores",
+                "{{vendedorEstado}}",
+                "estado"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

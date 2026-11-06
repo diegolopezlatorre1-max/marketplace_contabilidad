@@ -1,4 +1,8 @@
-import type { PagoVendedorDto, ReporteIngresosDto } from '@contabilidad/contracts';
+import type {
+  EstadoVendedorDto,
+  PagoVendedorDto,
+  ReporteIngresosDto,
+} from '@contabilidad/contracts';
 
 /** PARCIAL (HU-CON-10): la cuenta tiene pagos, pero aún queda saldo. */
 export type EstadoCuenta = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
@@ -131,6 +135,9 @@ export interface NuevoPago {
 
 /** HU-CON-10: pago registrado con las cuentas a las que se aplicó (mismo formato que la API). */
 export type PagoVendedorFila = PagoVendedorDto;
+
+/** HU-CON-07: estado financiero de un vendedor (mismo formato que la API). */
+export type EstadoVendedor = EstadoVendedorDto;
 
 /** HU-CON-10: filtros del historial de pagos (fechas del pago, inclusive). */
 export interface FiltroPagos {
