@@ -9,6 +9,7 @@ cuentas por pagar a vendedores, conciliación de pagos y ajustes por devolucione
 - Decisiones de arquitectura: [`docs/adr/`](docs/adr)
 - Plan del Sprint 1 (tareas y responsables): [`docs/sprint1/plan-sprint1.md`](docs/sprint1/plan-sprint1.md)
 - Plan y cierre del Sprint 2: [`docs/sprint2/plan-sprint2.md`](docs/sprint2/plan-sprint2.md)
+- Plan del Sprint 3: [`docs/sprint3/plan-sprint3.md`](docs/sprint3/plan-sprint3.md) (Excel: [`Planeacion_Sprint3_Contabilidad.xlsx`](docs/sprint3/Planeacion_Sprint3_Contabilidad.xlsx))
 
 ## Estado
 
