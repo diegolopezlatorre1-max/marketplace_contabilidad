@@ -12,9 +12,9 @@ Planeación en Excel: [`Planeacion_Sprint3_Contabilidad.xlsx`](Planeacion_Sprint
 
 - [x] **D-06** (confirmada 2026-11-06): validar con el Contador que el pago se aplica FIFO por periodo y que primero se
       descuenta el saldo a favor del marketplace. Bloquea la HU-CON-10.
-- [ ] **D-09:** validar con el Administrador financiero las columnas del Excel. Bloquea la
+- [x] **D-09** (confirmada 2026-11-06): validar con el Administrador financiero las columnas del Excel. Bloquea la
       HU-CON-08.
-- [ ] Acordar las interfaces del día 1 (ver "Acuerdos").
+- [x] Acordar las interfaces del día 1 (ver "Acuerdos").
 
 ## Reparto
 
@@ -76,8 +76,8 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 | ID | Tarea | Responsable | Estado |
 |----|-------|-------------|--------|
 | T-73 | Prueba de cuadre global: ventas = comisiones + netos; neto − ajustes = pagado + pendiente por vendedor; el Excel coincide con el reporte. | Carlos + Diego | ✅ |
-| T-74 | Revisión cruzada: cada PR lo aprueba el otro integrante. | Carlos + Diego | ⬜ |
-| T-75 | Demo con datos de ejemplo y validación del Contador y del Administrador financiero (criterios del F01 de 07, 08, 10 y 11). | Carlos (presenta) + Diego | ⬜ |
+| T-74 | Revisión cruzada: cada PR lo aprueba el otro integrante. | Carlos + Diego | ✅ |
+| T-75 | Demo con datos de ejemplo y validación del Contador y del Administrador financiero (criterios del F01 de 07, 08, 10 y 11). | Carlos (presenta) + Diego | ✅ 2026-11-06 |
 
 ## Calendario sugerido
 
@@ -102,3 +102,41 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
   `feat/hu-con-07-estado-vendedor`, `feat/hu-con-08-exportar-excel`,
   `feat/hu-con-11-auditoria`); PR a `dev` con la plantilla del DoD.
 - **Contracts:** cada uno agrega sus DTOs en un archivo propio de `packages/contracts/src/`.
+
+## Cierre (2026-11-06)
+
+El desarrollo terminó el 2026-11-06, antes de las fechas previstas (2026-11-09 a 2026-11-20).
+
+**Entregables**
+
+| HU | Resultado | PR |
+|----|-----------|----|
+| HU-CON-10 Pago a vendedor | Pago con fecha, valor, referencia y soporte; descuenta el saldo a favor y se aplica FIFO por periodo; estado PARCIAL; pantalla "Pagos a vendedores". | #14 |
+| HU-CON-07 Estado por vendedor | Vendido, comisión, ajustes, pagado y pendiente por quincena con la regla de control; rol VENDEDOR preparado; pantalla "Estado por vendedor". | #15 |
+| HU-CON-11 Auditoría | `GET /auditoria` por entidad, usuario y día (hora de Colombia), solo ADMIN_FINANCIERO; pantalla con los valores antes y después. | #16 |
+| HU-CON-08 Exportar a Excel | `.xlsx` con las columnas de D-09 y los mismos totales del reporte; botón en el reporte de ingresos. | #17 |
+
+Documentación del sprint: PR #13 (plan y Excel) y #18 (avance en el Excel).
+
+**Criterio de salida:** criterios del F01 de 07, 08, 10 y 11 validados por el Contador y el
+Administrador financiero el 2026-11-06; D-06 y D-09 pasan a CONFIRMADA (ver
+[`decisiones.md`](../fase0/decisiones.md)). Prueba de cuadre global (T-73): el reporte cuadra
+bruto = comisión + neto, el estado por vendedor cuadra vendido − comisión − ajustes = pagado +
+pendiente, y el Excel coincide con el reporte.
+
+**Velocidad:** 12 / 12 pts (Sprint 1: 18 / 18 · Sprint 2: 18 / 18).
+
+**Calidad al cierre (rama `dev`):** pruebas unitarias 227 (API), 65 (web) y 6 (contracts);
+71 de integración con PostgreSQL; colección de Postman 70 peticiones / 142 aserciones sin
+fallas; CI en verde.
+
+**Queda abierto**
+
+- Pregunta al equipo de Pagos: ¿el valor de `pago.recibido` viene neto de los costos de la
+  pasarela?
+- Exponer el rol VENDEDOR cuando el marketplace lo requiera (la consulta ya lo soporta).
+
+**Pasa al Sprint 4 (Fase 5, endurecimiento, 2026-11-23 a 2026-12-04):** el plan de la Fase 5 en
+[`Plan_Desarrollo_Modulo_Contabilidad.txt`](../Plan_Desarrollo_Modulo_Contabilidad.txt) y las
+mejoras del cierre: pruebas de extremo a extremo de la interfaz y fusionar cada PR apenas pasa
+la revisión.
