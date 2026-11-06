@@ -30,6 +30,7 @@ import { InvalidValueError } from '../../../src/domain/shared';
 import { RegistrarPagoVendedorUseCase } from '../../../src/application/commands/RegistrarPagoVendedorUseCase';
 import { ListarPagosVendedorQuery } from '../../../src/application/queries/ListarPagosVendedorQuery';
 import { EstadoVendedorQuery } from '../../../src/application/queries/EstadoVendedorQuery';
+import { ConsultarAuditoriaQuery } from '../../../src/application/queries/ConsultarAuditoriaQuery';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
 import { errorHandler } from '../../../src/infrastructure/http/middlewares/errorHandler';
 import { MockAuthContext } from '../../../src/infrastructure/integration/auth/MockAuthContext';
@@ -75,6 +76,7 @@ function app(dbOk = true) {
       reporteIngresos: new ReporteIngresosQuery(base.reporte),
       listarPagosVendedor: new ListarPagosVendedorQuery(base.repos.pagosVendedor),
       estadoVendedor: new EstadoVendedorQuery(base.estado, base.repos.pagosVendedor, vendedores),
+      consultarAuditoria: new ConsultarAuditoriaQuery(base.auditoria),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
@@ -804,6 +806,42 @@ describe('Ruta del estado por vendedor (HU-CON-07)', () => {
       (await consultar('/vendedores/V-1/estado?desde=2026-11-Q1&hasta=2026-10-Q1')).status,
     ).toBe(400);
     expect((await consultar('/vendedores/V-1/estado', 'mock-sistema')).status).toBe(403);
+  });
+});
+
+describe('Ruta de auditoría (HU-CON-11)', () => {
+  const BASE = '/api/v1/contabilidad';
+
+  it('GET /auditoria lista los movimientos solo para el administrador financiero', async () => {
+    const servidor = app();
+    await request(servidor)
+      .post(`${BASE}/eventos/orden-confirmada`)
+      .set('authorization', 'Bearer mock-sistema')
+      .send({
+        eventId: 'evt-001',
+        version: 1,
+        ocurridoEn: '2026-10-05T10:00:00-05:00',
+        tipo: 'orden.confirmada',
+        numeroOrden: 'ORD-1001',
+        fecha: '2026-10-05T09:58:00-05:00',
+        estado: 'CONFIRMADA',
+        moneda: 'COP',
+        lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+      });
+    const consultar = (url: string, token = 'mock-admin') =>
+      request(servidor).get(`${BASE}${url}`).set('authorization', `Bearer ${token}`);
+
+    const res = await consultar('/auditoria?entidad=venta_contable');
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      total: 1,
+      items: [
+        { entidad: 'venta_contable', usuario: 'sistema-marketplace', accion: expect.any(String) },
+      ],
+    });
+    expect((await consultar('/auditoria', 'mock-contador')).status).toBe(403);
+    expect((await consultar('/auditoria?entidad=desconocida')).status).toBe(400);
+    expect((await consultar('/auditoria?desde=2026-13-01')).status).toBe(400);
   });
 });
 

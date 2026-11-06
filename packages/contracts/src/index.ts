@@ -1,4 +1,5 @@
 export * from './ajustes';
+export * from './auditoria';
 export * from './comisiones';
 export * from './conciliaciones';
 export * from './common';

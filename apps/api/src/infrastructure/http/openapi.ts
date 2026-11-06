@@ -79,6 +79,11 @@ export function buildOpenApi(version: string) {
           'Devoluciones y cancelaciones: revierten comisión y neto con el % original (HU-CON-06, D-07).',
       },
       {
+        name: 'Auditoría',
+        description:
+          'Quién hizo cada cambio contable, cuándo y con qué valores antes y después (HU-CON-11).',
+      },
+      {
         name: 'Pagos a vendedores',
         description:
           'Pagos hechos a los vendedores: descuentan el saldo a favor del marketplace y se aplican ' +
@@ -435,6 +440,29 @@ export function buildOpenApi(version: string) {
             origen: { type: 'string', enum: ['MANUAL', 'EVENTO'] },
             registradoPor: { type: 'string' },
             registradoEn: { type: 'string', format: 'date-time' },
+          },
+        },
+        RegistroAuditoria: {
+          type: 'object',
+          properties: {
+            id: { type: 'integer' },
+            entidad: { type: 'string', example: 'pago_vendedor' },
+            entidadId: { type: 'string' },
+            accion: { type: 'string', example: 'REGISTRAR' },
+            usuario: { type: 'string', example: 'u-contador' },
+            fecha: { type: 'string', format: 'date-time' },
+            valoresAnteriores: { type: 'object', nullable: true, additionalProperties: true },
+            valoresNuevos: { type: 'object', nullable: true, additionalProperties: true },
+            correlationId: { type: 'string', nullable: true },
+          },
+        },
+        PaginaAuditoria: {
+          type: 'object',
+          properties: {
+            items: { type: 'array', items: { $ref: '#/components/schemas/RegistroAuditoria' } },
+            page: { type: 'integer' },
+            size: { type: 'integer' },
+            total: { type: 'integer' },
           },
         },
         EstadoVendedor: {
@@ -1073,6 +1101,61 @@ export function buildOpenApi(version: string) {
             '403': problema('Requiere rol CONTADOR'),
             '404': problema('ORDEN_INEXISTENTE: la venta no existe'),
             '422': problema('AJUSTE_EXCEDE_SALDO: supera lo que queda por ajustar'),
+          },
+        },
+      },
+      '/auditoria': {
+        get: {
+          tags: ['Auditoría'],
+          summary: 'Auditoría de movimientos contables (HU-CON-11)',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'entidad',
+              in: 'query',
+              schema: {
+                type: 'string',
+                enum: [
+                  'configuracion_comision',
+                  'venta_contable',
+                  'pago_recibido',
+                  'conciliacion',
+                  'ajuste_contable',
+                  'pago_vendedor',
+                ],
+              },
+            },
+            { name: 'entidadId', in: 'query', schema: { type: 'string' } },
+            { name: 'usuario', in: 'query', schema: { type: 'string' } },
+            {
+              name: 'desde',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Día inicial en hora de Colombia (inclusive)',
+            },
+            {
+              name: 'hasta',
+              in: 'query',
+              schema: { type: 'string', format: 'date' },
+              description: 'Día final en hora de Colombia (inclusive)',
+            },
+            { name: 'page', in: 'query', schema: { type: 'integer', minimum: 1, default: 1 } },
+            {
+              name: 'size',
+              in: 'query',
+              schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Página de movimientos, del más reciente al más antiguo',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/PaginaAuditoria' } },
+              },
+            },
+            '400': problema('Filtros inválidos'),
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol ADMIN_FINANCIERO'),
           },
         },
       },

@@ -3239,6 +3239,206 @@
           ]
         }
       ]
+    },
+    {
+      "name": "10. HU-CON-11 Auditoría",
+      "item": [
+        {
+          "name": "Auditoría del pago de la carpeta 9 -> antes y después",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria?entidad=pago_vendedor&size=200",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "entidad",
+                  "value": "pago_vendedor"
+                },
+                {
+                  "key": "size",
+                  "value": "200"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "const v = pm.collectionVariables.get('vendedorEstado');",
+                  "const reg = r.items.find((i) => i.valoresNuevos && i.valoresNuevos.pago && i.valoresNuevos.pago.vendedorId === v);",
+                  "pm.test('El pago quedó auditado por el contador', () => { pm.expect(reg).to.be.an('object'); pm.expect(reg.usuario).to.eql('u-contador'); pm.expect(reg.accion).to.eql('REGISTRAR'); });",
+                  "pm.test('Guarda los valores antes y después', () => { pm.expect(reg.valoresAnteriores.cuentas[0].estado).to.eql('PENDIENTE'); pm.expect(reg.valoresNuevos.pago.aplicaciones[0].estado).to.eql('PARCIAL'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Filtrar por usuario y día de hoy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria?usuario=u-contador&desde={{hoy}}&hasta={{hoy}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "usuario",
+                  "value": "u-contador"
+                },
+                {
+                  "key": "desde",
+                  "value": "{{hoy}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{hoy}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set('hoy', new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date()));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('Solo movimientos del contador', () => r.items.forEach((i) => pm.expect(i.usuario).to.eql('u-contador')));",
+                  "pm.test('Hay movimientos de hoy', () => pm.expect(r.total).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar como contador -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Entidad inválida -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auditoria?entidad=desconocida",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auditoria"
+              ],
+              "query": [
+                {
+                  "key": "entidad",
+                  "value": "desconocida"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

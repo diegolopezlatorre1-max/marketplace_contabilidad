@@ -66,10 +66,10 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
-| T-69 | `ConsultarAuditoriaQuery` con filtros por entidad, usuario y fechas, paginada, sobre `contabilidad.auditoria` (índices ya creados en `001_esquema_base.sql`). | Aplicación / Infra | ⬜ |
-| T-70 | `GET /auditoria?entidad=&usuario=&desde=&hasta=` (solo ADMIN_FINANCIERO). DTOs en `packages/contracts/src/auditoria.ts` y OpenAPI. | API | ⬜ |
-| T-71 | Pantalla de auditoría con los valores antes y después (`valores_anteriores` / `valores_nuevos`). | Web | ⬜ |
-| T-72 | Pruebas: los filtros devuelven solo lo esperado; otro rol → 403; los comandos nuevos del sprint (pago al vendedor) aparecen en la auditoría. | Pruebas | ⬜ |
+| T-69 | `ConsultarAuditoriaQuery` con filtros por entidad, usuario y fechas, paginada, sobre `contabilidad.auditoria` (índices ya creados en `001_esquema_base.sql`). | Aplicación / Infra | ✅ |
+| T-70 | `GET /auditoria?entidad=&usuario=&desde=&hasta=` (solo ADMIN_FINANCIERO). DTOs en `packages/contracts/src/auditoria.ts` y OpenAPI. | API | ✅ |
+| T-71 | Pantalla de auditoría con los valores antes y después (`valores_anteriores` / `valores_nuevos`). | Web | ✅ |
+| T-72 | Pruebas: los filtros devuelven solo lo esperado; otro rol → 403; los comandos nuevos del sprint (pago al vendedor) aparecen en la auditoría. | Pruebas | ✅ |
 
 ### Compartidas
 

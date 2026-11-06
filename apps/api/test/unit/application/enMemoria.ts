@@ -2,6 +2,8 @@ import { aAjusteRegistrado } from '../../../src/application/commands/aplicarAjus
 import { aPagoVendedorRegistrado } from '../../../src/application/commands/RegistrarPagoVendedorUseCase';
 import type { PagoVendedorRepository } from '../../../src/application/ports/out/PagoVendedorRepository';
 import type { EstadoVendedorRepository } from '../../../src/application/ports/out/EstadoVendedorRepository';
+import type { AuditoriaRepository } from '../../../src/application/ports/out/AuditoriaRepository';
+import { fechaContable } from '../../../src/domain/shared';
 import type { PagoVendedor } from '../../../src/domain/pagoVendedor/PagoVendedor';
 import type { AjusteContableRepository } from '../../../src/application/ports/out/AjusteContableRepository';
 import type { RegistroAuditoria } from '../../../src/application/ports/out/AuditLogger';
@@ -44,6 +46,8 @@ import type { PagoRecibido } from '../../../src/domain/conciliacion/PagoRecibido
 export interface DatosEnMemoria {
   configuraciones: ConfiguracionComision[];
   auditoria: RegistroAuditoria[];
+  /** Instante de cada registro de `auditoria` (en PostgreSQL lo asigna now()). */
+  auditoriaFechas: Date[];
   outbox: EventoDeIntegracion[];
   inbox: string[];
   ignorados: Array<{ eventId: string; motivo: string }>;
@@ -60,6 +64,7 @@ function vacio(): DatosEnMemoria {
   return {
     configuraciones: [],
     auditoria: [],
+    auditoriaFechas: [],
     outbox: [],
     inbox: [],
     ignorados: [],
@@ -285,7 +290,12 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
   return {
     pagosRecibidos,
     conciliaciones,
-    auditoria: { registrar: async (r) => void db.datos.auditoria.push(r) },
+    auditoria: {
+      registrar: async (r) => {
+        db.datos.auditoria.push(r);
+        db.datos.auditoriaFechas.push(new Date());
+      },
+    },
     outbox: { publicar: async (e) => void db.datos.outbox.push(e) },
     inbox: {
       bloquear: async () => {},
@@ -501,6 +511,43 @@ function estadoEnMemoria(db: { datos: DatosEnMemoria }): EstadoVendedorRepositor
   };
 }
 
+/** HU-CON-11: mismos filtros que PgAuditoriaRepository (días en hora de Colombia). */
+function auditoriaEnMemoria(db: { datos: DatosEnMemoria }): AuditoriaRepository {
+  return {
+    buscar: async (f) => {
+      const items = db.datos.auditoria
+        .map((r, i) => ({ r, id: i + 1, fecha: db.datos.auditoriaFechas[i] ?? new Date(0) }))
+        .filter(
+          ({ r, fecha }) =>
+            (!f.entidad || r.entidad === f.entidad) &&
+            (!f.entidadId || r.entidadId === f.entidadId) &&
+            (!f.usuario || r.usuario === f.usuario) &&
+            (!f.desde || fechaContable(fecha) >= f.desde) &&
+            (!f.hasta || fechaContable(fecha) <= f.hasta),
+        )
+        .sort((a, b) => b.fecha.getTime() - a.fecha.getTime() || b.id - a.id)
+        .map(({ r, id, fecha }) => ({
+          id,
+          entidad: r.entidad,
+          entidadId: r.entidadId,
+          accion: r.accion,
+          usuario: r.usuario,
+          fecha: fecha.toISOString(),
+          valoresAnteriores: r.valoresAnteriores ?? null,
+          valoresNuevos: r.valoresNuevos ?? null,
+          correlationId: r.correlationId ?? null,
+        }));
+      const inicio = (f.page - 1) * f.size;
+      return {
+        items: items.slice(inicio, inicio + f.size),
+        page: f.page,
+        size: f.size,
+        total: items.length,
+      };
+    },
+  };
+}
+
 export function crearBaseEnMemoria() {
   const db = { datos: vacio() };
   const repos = repositorios(db);
@@ -515,7 +562,14 @@ export function crearBaseEnMemoria() {
       }
     },
   };
-  return { db, repos, uow, reporte: reporteEnMemoria(db), estado: estadoEnMemoria(db) };
+  return {
+    db,
+    repos,
+    uow,
+    reporte: reporteEnMemoria(db),
+    estado: estadoEnMemoria(db),
+    auditoria: auditoriaEnMemoria(db),
+  };
 }
 
 /** Comisión GLOBAL vigente desde 2026-01-01 (igual que el seed 010). */

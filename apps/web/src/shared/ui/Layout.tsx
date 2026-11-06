@@ -21,7 +21,7 @@ const MENU: ItemMenu[] = [
   { to: 'conciliaciones', label: 'Conciliación', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
   { to: 'ajustes', label: 'Ajustes', roles: ['CONTADOR'] },
   { to: 'reportes/ingresos', label: 'Reportes', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
-  { to: 'auditoria', label: 'Auditoría', roles: ['ADMIN_FINANCIERO'], sprint: 3 },
+  { to: 'auditoria', label: 'Auditoría', roles: ['ADMIN_FINANCIERO'] },
   { to: 'documentacion-api', label: 'Documentación API', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
 ];
 
