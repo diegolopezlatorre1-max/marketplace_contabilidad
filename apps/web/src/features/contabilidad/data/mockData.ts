@@ -44,5 +44,5 @@ export const VENTAS_SEMILLA: NuevaVenta[] = [
 ];
 
 export const PAGOS_SEMILLA: NuevoPago[] = [
-  { vendedorId: 'V-2', periodo: '2026-10-Q1', valor: '297450.45' },
+  { vendedorId: 'V-2', valor: '297450.45', referencia: 'TRF-SEMILLA-1', fecha: '2026-10-16' },
 ];

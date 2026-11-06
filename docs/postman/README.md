@@ -45,6 +45,7 @@ npx newman run docs/postman/contabilidad.postman_collection.json
 | 5. HU-CON-04 Conciliación | pago exacto con su orden → CONCILIADO automático; reenvío → YA_PROCESADO; misma referencia → 409; pago de 95.000 sin órdenes → bandeja SIN_CONCILIAR; conciliar contra una orden de 100.000 → PENDIENTE (−5.000); conciliar dos veces → 409; pago inexistente → 404; detalle y lista de pendientes; importar CSV (1 importado, 1 duplicado) |
 | 6. HU-CON-06 Ajustes | devolución parcial de 30.000 → 201 (reverso con el % original); exceso → 422 AJUSTE_EXCEDE_SALDO; cancelación del resto → 201; venta inexistente → 404; historial suma el bruto; evento `orden.cancelada` → 201 y reenvío → YA_PROCESADO; saldo del vendedor 2 en 0 |
 | 7. HU-CON-05 Reporte | reporte de hoy (hora de Colombia) del vendedor 1: ventas 100.000 − ajustes 100.000 = 0 y control cuadra; rango invertido → 400; rango mayor a 366 días → 400 |
+| 8. HU-CON-10 Pagos a vendedores | orden nueva de 100.000; pago parcial de 40.000 → 201 PARCIAL; misma referencia → 409 REFERENCIA_DUPLICADA; pago mayor al saldo → 422 PAGO_EXCEDE_SALDO; administrador → 403; pago del resto → 201 PAGADO; historial con 2 pagos; la cuenta queda PAGADO con saldo 0 |
 
 Cada ejecución crea una orden nueva, con vendedores `V-PM-<marca de tiempo>`, así que se
 puede repetir las veces que haga falta.

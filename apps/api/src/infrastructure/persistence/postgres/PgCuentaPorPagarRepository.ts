@@ -6,7 +6,7 @@ import type {
   SaldoVendedor,
 } from '../../../application/ports/out/CuentaPorPagarRepository';
 import { CuentaPorPagar } from '../../../domain/cuentaPorPagar/cuentaPorPagar';
-import { Money, type Periodo } from '../../../domain/shared';
+import { Money, Periodo } from '../../../domain/shared';
 import type { Queryable } from './pool';
 
 export class PgCuentaPorPagarRepository implements CuentaPorPagarRepository {
@@ -38,6 +38,21 @@ export class PgCuentaPorPagarRepository implements CuentaPorPagarRepository {
       pagado: Money.of(fila.valor_pagado),
       ordenes: ordenes.rows.map((r) => r.numero_orden),
     });
+  }
+
+  async pendientesParaActualizar(vendedorId: string): Promise<CuentaPorPagar[]> {
+    // Se bloquean en orden de periodo (el mismo en que se aplica el pago) para evitar interbloqueos.
+    const { rows } = await this.db.query<{ periodo: string }>(
+      `SELECT periodo FROM contabilidad.cuenta_por_pagar
+        WHERE vendedor_id = $1 AND total_neto > valor_pagado
+        ORDER BY periodo`,
+      [vendedorId],
+    );
+    const cuentas: CuentaPorPagar[] = [];
+    for (const { periodo } of rows) {
+      cuentas.push(await this.obtenerParaActualizar(vendedorId, Periodo.parse(periodo)));
+    }
+    return cuentas;
   }
 
   async guardar(c: CuentaPorPagar): Promise<void> {

@@ -8,6 +8,7 @@ import { ConfiguracionComisionPanel } from './features/contabilidad/Configuracio
 import { ContabilidadPanel } from './features/contabilidad/ContabilidadPanel';
 import { crearContabilidadApiRest } from './features/contabilidad/data/contabilidadApiRest';
 import { DetalleVentaPage } from './features/contabilidad/DetalleVentaPage';
+import { PagosVendedorPage } from './features/contabilidad/PagosVendedorPage';
 import { ReporteIngresosPage } from './features/contabilidad/ReporteIngresosPage';
 import { DocumentacionApiPage } from './features/documentacion/DocumentacionApiPage';
 import { InicioPage } from './features/inicio/InicioPage';
@@ -127,6 +128,14 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
                   vistaInicial="cuentas"
                   rutaVenta={rutaVenta}
                 />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="pagos-vendedor"
+            element={
+              <RequireRole roles={['CONTADOR']}>
+                <PagosVendedorPage api={contabilidad} />
               </RequireRole>
             }
           />

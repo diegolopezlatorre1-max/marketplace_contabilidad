@@ -5,10 +5,12 @@ import type {
   CuentaPorPagarFila,
   EstadoCuenta,
   FiltroAjustes,
+  FiltroPagos,
   FiltroReporte,
   NuevaVenta,
   NuevoAjuste,
   NuevoPago,
+  PagoVendedorFila,
   ReporteIngresos,
   SaldoVendedorFila,
   VentaDetalle,
@@ -30,7 +32,10 @@ export interface ContabilidadApi {
   obtenerVenta(id: string): Promise<VentaDetalle>;
   listarCuentasPorPagar(filtro: FiltroCuentas): Promise<CuentaPorPagarFila[]>;
   resumirPorVendedor(periodo?: string): Promise<SaldoVendedorFila[]>;
-  registrarPago(pago: NuevoPago): Promise<CuentaPorPagarFila>;
+  /** HU-CON-10: registra el pago a un vendedor y lo aplica FIFO a sus cuentas. */
+  registrarPago(pago: NuevoPago): Promise<PagoVendedorFila>;
+  /** HU-CON-10: pagos a vendedores, del más reciente al más antiguo. */
+  listarPagos(filtro: FiltroPagos): Promise<PagoVendedorFila[]>;
   /** HU-CON-06: ajustes de una venta, del más reciente al más antiguo. */
   listarAjustes(ventaId: string): Promise<AjusteFila[]>;
   registrarAjuste(ajuste: NuevoAjuste): Promise<AjusteFila>;

@@ -1,6 +1,7 @@
-import type { ReporteIngresosDto } from '@contabilidad/contracts';
+import type { PagoVendedorDto, ReporteIngresosDto } from '@contabilidad/contracts';
 
-export type EstadoCuenta = 'PENDIENTE' | 'PAGADO';
+/** PARCIAL (HU-CON-10): la cuenta tiene pagos, pero aún queda saldo. */
+export type EstadoCuenta = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
 
 /** HU-CON-05: reporte de ingresos (mismo formato que la API). */
 export type ReporteIngresos = ReporteIngresosDto;
@@ -113,9 +114,27 @@ export interface NuevaVenta {
   valorBruto: string;
 }
 
-/** Pago mínimo (HU-CON-10 lo amplía) para ver el paso a PAGADO. */
+/**
+ * HU-CON-10: pago que el contador hace a un vendedor. Se descuenta primero el saldo a favor del
+ * marketplace y se aplica a las cuentas pendientes más antiguas (FIFO por periodo, D-06).
+ */
 export interface NuevoPago {
   vendedorId: string;
-  periodo: string;
+  /** Valor transferido. */
   valor: string;
+  /** Referencia bancaria; única por vendedor. */
+  referencia: string;
+  soporte?: string;
+  /** Día del pago (AAAA-MM-DD); por defecto, hoy. */
+  fecha?: string;
+}
+
+/** HU-CON-10: pago registrado con las cuentas a las que se aplicó (mismo formato que la API). */
+export type PagoVendedorFila = PagoVendedorDto;
+
+/** HU-CON-10: filtros del historial de pagos (fechas del pago, inclusive). */
+export interface FiltroPagos {
+  vendedorId?: string | undefined;
+  desde?: string | undefined;
+  hasta?: string | undefined;
 }

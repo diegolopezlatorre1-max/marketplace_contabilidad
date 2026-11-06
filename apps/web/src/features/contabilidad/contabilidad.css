@@ -194,6 +194,11 @@
   color: #17613b;
 }
 
+.cp-badge--parcial {
+  background: #e1ecfa;
+  color: #1d4f8a;
+}
+
 .cp-vacio {
   margin: 0;
   padding: 44px 24px;
@@ -501,6 +506,11 @@
   .cp-badge--pagado {
     background: #1d4031;
     color: #a9e0c1;
+  }
+
+  .cp-badge--parcial {
+    background: #1d3350;
+    color: #b3d0f2;
   }
 
   .cp-error {

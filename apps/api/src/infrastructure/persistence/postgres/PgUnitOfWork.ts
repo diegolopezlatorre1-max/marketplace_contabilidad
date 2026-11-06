@@ -12,6 +12,7 @@ import { PgCuentaPorPagarRepository } from './PgCuentaPorPagarRepository';
 import { PgInboxRepository } from './PgInboxRepository';
 import { PgOutboxPublisher } from './PgOutboxPublisher';
 import { PgPagoRecibidoRepository } from './PgPagoRecibidoRepository';
+import { PgPagoVendedorRepository } from './PgPagoVendedorRepository';
 import { PgVentaContableRepository } from './PgVentaContableRepository';
 import type { Queryable } from './pool';
 
@@ -28,6 +29,7 @@ export function createRepositories(db: Queryable): TransactionalRepositories {
     pagosRecibidos: new PgPagoRecibidoRepository(db),
     conciliaciones: new PgConciliacionRepository(db),
     ajustes: new PgAjusteContableRepository(db),
+    pagosVendedor: new PgPagoVendedorRepository(db),
   };
 }
 

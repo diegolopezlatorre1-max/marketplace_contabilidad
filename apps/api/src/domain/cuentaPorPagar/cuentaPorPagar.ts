@@ -3,7 +3,8 @@ import { InvalidValueError } from '../shared/DomainError';
 import { Money } from '../shared/Money';
 import { Periodo } from '../shared/Periodo';
 
-export type EstadoCuenta = 'PENDIENTE' | 'PAGADO';
+/** PARCIAL (HU-CON-10): tiene pagos, pero aún queda saldo pendiente. */
+export type EstadoCuenta = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
 
 /** Cuenta por pagar a un vendedor en una quincena (vendedor + periodo). */
 export class CuentaPorPagar {
@@ -62,7 +63,7 @@ export class CuentaPorPagar {
     this.totalNeto = this.totalNeto.add(comision.valorNeto);
   }
 
-  /** Pago mínimo para poder probar el estado. HU-CON-10 lo amplía (FIFO, soporte). */
+  /** Aplica a la cuenta una parte de un pago al vendedor (HU-CON-10, `PagoVendedor`). */
   registrarPago(valor: Money): void {
     if (!valor.isPositive()) throw new InvalidValueError('El pago debe ser mayor que cero');
     if (valor.greaterThan(this.saldoPendiente)) {
@@ -87,7 +88,8 @@ export class CuentaPorPagar {
   }
 
   get estado(): EstadoCuenta {
-    return this.totalNeto.isPositive() && this.saldoPendiente.isZero() ? 'PAGADO' : 'PENDIENTE';
+    if (this.totalNeto.isPositive() && this.saldoPendiente.isZero()) return 'PAGADO';
+    return this.pagado.isPositive() ? 'PARCIAL' : 'PENDIENTE';
   }
 
   toJSON() {

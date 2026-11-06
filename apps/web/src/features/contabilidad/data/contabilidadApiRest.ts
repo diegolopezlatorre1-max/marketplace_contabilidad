@@ -3,6 +3,7 @@ import type {
   ConfiguracionComisionResponse,
   CuentaPorPagarDto,
   Pagina,
+  PagoVendedorDto,
   PeriodosResponse,
   ReporteIngresosDto,
   ResumenSaldoVendedorDto,
@@ -163,10 +164,19 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
       );
     },
 
-    async registrarPago() {
-      throw new OperacionNoDisponibleError(
-        'El registro de pagos a vendedores llega con la HU-CON-10.',
-      );
+    async registrarPago(pago) {
+      return api.post<PagoVendedorDto>('/pagos-vendedor', pago);
+    },
+
+    async listarPagos({ vendedorId, desde, hasta }) {
+      const filas: PagoVendedorDto[] = [];
+      for (let page = 1; ; page++) {
+        const pagina = await api.get<Pagina<PagoVendedorDto>>(
+          `/pagos-vendedor${query({ vendedorId, desde, hasta, page: String(page), size: String(TAMANO_PAGINA) })}`,
+        );
+        filas.push(...pagina.items);
+        if (filas.length >= pagina.total || pagina.items.length === 0) return filas;
+      }
     },
   };
 }

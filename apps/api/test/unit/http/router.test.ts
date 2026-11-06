@@ -27,6 +27,8 @@ import { ObtenerVentaQuery } from '../../../src/application/queries/ObtenerVenta
 import { ReporteIngresosQuery } from '../../../src/application/queries/ReporteIngresosQuery';
 import { ResumenSaldoVendedorQuery } from '../../../src/application/queries/ResumenSaldoVendedorQuery';
 import { InvalidValueError } from '../../../src/domain/shared';
+import { RegistrarPagoVendedorUseCase } from '../../../src/application/commands/RegistrarPagoVendedorUseCase';
+import { ListarPagosVendedorQuery } from '../../../src/application/queries/ListarPagosVendedorQuery';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
 import { errorHandler } from '../../../src/infrastructure/http/middlewares/errorHandler';
 import { MockAuthContext } from '../../../src/infrastructure/integration/auth/MockAuthContext';
@@ -70,6 +72,7 @@ function app(dbOk = true) {
       obtenerConciliacion: new ObtenerConciliacionQuery(base.repos.conciliaciones),
       listarAjustes: new ListarAjustesQuery(base.repos.ajustes),
       reporteIngresos: new ReporteIngresosQuery(base.reporte),
+      listarPagosVendedor: new ListarPagosVendedorQuery(base.repos.pagosVendedor),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
@@ -79,6 +82,7 @@ function app(dbOk = true) {
       registrarPago: new RegistrarPagoRecibidoUseCase(base.uow, reloj),
       importarPagos: new ImportarPagosRecibidosUseCase(base.uow, reloj),
       conciliarPago: new ConciliarPagoUseCase(base.uow, reloj),
+      registrarPagoVendedor: new RegistrarPagoVendedorUseCase(base.uow, reloj),
     },
   });
   return express().use('/api/v1/contabilidad', router);
@@ -378,7 +382,7 @@ describe('Rutas de ventas', () => {
   });
 
   it('GET /cuentas-por-pagar valida filtros y rol', async () => {
-    for (const q of ['?periodo=2026-10-Q3', '?estado=PARCIAL']) {
+    for (const q of ['?periodo=2026-10-Q3', '?estado=PAGADA']) {
       const res = await request(app())
         .get(`/api/v1/contabilidad/cuentas-por-pagar${q}`)
         .set('authorization', 'Bearer mock-contador');
@@ -676,6 +680,83 @@ describe('Rutas de ajustes (HU-CON-06)', () => {
     expect((await enviar(devuelta, 'mock-contador')).status).toBe(403);
     expect((await enviar({ ...devuelta, lineas: [{ vendedorId: 'V-1' }] })).status).toBe(400);
     expect((await enviar(devuelta)).status).toBe(201);
+  });
+});
+
+describe('Rutas de pagos a vendedores (HU-CON-10)', () => {
+  const BASE = '/api/v1/contabilidad';
+  const orden = {
+    eventId: 'evt-001',
+    version: 1,
+    ocurridoEn: '2026-10-05T10:00:00-05:00',
+    tipo: 'orden.confirmada',
+    numeroOrden: 'ORD-1001',
+    fecha: '2026-10-05T09:58:00-05:00',
+    estado: 'CONFIRMADA',
+    moneda: 'COP',
+    lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+  };
+
+  /** Servidor con ORD-1001 registrada: V-1 debe 90.000 en 2026-10-Q1. */
+  async function conVenta() {
+    const servidor = app();
+    await request(servidor)
+      .post(`${BASE}/eventos/orden-confirmada`)
+      .set('authorization', 'Bearer mock-sistema')
+      .send(orden);
+    const pagar = (body: object, token = 'mock-contador') =>
+      request(servidor)
+        .post(`${BASE}/pagos-vendedor`)
+        .set('authorization', `Bearer ${token}`)
+        .send(body);
+    const consultar = (url: string, token = 'mock-contador') =>
+      request(servidor).get(`${BASE}${url}`).set('authorization', `Bearer ${token}`);
+    return { pagar, consultar };
+  }
+
+  it('POST /pagos-vendedor registra el pago, deja la cuenta PARCIAL y GET lo lista', async () => {
+    const { pagar, consultar } = await conVenta();
+    const res = await pagar({ vendedorId: 'V-1', valor: '40000.00', referencia: 'TRF-1' });
+    expect(res.status).toBe(201);
+    expect(res.body).toMatchObject({
+      vendedorId: 'V-1',
+      valor: '40000.00',
+      referencia: 'TRF-1',
+      soporte: null,
+      aplicaciones: [{ periodo: '2026-10-Q1', valorAplicado: '40000.00', estado: 'PARCIAL' }],
+    });
+
+    const cuentas = await consultar('/cuentas-por-pagar?estado=PARCIAL');
+    expect(cuentas.body).toMatchObject([{ vendedorId: 'V-1', saldoPendiente: '50000.00' }]);
+
+    const lista = await consultar('/pagos-vendedor?vendedorId=V-1', 'mock-admin');
+    expect(lista.status).toBe(200);
+    expect(lista.body).toMatchObject({ total: 1, items: [{ referencia: 'TRF-1' }] });
+  });
+
+  it('responde 422 si supera el saldo y 409 si la referencia se repite', async () => {
+    const { pagar } = await conVenta();
+    const excede = await pagar({ vendedorId: 'V-1', valor: '90000.01', referencia: 'TRF-1' });
+    expect(excede.status).toBe(422);
+    expect(excede.body.code).toBe('PAGO_EXCEDE_SALDO');
+
+    expect((await pagar({ vendedorId: 'V-1', valor: '10.00', referencia: 'TRF-1' })).status).toBe(
+      201,
+    );
+    const repetido = await pagar({ vendedorId: 'V-1', valor: '10.00', referencia: 'TRF-1' });
+    expect(repetido.status).toBe(409);
+    expect(repetido.body.code).toBe('REFERENCIA_DUPLICADA');
+  });
+
+  it('valida el cuerpo, los filtros y los roles', async () => {
+    const { pagar, consultar } = await conVenta();
+    expect((await pagar({ vendedorId: 'V-1', valor: '-5', referencia: 'X' })).status).toBe(400);
+    expect((await pagar({ vendedorId: 'V-1', valor: '5.00' })).status).toBe(400);
+    expect(
+      (await pagar({ vendedorId: 'V-1', valor: '5.00', referencia: 'X' }, 'mock-admin')).status,
+    ).toBe(403);
+    expect((await consultar('/pagos-vendedor?desde=2026-13-01')).status).toBe(400);
+    expect((await consultar('/pagos-vendedor', 'mock-sistema')).status).toBe(403);
   });
 });
 

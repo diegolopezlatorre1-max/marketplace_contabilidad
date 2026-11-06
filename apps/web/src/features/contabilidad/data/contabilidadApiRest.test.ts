@@ -267,7 +267,7 @@ describe('crearContabilidadApiRest', () => {
     expect((error as ApiError).message).toBe('Se solapa');
   });
 
-  it('no permite registrar ventas ni pagos desde la interfaz', async () => {
+  it('no permite registrar ventas desde la interfaz', async () => {
     const { contabilidad } = crear({});
     await expect(
       contabilidad.registrarVenta({
@@ -278,8 +278,37 @@ describe('crearContabilidadApiRest', () => {
         valorBruto: '1',
       }),
     ).rejects.toThrow(OperacionNoDisponibleError);
-    await expect(
-      contabilidad.registrarPago({ vendedorId: 'V', periodo: '2026-10-Q1', valor: '1' }),
-    ).rejects.toThrow(OperacionNoDisponibleError);
+  });
+
+  it('registra pagos a vendedores y pagina su historial (HU-CON-10)', async () => {
+    const pago = {
+      id: 'p-1',
+      vendedorId: 'V-1',
+      fecha: '2026-11-09T17:00:00.000Z',
+      fechaContable: '2026-11-09',
+      valor: '90000.00',
+      saldoAFavorAplicado: '0.00',
+      referencia: 'TRF-1',
+      soporte: null,
+      aplicaciones: [],
+      registradoPor: 'u-contador',
+      registradoEn: '2026-11-09T17:00:00.000Z',
+    };
+    const { contabilidad, fetchFn } = crear({
+      '/api/pagos-vendedor': { status: 201, body: pago },
+      '/api/pagos-vendedor?vendedorId=V-1&page=1&size=200': {
+        body: { items: [pago], page: 1, size: 200, total: 2 },
+      },
+      '/api/pagos-vendedor?vendedorId=V-1&page=2&size=200': {
+        body: { items: [{ ...pago, id: 'p-2' }], page: 2, size: 200, total: 2 },
+      },
+    });
+    const nuevo = { vendedorId: 'V-1', valor: '90000.00', referencia: 'TRF-1' };
+    await expect(contabilidad.registrarPago(nuevo)).resolves.toEqual(pago);
+    const [, init] = fetchFn.mock.calls[0]!;
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual(nuevo);
+    const lista = await contabilidad.listarPagos({ vendedorId: 'V-1' });
+    expect(lista.map((p) => p.id)).toEqual(['p-1', 'p-2']);
   });
 });
