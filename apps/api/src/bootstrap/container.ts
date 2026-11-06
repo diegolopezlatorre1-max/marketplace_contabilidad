@@ -20,6 +20,9 @@ import { RegistrarPagoVendedorUseCase } from '../application/commands/RegistrarP
 import { ListarPagosVendedorQuery } from '../application/queries/ListarPagosVendedorQuery';
 import { EstadoVendedorQuery } from '../application/queries/EstadoVendedorQuery';
 import { ConsultarAuditoriaQuery } from '../application/queries/ConsultarAuditoriaQuery';
+import { ExportarExcelUseCase } from '../application/queries/ExportarExcelUseCase';
+import { ExcelJsExporter } from '../infrastructure/integration/spreadsheet/ExcelJsExporter';
+import { PgExportacionRepository } from '../infrastructure/persistence/postgres/PgExportacionRepository';
 import { ListarAjustesQuery } from '../application/queries/ListarAjustesQuery';
 import { RegistrarVentaConfirmadaUseCase } from '../application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentasPorPagarQuery';
@@ -103,6 +106,14 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const registrarPagoVendedor = new RegistrarPagoVendedorUseCase(unitOfWork, clock);
   const pagosVendedor = new PgPagoVendedorRepository(pool);
   const listarPagosVendedor = new ListarPagosVendedorQuery(pagosVendedor);
+  // HU-CON-08: exportación a Excel; reutiliza la consulta del reporte (mismos números).
+  const exportarExcel = new ExportarExcelUseCase(
+    reporteIngresos,
+    new PgExportacionRepository(pool),
+    new ExcelJsExporter(),
+    vendedores,
+    clock,
+  );
   // HU-CON-11: consulta de la auditoría (solo ADMIN_FINANCIERO).
   const consultarAuditoria = new ConsultarAuditoriaQuery(new PgAuditoriaRepository(pool));
   // HU-CON-07: estado financiero por vendedor.
@@ -143,6 +154,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       listarPagosVendedor,
       estadoVendedor,
       consultarAuditoria,
+      exportarExcel,
     },
     commands: {
       configurarComision,

@@ -56,11 +56,11 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
-| T-64 | Puerto `SpreadsheetExporter` y `ExportarExcelUseCase`, que reutiliza `ReporteIngresosQuery` para que los números coincidan con la pantalla. | Aplicación | ⬜ |
-| T-65 | `ExcelJsExporter` (agregar `exceljs` a `apps/api`): celdas numéricas con formato moneda, encabezados, fila de totales y hoja de metadatos (rango, fecha de generación, usuario); columnas de D-09. | Infra | ⬜ |
-| T-66 | `GET /exportaciones/excel?desde=&hasta=` (ADMIN_FINANCIERO, CONTADOR), que responde con el tipo `.xlsx`; OpenAPI. | API | ⬜ |
-| T-67 | Botón "Exportar a Excel" en el reporte de ingresos. | Web | ⬜ |
-| T-68 | Prueba automática que lee el `.xlsx`: la suma de "valor bruto" es igual al total del reporte; los valores son números, no texto; rango vacío → archivo con encabezados y totales en cero. | Pruebas | ⬜ |
+| T-64 | Puerto `SpreadsheetExporter` y `ExportarExcelUseCase`, que reutiliza `ReporteIngresosQuery` para que los números coincidan con la pantalla. | Aplicación | ✅ |
+| T-65 | `ExcelJsExporter` (`exceljs` 4.4.0 en `apps/api`): celdas numéricas con formato moneda, encabezados, fila de totales con fórmula SUM y hojas Ventas (columnas de D-09), Ajustes, Resumen y Metadatos (rango, fecha de generación, usuario). | Infra | ✅ |
+| T-66 | `GET /exportaciones/excel?desde=&hasta=` (ADMIN_FINANCIERO, CONTADOR), que responde con el tipo `.xlsx`; OpenAPI. | API | ✅ |
+| T-67 | Botón "Exportar a Excel" en el reporte de ingresos. | Web | ✅ |
+| T-68 | Prueba automática que lee el `.xlsx`: la suma de "valor bruto" es igual al total del reporte; los valores son números, no texto; rango vacío → archivo con encabezados y totales en cero. | Pruebas | ✅ |
 
 ### HU-CON-11 — Diego
 
@@ -75,7 +75,7 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 
 | ID | Tarea | Responsable | Estado |
 |----|-------|-------------|--------|
-| T-73 | Prueba de cuadre global: ventas = comisiones + netos; neto − ajustes = pagado + pendiente por vendedor; el Excel coincide con el reporte. | Carlos + Diego | ⬜ |
+| T-73 | Prueba de cuadre global: ventas = comisiones + netos; neto − ajustes = pagado + pendiente por vendedor; el Excel coincide con el reporte. | Carlos + Diego | ✅ |
 | T-74 | Revisión cruzada: cada PR lo aprueba el otro integrante. | Carlos + Diego | ⬜ |
 | T-75 | Demo con datos de ejemplo y validación del Contador y del Administrador financiero (criterios del F01 de 07, 08, 10 y 11). | Carlos (presenta) + Diego | ⬜ |
 

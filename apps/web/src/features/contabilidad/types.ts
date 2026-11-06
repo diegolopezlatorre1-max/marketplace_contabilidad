@@ -136,6 +136,12 @@ export interface NuevoPago {
 /** HU-CON-10: pago registrado con las cuentas a las que se aplicó (mismo formato que la API). */
 export type PagoVendedorFila = PagoVendedorDto;
 
+/** HU-CON-08: archivo descargado (p. ej. la exportación a Excel). */
+export interface ArchivoDescargado {
+  nombre: string;
+  contenido: Blob;
+}
+
 /** HU-CON-07: estado financiero de un vendedor (mismo formato que la API). */
 export type EstadoVendedor = EstadoVendedorDto;
 

@@ -3439,6 +3439,221 @@
           ]
         }
       ]
+    },
+    {
+      "name": "11. HU-CON-08 Exportar a Excel",
+      "item": [
+        {
+          "name": "Exportar el mes en curso -> .xlsx",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/exportaciones/excel?desde={{inicioMes}}&hasta={{hoy}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exportaciones",
+                "excel"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{inicioMes}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{hoy}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set('hoy', hoy);",
+                  "pm.collectionVariables.set('inicioMes', hoy.slice(0, 8) + '01');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Tipo .xlsx', () => pm.expect(pm.response.headers.get('Content-Type')).to.include('spreadsheetml.sheet'));",
+                  "pm.test('Se descarga con el nombre del rango', () => pm.expect(pm.response.headers.get('Content-Disposition')).to.include('contabilidad_' + pm.collectionVariables.get('inicioMes') + '_' + pm.collectionVariables.get('hoy') + '.xlsx'));",
+                  "pm.test('Es un archivo ZIP (xlsx)', () => pm.expect(pm.response.stream.slice(0, 2).toString()).to.eql('PK'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exportar como contador -> 200",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/exportaciones/excel?desde={{inicioMes}}&hasta={{hoy}}&vendedorId={{vendedorPago}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exportaciones",
+                "excel"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{inicioMes}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{hoy}}"
+                },
+                {
+                  "key": "vendedorId",
+                  "value": "{{vendedorPago}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenContador}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rango invertido -> 400",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/exportaciones/excel?desde={{hoy}}&hasta=2020-01-01",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exportaciones",
+                "excel"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{hoy}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "2020-01-01"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exportar como sistema -> 403",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/exportaciones/excel?desde={{inicioMes}}&hasta={{hoy}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "exportaciones",
+                "excel"
+              ],
+              "query": [
+                {
+                  "key": "desde",
+                  "value": "{{inicioMes}}"
+                },
+                {
+                  "key": "hasta",
+                  "value": "{{hoy}}"
+                }
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

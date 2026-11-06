@@ -31,6 +31,8 @@ import { RegistrarPagoVendedorUseCase } from '../../../src/application/commands/
 import { ListarPagosVendedorQuery } from '../../../src/application/queries/ListarPagosVendedorQuery';
 import { EstadoVendedorQuery } from '../../../src/application/queries/EstadoVendedorQuery';
 import { ConsultarAuditoriaQuery } from '../../../src/application/queries/ConsultarAuditoriaQuery';
+import { ExportarExcelUseCase } from '../../../src/application/queries/ExportarExcelUseCase';
+import { ExcelJsExporter } from '../../../src/infrastructure/integration/spreadsheet/ExcelJsExporter';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
 import { errorHandler } from '../../../src/infrastructure/http/middlewares/errorHandler';
 import { MockAuthContext } from '../../../src/infrastructure/integration/auth/MockAuthContext';
@@ -77,6 +79,13 @@ function app(dbOk = true) {
       listarPagosVendedor: new ListarPagosVendedorQuery(base.repos.pagosVendedor),
       estadoVendedor: new EstadoVendedorQuery(base.estado, base.repos.pagosVendedor, vendedores),
       consultarAuditoria: new ConsultarAuditoriaQuery(base.auditoria),
+      exportarExcel: new ExportarExcelUseCase(
+        new ReporteIngresosQuery(base.reporte),
+        base.exportacion,
+        new ExcelJsExporter(),
+        vendedores,
+        reloj,
+      ),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
@@ -842,6 +851,39 @@ describe('Ruta de auditoría (HU-CON-11)', () => {
     expect((await consultar('/auditoria', 'mock-contador')).status).toBe(403);
     expect((await consultar('/auditoria?entidad=desconocida')).status).toBe(400);
     expect((await consultar('/auditoria?desde=2026-13-01')).status).toBe(400);
+  });
+});
+
+describe('Ruta de exportación a Excel (HU-CON-08)', () => {
+  const BASE = '/api/v1/contabilidad';
+
+  it('GET /exportaciones/excel descarga un .xlsx con el nombre del rango', async () => {
+    const res = await request(app())
+      .get(`${BASE}/exportaciones/excel?desde=2026-10-01&hasta=2026-10-31&vendedorId=V-1`)
+      .set('authorization', 'Bearer mock-contador')
+      .buffer(true)
+      .parse((r, callback) => {
+        const partes: Buffer[] = [];
+        r.on('data', (c: Buffer) => partes.push(c));
+        r.on('end', () => callback(null, Buffer.concat(partes)));
+      });
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain(
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    expect(res.headers['content-disposition']).toBe(
+      'attachment; filename="contabilidad_2026-10-01_2026-10-31_V-1.xlsx"',
+    );
+    // Un .xlsx es un ZIP: empieza por "PK".
+    expect((res.body as Buffer).subarray(0, 2).toString()).toBe('PK');
+  });
+
+  it('valida el rango y el rol', async () => {
+    const pedir = (q: string, token = 'mock-admin') =>
+      request(app()).get(`${BASE}/exportaciones/excel${q}`).set('authorization', `Bearer ${token}`);
+    expect((await pedir('?desde=2026-10-01')).status).toBe(400);
+    expect((await pedir('?desde=2026-10-31&hasta=2026-10-01')).status).toBe(400);
+    expect((await pedir('?desde=2026-10-01&hasta=2026-10-31', 'mock-sistema')).status).toBe(403);
   });
 });
 

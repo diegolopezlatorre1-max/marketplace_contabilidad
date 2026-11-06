@@ -17,6 +17,7 @@ import type { RegistrarPagoVendedorUseCase } from '../../../application/commands
 import type { ListarPagosVendedorQuery } from '../../../application/queries/ListarPagosVendedorQuery';
 import type { EstadoVendedorQuery } from '../../../application/queries/EstadoVendedorQuery';
 import type { ConsultarAuditoriaQuery } from '../../../application/queries/ConsultarAuditoriaQuery';
+import type { ExportarExcelUseCase } from '../../../application/queries/ExportarExcelUseCase';
 import type { ListarAjustesQuery } from '../../../application/queries/ListarAjustesQuery';
 import type { RegistrarVentaConfirmadaUseCase } from '../../../application/commands/RegistrarVentaConfirmadaUseCase';
 import type { ListarCuentasPorPagarQuery } from '../../../application/queries/ListarCuentasPorPagarQuery';
@@ -39,6 +40,7 @@ import { cuentasPorPagarRoutes } from '../routes/cuentasPorPagarRoutes';
 import { pagosVendedorRoutes } from '../routes/pagosVendedorRoutes';
 import { estadoVendedorRoutes } from '../routes/estadoVendedorRoutes';
 import { auditoriaRoutes } from '../routes/auditoriaRoutes';
+import { exportacionesRoutes } from '../routes/exportacionesRoutes';
 import { reportesRoutes } from '../routes/reportesRoutes';
 import { healthRoutes, meRoutes } from '../routes/systemRoutes';
 import { ventasRoutes } from '../routes/ventasRoutes';
@@ -64,6 +66,7 @@ export interface RouterDeps {
     listarPagosVendedor: ListarPagosVendedorQuery;
     estadoVendedor: EstadoVendedorQuery;
     consultarAuditoria: ConsultarAuditoriaQuery;
+    exportarExcel: ExportarExcelUseCase;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
@@ -149,6 +152,7 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
   );
   router.use(estadoVendedorRoutes({ estadoVendedor: deps.queries.estadoVendedor }));
   router.use(auditoriaRoutes({ consultarAuditoria: deps.queries.consultarAuditoria }));
+  router.use(exportacionesRoutes({ exportarExcel: deps.queries.exportarExcel }));
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

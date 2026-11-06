@@ -1,5 +1,6 @@
 import type {
   AjusteDeVenta,
+  ArchivoDescargado,
   AjusteFila,
   ComisionFila,
   CuentaPorPagarFila,
@@ -50,4 +51,6 @@ export interface ContabilidadApi {
   buscarAjustes(filtro: FiltroAjustes): Promise<AjusteDeVenta[]>;
   /** HU-CON-05: ingresos y comisiones del rango; ajustes ubicados por su propia fecha. */
   obtenerReporte(filtro: FiltroReporte): Promise<ReporteIngresos>;
+  /** HU-CON-08: el mismo rango del reporte en un .xlsx. */
+  exportarExcel(filtro: FiltroReporte): Promise<ArchivoDescargado>;
 }
