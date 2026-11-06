@@ -46,11 +46,11 @@ Estado: ⬜ pendiente · 🔄 en progreso · ✅ hecha
 
 | ID | Tarea | Capa | Estado |
 |----|-------|------|--------|
-| T-59 | `EstadoVendedorQuery`: total vendido, comisión, ajustes, pagado y pendiente por periodo; regla de control vendido − comisión − ajustes (neto) = pagado + pendiente. | Aplicación | ⬜ |
-| T-60 | `GET /vendedores/{id}/estado?desde=&hasta=`. DTOs en `packages/contracts/src/estadoVendedor.ts` y OpenAPI. | API | ⬜ |
-| T-61 | Permiso VENDEDOR preparado en `application/security.ts` (solo su propio estado), sin exponerlo todavía. | Aplicación | ⬜ |
-| T-62 | Ficha del vendedor con totales y movimientos del periodo. | Web | ⬜ |
-| T-63 | Pruebas: vendedor con movimientos en dos meses, al filtrar un mes solo aparece ese mes; la regla de control cuadra al centavo. | Pruebas | ⬜ |
+| T-59 | `EstadoVendedorQuery`: total vendido, comisión, ajustes, pagado y pendiente por quincena (la de la venta, que es la de su cuenta); regla de control vendido − comisión − ajustes (neto) = pagado + pendiente. | Aplicación | ✅ |
+| T-60 | `GET /vendedores/{id}/estado?desde=&hasta=`. DTOs en `packages/contracts/src/estadoVendedor.ts` y OpenAPI. | API | ✅ |
+| T-61 | Permiso VENDEDOR preparado en `application/security.ts` (solo su propio estado), sin exponerlo todavía. | Aplicación | ✅ |
+| T-62 | Ficha del vendedor con totales y movimientos del periodo. | Web | ✅ |
+| T-63 | Pruebas: vendedor con movimientos en dos meses, al filtrar un mes solo aparece ese mes; la regla de control cuadra al centavo. | Pruebas | ✅ |
 
 ### HU-CON-08 — Diego
 

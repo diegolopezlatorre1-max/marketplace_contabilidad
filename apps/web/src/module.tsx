@@ -9,6 +9,7 @@ import { ContabilidadPanel } from './features/contabilidad/ContabilidadPanel';
 import { crearContabilidadApiRest } from './features/contabilidad/data/contabilidadApiRest';
 import { DetalleVentaPage } from './features/contabilidad/DetalleVentaPage';
 import { PagosVendedorPage } from './features/contabilidad/PagosVendedorPage';
+import { EstadoVendedorPage } from './features/contabilidad/EstadoVendedorPage';
 import { ReporteIngresosPage } from './features/contabilidad/ReporteIngresosPage';
 import { DocumentacionApiPage } from './features/documentacion/DocumentacionApiPage';
 import { InicioPage } from './features/inicio/InicioPage';
@@ -65,6 +66,8 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
   // Ruta de montaje (p. ej. /contabilidad): los enlaces del menú se arman desde ella.
   const basePath = basePathDesde(useLocation().pathname, useParams()['*'] ?? '');
   const rutaVenta = (id: string) => rutaDelModulo(basePath, `ventas/${encodeURIComponent(id)}`);
+  const rutaVendedor = (id: string) =>
+    rutaDelModulo(basePath, `vendedores?id=${encodeURIComponent(id)}`);
 
   if (me.isPending) return <p className="ct-content">Cargando…</p>;
   if (me.isError) {
@@ -127,7 +130,16 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
                   api={contabilidad}
                   vistaInicial="cuentas"
                   rutaVenta={rutaVenta}
+                  rutaVendedor={rutaVendedor}
                 />
+              </RequireRole>
+            }
+          />
+          <Route
+            path="vendedores"
+            element={
+              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+                <EstadoVendedorPage api={contabilidad} />
               </RequireRole>
             }
           />

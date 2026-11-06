@@ -22,12 +22,15 @@ interface ContabilidadPanelProps {
   vistaInicial?: Vista;
   /** Ruta al detalle de una venta; sin ella las órdenes no son enlaces. */
   rutaVenta?: (id: string) => string;
+  /** Ruta a la ficha de un vendedor (HU-CON-07); sin ella los vendedores no son enlaces. */
+  rutaVendedor?: (vendedorId: string) => string;
 }
 
 export function ContabilidadPanel({
   api = contabilidadApiMock,
   vistaInicial = 'comisiones',
   rutaVenta,
+  rutaVendedor,
 }: ContabilidadPanelProps) {
   const [vista, setVista] = useState<Vista>(vistaInicial);
   const [periodos, setPeriodos] = useState<string[]>([]);
@@ -176,7 +179,7 @@ export function ContabilidadPanel({
       {!cargando && !error && vista === 'cuentas' && (
         <>
           <h2 className="cp-subtitulo">Saldo por vendedor</h2>
-          <TablaSaldosVendedor filas={saldos} />
+          <TablaSaldosVendedor filas={saldos} enlaceVendedor={rutaVendedor} />
           <h2 className="cp-subtitulo">Cuentas del periodo</h2>
           <TablaCuentasPorPagar
             filas={cuentas}

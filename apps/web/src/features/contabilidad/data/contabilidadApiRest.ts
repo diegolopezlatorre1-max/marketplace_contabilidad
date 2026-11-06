@@ -2,6 +2,7 @@ import type {
   AjusteDto,
   ConfiguracionComisionResponse,
   CuentaPorPagarDto,
+  EstadoVendedorDto,
   Pagina,
   PagoVendedorDto,
   PeriodosResponse,
@@ -166,6 +167,12 @@ export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
 
     async registrarPago(pago) {
       return api.post<PagoVendedorDto>('/pagos-vendedor', pago);
+    },
+
+    async obtenerEstadoVendedor(vendedorId, desde, hasta) {
+      return api.get<EstadoVendedorDto>(
+        `/vendedores/${encodeURIComponent(vendedorId)}/estado${query({ desde, hasta })}`,
+      );
     },
 
     async listarPagos({ vendedorId, desde, hasta }) {

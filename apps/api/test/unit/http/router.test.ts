@@ -29,6 +29,7 @@ import { ResumenSaldoVendedorQuery } from '../../../src/application/queries/Resu
 import { InvalidValueError } from '../../../src/domain/shared';
 import { RegistrarPagoVendedorUseCase } from '../../../src/application/commands/RegistrarPagoVendedorUseCase';
 import { ListarPagosVendedorQuery } from '../../../src/application/queries/ListarPagosVendedorQuery';
+import { EstadoVendedorQuery } from '../../../src/application/queries/EstadoVendedorQuery';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
 import { errorHandler } from '../../../src/infrastructure/http/middlewares/errorHandler';
 import { MockAuthContext } from '../../../src/infrastructure/integration/auth/MockAuthContext';
@@ -73,6 +74,7 @@ function app(dbOk = true) {
       listarAjustes: new ListarAjustesQuery(base.repos.ajustes),
       reporteIngresos: new ReporteIngresosQuery(base.reporte),
       listarPagosVendedor: new ListarPagosVendedorQuery(base.repos.pagosVendedor),
+      estadoVendedor: new EstadoVendedorQuery(base.estado, base.repos.pagosVendedor, vendedores),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
@@ -757,6 +759,51 @@ describe('Rutas de pagos a vendedores (HU-CON-10)', () => {
     ).toBe(403);
     expect((await consultar('/pagos-vendedor?desde=2026-13-01')).status).toBe(400);
     expect((await consultar('/pagos-vendedor', 'mock-sistema')).status).toBe(403);
+  });
+});
+
+describe('Ruta del estado por vendedor (HU-CON-07)', () => {
+  const BASE = '/api/v1/contabilidad';
+  const orden = {
+    eventId: 'evt-001',
+    version: 1,
+    ocurridoEn: '2026-10-05T10:00:00-05:00',
+    tipo: 'orden.confirmada',
+    numeroOrden: 'ORD-1001',
+    fecha: '2026-10-05T09:58:00-05:00',
+    estado: 'CONFIRMADA',
+    moneda: 'COP',
+    lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+  };
+
+  it('GET /vendedores/:id/estado entrega totales, quincenas y control', async () => {
+    const servidor = app();
+    await request(servidor)
+      .post(`${BASE}/eventos/orden-confirmada`)
+      .set('authorization', 'Bearer mock-sistema')
+      .send(orden);
+    const res = await request(servidor)
+      .get(`${BASE}/vendedores/V-1/estado?desde=2026-10-Q1&hasta=2026-10-Q2`)
+      .set('authorization', 'Bearer mock-admin');
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({
+      vendedorId: 'V-1',
+      desde: '2026-10-Q1',
+      hasta: '2026-10-Q2',
+      totales: { ventas: 1, vendido: '100000.00', comision: '10000.00', pendiente: '90000.00' },
+      control: { cuadra: true },
+      periodos: [{ periodo: '2026-10-Q1', estado: 'PENDIENTE' }],
+    });
+  });
+
+  it('valida las quincenas y el rol', async () => {
+    const consultar = (url: string, token = 'mock-contador') =>
+      request(app()).get(`${BASE}${url}`).set('authorization', `Bearer ${token}`);
+    expect((await consultar('/vendedores/V-1/estado?desde=2026-10-01')).status).toBe(400);
+    expect(
+      (await consultar('/vendedores/V-1/estado?desde=2026-11-Q1&hasta=2026-10-Q1')).status,
+    ).toBe(400);
+    expect((await consultar('/vendedores/V-1/estado', 'mock-sistema')).status).toBe(403);
   });
 });
 

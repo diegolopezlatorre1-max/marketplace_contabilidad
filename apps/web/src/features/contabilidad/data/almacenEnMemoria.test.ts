@@ -302,3 +302,53 @@ describe('AlmacenContabilidad (HU-CON-10, pago al vendedor)', () => {
     expect(a.listarCuentasPorPagar({ periodo: '2026-10-Q2' })[0]?.estado).toBe('PAGADO');
   });
 });
+
+describe('AlmacenContabilidad (HU-CON-07, estado por vendedor)', () => {
+  function conMovimientos() {
+    const a = nuevo();
+    const v1 = a.registrarVenta(venta('ORD-1', '100000', '2026-10-05'));
+    a.registrarVenta(venta('ORD-2', '50000', '2026-10-20'));
+    a.registrarVenta(venta('ORD-3', '200000', '2026-11-03'));
+    a.registrarPago({
+      vendedorId: 'V-1',
+      valor: '90000',
+      referencia: 'TRF-1',
+      fecha: '2026-11-04',
+    });
+    a.registrarAjuste({
+      ventaId: v1.id,
+      tipo: 'DEVOLUCION',
+      motivo: 'Devolución tras el pago',
+      valor: '30000',
+      fecha: '2026-11-05',
+    });
+    return a;
+  }
+
+  it('totaliza vendido, comisión, ajustes, pagado y pendiente, y la regla cuadra', () => {
+    const e = conMovimientos().obtenerEstadoVendedor('V-1');
+    expect(e.totales).toMatchObject({
+      ventas: 3,
+      vendido: '350000.00',
+      comision: '35000.00',
+      pagado: '90000.00',
+      pendiente: '225000.00',
+    });
+    expect(e.totales.ajustes).toMatchObject({ netoRevertido: '27000.00', saldoAFavor: '27000.00' });
+    expect(e.saldoAFavorDisponible).toBe('27000.00');
+    expect(e.control).toMatchObject({
+      cuadra: true,
+      generado: '315000.00',
+      liquidado: '315000.00',
+    });
+  });
+
+  it('filtra por quincenas: un mes muestra solo ese mes', () => {
+    const e = conMovimientos().obtenerEstadoVendedor('V-1', '2026-11-Q1', '2026-11-Q2');
+    expect(e.periodos.map((p) => p.periodo)).toEqual(['2026-11-Q1']);
+    expect(e.totales.vendido).toBe('200000.00');
+    expect(() => conMovimientos().obtenerEstadoVendedor('V-1', '2026-11-Q1', '2026-10-Q1')).toThrow(
+      ErrorDeNegocio,
+    );
+  });
+});

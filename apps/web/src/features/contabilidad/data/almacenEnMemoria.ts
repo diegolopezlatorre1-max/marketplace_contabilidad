@@ -4,6 +4,7 @@ import type {
   AjusteFila,
   ComisionFila,
   CuentaPorPagarFila,
+  EstadoVendedor,
   NuevaVenta,
   NuevoAjuste,
   FiltroAjustes,
@@ -488,6 +489,101 @@ export class AlmacenContabilidad {
     return pago;
   }
 
+  // ---- HU-CON-07: estado financiero por vendedor (misma regla de control que la API) ----
+  obtenerEstadoVendedor(vendedorId: string, desde?: string, hasta?: string): EstadoVendedor {
+    if (desde && hasta && desde > hasta) {
+      throw new ErrorDeNegocio('La quincena "desde" no puede ser posterior a "hasta"');
+    }
+    const suma = (valores: string[]) => valores.reduce((acc, v) => acc + aCentavos(v), 0n);
+    const cuentas = [...this.cuentas.values()]
+      .filter(
+        (c) =>
+          c.vendedorId === vendedorId &&
+          (!desde || c.periodo >= desde) &&
+          (!hasta || c.periodo <= hasta),
+      )
+      .sort((a, b) => a.periodo.localeCompare(b.periodo));
+    const periodos = cuentas.map((c) => {
+      const ventas = this.comisiones.filter(
+        (v) => v.vendedorId === vendedorId && v.periodo === c.periodo,
+      );
+      const ids = new Set(ventas.map((v) => v.id));
+      const ajustes = this.ajustes.filter((a) => ids.has(a.ventaId)).map((a) => a.fila);
+      const fila = this.aFila(c);
+      return {
+        periodo: c.periodo,
+        ventas: ventas.length,
+        vendido: suma(ventas.map((v) => v.valorBruto)),
+        comision: suma(ventas.map((v) => v.comision)),
+        ajValor: suma(ajustes.map((a) => a.valor)),
+        ajComision: suma(ajustes.map((a) => a.comisionRevertida)),
+        ajNeto: suma(ajustes.map((a) => a.netoRevertido)),
+        saldoAFavor: suma(ajustes.map((a) => a.saldoAFavor)),
+        pagado: c.pagado,
+        pendiente: c.totalNeto - c.pagado,
+        estado: fila.estado,
+      };
+    });
+    const total = (
+      k:
+        | 'vendido'
+        | 'comision'
+        | 'ajValor'
+        | 'ajComision'
+        | 'ajNeto'
+        | 'saldoAFavor'
+        | 'pagado'
+        | 'pendiente',
+    ) => periodos.reduce((acc, p) => acc + p[k], 0n);
+    const descontado = total('ajNeto') - total('saldoAFavor');
+    const generado = total('vendido') - total('comision') - descontado;
+    const liquidado = total('pagado') + total('pendiente');
+    const cuadra = generado === liquidado;
+    const nombre = [...this.cuentas.values()].find(
+      (c) => c.vendedorId === vendedorId,
+    )?.vendedorNombre;
+    return {
+      vendedorId,
+      vendedorNombre: nombre ?? vendedorId,
+      desde: desde ?? null,
+      hasta: hasta ?? null,
+      totales: {
+        ventas: periodos.reduce((acc, p) => acc + p.ventas, 0),
+        vendido: deCentavos(total('vendido')),
+        comision: deCentavos(total('comision')),
+        ajustes: {
+          valor: deCentavos(total('ajValor')),
+          comisionRevertida: deCentavos(total('ajComision')),
+          netoRevertido: deCentavos(total('ajNeto')),
+          descontadoDelSaldo: deCentavos(descontado),
+          saldoAFavor: deCentavos(total('saldoAFavor')),
+        },
+        pagado: deCentavos(total('pagado')),
+        pendiente: deCentavos(total('pendiente')),
+      },
+      saldoAFavorDisponible: deCentavos(this.saldoAFavor(vendedorId)),
+      control: {
+        cuadra,
+        generado: deCentavos(generado),
+        liquidado: deCentavos(liquidado),
+        detalle: cuadra
+          ? 'Vendido − comisión − ajustes = pagado + pendiente'
+          : 'No cuadra vendido − comisión − ajustes = pagado + pendiente',
+      },
+      periodos: periodos.map((p) => ({
+        periodo: p.periodo,
+        ventas: p.ventas,
+        vendido: deCentavos(p.vendido),
+        comision: deCentavos(p.comision),
+        ajustesNeto: deCentavos(p.ajNeto),
+        saldoAFavor: deCentavos(p.saldoAFavor),
+        pagado: deCentavos(p.pagado),
+        pendiente: deCentavos(p.pendiente),
+        estado: p.estado,
+      })),
+    };
+  }
+
   listarPagos({ vendedorId, desde, hasta }: FiltroPagos): PagoVendedorFila[] {
     return this.pagos
       .map(({ pago }) => pago)
@@ -548,6 +644,10 @@ export function crearApiEnMemoria(almacen: AlmacenContabilidad, retardoMs = 0): 
     async listarPagos(filtro) {
       await espera();
       return almacen.listarPagos(filtro);
+    },
+    async obtenerEstadoVendedor(vendedorId, desde, hasta) {
+      await espera();
+      return almacen.obtenerEstadoVendedor(vendedorId, desde, hasta);
     },
     async listarAjustes(ventaId) {
       await espera();

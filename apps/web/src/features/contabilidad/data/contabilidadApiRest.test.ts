@@ -280,6 +280,16 @@ describe('crearContabilidadApiRest', () => {
     ).rejects.toThrow(OperacionNoDisponibleError);
   });
 
+  it('consulta el estado del vendedor por quincenas (HU-CON-07)', async () => {
+    const cuerpo = { vendedorId: 'V 1', periodos: [] };
+    const { contabilidad } = crear({
+      '/api/vendedores/V%201/estado?desde=2026-10-Q1&hasta=2026-10-Q2': { body: cuerpo },
+    });
+    await expect(
+      contabilidad.obtenerEstadoVendedor('V 1', '2026-10-Q1', '2026-10-Q2'),
+    ).resolves.toEqual(cuerpo);
+  });
+
   it('registra pagos a vendedores y pagina su historial (HU-CON-10)', async () => {
     const pago = {
       id: 'p-1',
