@@ -19,7 +19,7 @@ export class ObtenerVentaQuery implements UseCase<
     id: string,
     ctx: ContextoEjecucion,
   ): Promise<VentaDetalle & { vendedorNombre: string }> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const venta = await this.ventas.obtener(id);
     if (!venta) throw new DomainError('NO_ENCONTRADO', `No existe la venta ${id}`);
     const [conNombre] = await conNombreVendedor([venta], this.vendedores);

@@ -50,7 +50,7 @@ export class RegistrarPagoVendedorUseCase implements UseCase<
     entrada: RegistrarPagoVendedorEntrada,
     ctx: ContextoEjecucion,
   ): Promise<PagoVendedorRegistrado> {
-    exigirRol(ctx.actor, ['CONTADOR']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const ahora = this.clock.now();
     // Un día contable se registra al mediodía de Colombia para no cambiar de día por la zona.
     const fecha = entrada.fecha

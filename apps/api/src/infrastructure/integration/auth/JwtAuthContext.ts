@@ -4,7 +4,7 @@ import type { Actor } from '../../../application/security';
 /**
  * Adaptador para el token emitido por el marketplace (AUTH_MODE=jwt).
  * Se implementa en la Fase 6, cuando se conozca el emisor, las claves (JWKS)
- * y el mapeo de roles del marketplace a CONTADOR / ADMIN_FINANCIERO / SISTEMA.
+ * y el mapeo de roles del marketplace a ADMIN / VENDEDOR / COMPRADOR.
  */
 export class JwtAuthContext implements AuthContext {
   async autenticar(_token: string): Promise<Actor | null> {

@@ -6,7 +6,7 @@ export const TIPOS_AJUSTE = ['DEVOLUCION', 'CANCELACION'] as const;
 export type TipoAjuste = (typeof TIPOS_AJUSTE)[number];
 
 /**
- * POST /ajustes (HU-CON-06, rol CONTADOR). La DEVOLUCION exige el valor devuelto (puede ser
+ * POST /ajustes (HU-CON-06, rol ADMIN). La DEVOLUCION exige el valor devuelto (puede ser
  * parcial); la CANCELACION revierte todo lo no ajustado y no lleva valor.
  */
 export const registrarAjusteSchema = z

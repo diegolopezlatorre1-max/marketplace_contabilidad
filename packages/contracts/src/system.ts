@@ -15,4 +15,6 @@ export interface UsuarioActualResponse {
   id: string;
   nombre: string;
   roles: Rol[];
+  /** Vendedor que representa el usuario (solo con el rol VENDEDOR). */
+  vendedorId?: string;
 }

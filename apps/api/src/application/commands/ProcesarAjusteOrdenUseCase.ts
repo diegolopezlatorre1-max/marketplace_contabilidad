@@ -4,7 +4,7 @@ import { InvalidValueError, Money } from '../../domain/shared';
 import type { ContextoEjecucion, UseCase } from '../ports/in/UseCase';
 import type { Clock } from '../ports/out/Clock';
 import type { UnitOfWork } from '../ports/out/UnitOfWork';
-import { exigirRol } from '../security';
+import { exigirServicio } from '../security';
 import { aplicarAjuste } from './aplicarAjuste';
 import type { ResultadoEvento } from './RegistrarVentaConfirmadaUseCase';
 
@@ -40,7 +40,7 @@ export class ProcesarAjusteOrdenUseCase implements UseCase<
     evento: OrdenAjusteEntrada,
     ctx: ContextoEjecucion,
   ): Promise<ResultadoAjusteEvento> {
-    exigirRol(ctx.actor, ['SISTEMA']);
+    exigirServicio(ctx.actor);
     const fecha = new Date(evento.fecha);
     if (Number.isNaN(fecha.getTime())) {
       throw new InvalidValueError(`Fecha inválida: ${evento.fecha}`);

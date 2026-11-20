@@ -37,7 +37,7 @@ const fecha = (iso: string) =>
 
 /** HU-CON-04: bandeja de pagos recibidos, asistente de conciliación y semáforo. */
 export function ConciliacionesPage() {
-  const puedeConciliar = useTieneRol('CONTADOR');
+  const puedeConciliar = useTieneRol('ADMIN');
   const [vista, setVista] = useState<Vista>('pagos');
   const [seleccionado, setSeleccionado] = useState<PagoRecibidoDto | null>(null);
 

@@ -28,7 +28,7 @@ const post = (url: string, token: string, body: object) =>
 const estado = (query = '') =>
   request(app())
     .get(`${BASE}/vendedores/V-1/estado${query}`)
-    .set('authorization', 'Bearer mock-contador');
+    .set('authorization', 'Bearer mock-admin');
 
 async function venta(numeroOrden: string, valor: string, fecha: string) {
   const res = await post(
@@ -67,7 +67,7 @@ beforeEach(async () => {
 
 describe('HU-CON-07 - criterios de aceptación del F01', () => {
   it('1 y 2. consulta por vendedor: total vendido, comisión, pagado y pendiente', async () => {
-    await post('/pagos-vendedor', 'mock-contador', {
+    await post('/pagos-vendedor', 'mock-admin', {
       vendedorId: 'V-1',
       valor: '100000.00',
       referencia: 'TRF-1',
@@ -99,18 +99,18 @@ describe('HU-CON-07 - criterios de aceptación del F01', () => {
   });
 
   it('regla de control: vendido − comisión − ajustes = pagado + pendiente, con saldo a favor', async () => {
-    await post('/ajustes', 'mock-contador', {
+    await post('/ajustes', 'mock-admin', {
       ventaId: await ventaId('ORD-2'),
       tipo: 'DEVOLUCION',
       motivo: 'Devolución',
       valor: '20000.00',
     });
-    await post('/pagos-vendedor', 'mock-contador', {
+    await post('/pagos-vendedor', 'mock-admin', {
       vendedorId: 'V-1',
       valor: '90000.00',
       referencia: 'TRF-1',
     });
-    await post('/ajustes', 'mock-contador', {
+    await post('/ajustes', 'mock-admin', {
       ventaId: await ventaId('ORD-1'),
       tipo: 'CANCELACION',
       motivo: 'Cancelada tras el pago',

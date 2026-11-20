@@ -88,7 +88,7 @@ export function AuditoriaPage() {
         <label className="cp-filtro">
           Usuario
           <input
-            placeholder="u-contador"
+            placeholder="u-admin"
             value={usuario}
             onChange={(e) => filtrar(() => setUsuario(e.target.value))}
           />

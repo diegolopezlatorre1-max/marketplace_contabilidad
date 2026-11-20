@@ -1,6 +1,6 @@
 import type { RequestHandler } from 'express';
 import type { AuthContext } from '../../../application/ports/out/AuthContext';
-import { tieneAlgunRol, type Rol } from '../../../application/security';
+import { esServicio, tieneAlgunRol, type Rol } from '../../../application/security';
 import { HttpError } from '../HttpError';
 import { getActor, setActor } from '../requestContext';
 
@@ -21,6 +21,14 @@ export function authenticate(auth: AuthContext): RequestHandler {
 export function requireRole(...roles: Rol[]): RequestHandler {
   return (_req, res, next) => {
     if (!tieneAlgunRol(getActor(res), roles)) throw HttpError.noAutorizado();
+    next();
+  };
+}
+
+/** Restringe la ruta a los módulos del marketplace autenticados como servicio (eventos). */
+export function requireServicio(): RequestHandler {
+  return (_req, res, next) => {
+    if (!esServicio(getActor(res))) throw HttpError.noAutorizado();
     next();
   };
 }

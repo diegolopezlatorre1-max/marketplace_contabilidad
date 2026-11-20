@@ -22,9 +22,10 @@ Variables de la colección (pestaña *Variables*):
 | Variable | Valor | Uso |
 |----------|-------|-----|
 | `baseUrl` | `http://localhost:3000/api/v1/contabilidad` | URL base |
-| `tokenContador` | `mock-contador` | Consultas (rol CONTADOR) |
-| `tokenAdmin` | `mock-admin` | Configurar comisión (rol ADMIN_FINANCIERO) |
-| `tokenSistema` | `mock-sistema` | Eventos de Órdenes (rol SISTEMA) |
+| `tokenAdmin` | `mock-admin` | Operaciones contables, comisiones y auditoría (rol ADMIN) |
+| `tokenVendedor` | `mock-vendedor` | Consulta de su propio estado y pagos (rol VENDEDOR, vendedor V-1) |
+| `tokenComprador` | `mock-comprador` | Sin acceso a funciones contables (rol COMPRADOR) |
+| `tokenSistema` | `mock-sistema` | Eventos de Órdenes y Pagos (servicio) |
 
 ## Opción 2: terminal (Newman)
 

@@ -15,7 +15,7 @@ export class ConsultarAuditoriaQuery implements UseCase<FiltroAuditoria, PaginaA
   constructor(private readonly auditoria: AuditoriaRepository) {}
 
   async execute(filtro: FiltroAuditoria, ctx: ContextoEjecucion): Promise<PaginaAuditoria> {
-    exigirRol(ctx.actor, ['ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const desde = filtro.desde ? parseFechaContable(filtro.desde) : undefined;
     const hasta = filtro.hasta ? parseFechaContable(filtro.hasta) : undefined;
     if (desde && hasta && desde > hasta) {

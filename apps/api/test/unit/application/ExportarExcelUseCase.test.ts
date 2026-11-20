@@ -10,9 +10,14 @@ import { ExcelJsExporter } from '../../../src/infrastructure/integration/spreads
 import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
 import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Órdenes', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
-const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN_FINANCIERO'] };
+const sistema: Actor = {
+  id: 'sistema-marketplace',
+  nombre: 'Órdenes',
+  roles: [],
+  servicio: 'marketplace',
+};
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
+const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN'] };
 const reloj = { now: () => new Date('2026-11-10T15:00:00Z') };
 
 /** Ventas de V-1 (100.000 y 50.000,25) y V-2 (80.000), un pago y una devolución. */

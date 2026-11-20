@@ -26,7 +26,7 @@ interface Props {
  */
 export function DetalleVentaPage({ api, rutaVolver }: Props) {
   const { id = '' } = useParams();
-  const puedeAjustar = useTieneRol('CONTADOR');
+  const puedeAjustar = useTieneRol('ADMIN');
   const [venta, setVenta] = useState<VentaDetalle | null>(null);
   const [ajustes, setAjustes] = useState<AjusteFila[]>([]);
   const [error, setError] = useState<string | null>(null);

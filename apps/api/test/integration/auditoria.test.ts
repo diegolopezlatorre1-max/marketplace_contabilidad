@@ -45,7 +45,7 @@ beforeEach(async () => {
       fecha: new Date('2026-10-05T14:00:00Z'),
     }),
   );
-  await post('/pagos-vendedor', 'mock-contador', {
+  await post('/pagos-vendedor', 'mock-admin', {
     vendedorId: 'V-1',
     valor: '40000.00',
     referencia: 'TRF-1',
@@ -63,7 +63,7 @@ describe('HU-CON-11 - criterios de aceptación del F01', () => {
     ]);
 
     expect((await auditoria('?entidad=venta_contable')).body.total).toBe(1);
-    expect((await auditoria('?usuario=u-contador')).body.items[0].entidad).toBe('pago_vendedor');
+    expect((await auditoria('?usuario=u-admin')).body.items[0].entidad).toBe('pago_vendedor');
 
     // Mueve la venta al 9 de noviembre a las 23:30 de Colombia (10 de noviembre en UTC).
     await testPool().query(
@@ -77,7 +77,7 @@ describe('HU-CON-11 - criterios de aceptación del F01', () => {
     const res = await auditoria('?entidad=pago_vendedor');
     expect(res.body.items[0]).toMatchObject({
       accion: 'REGISTRAR',
-      usuario: 'u-contador',
+      usuario: 'u-admin',
       valoresAnteriores: {
         saldoAFavor: '0.00',
         cuentas: [{ periodo: '2026-10-Q1', saldoPendiente: '90000.00', estado: 'PENDIENTE' }],
@@ -88,8 +88,9 @@ describe('HU-CON-11 - criterios de aceptación del F01', () => {
     });
   });
 
-  it('3. solo es accesible para el administrador financiero', async () => {
-    expect((await auditoria('', 'mock-contador')).status).toBe(403);
+  it('3. solo es accesible para el ADMIN', async () => {
+    expect((await auditoria('', 'mock-vendedor')).status).toBe(403);
+    expect((await auditoria('', 'mock-comprador')).status).toBe(403);
     expect((await auditoria('', 'mock-sistema')).status).toBe(403);
     expect((await auditoria('?entidad=otra')).status).toBe(400);
   });

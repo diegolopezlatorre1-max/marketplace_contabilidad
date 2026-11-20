@@ -26,7 +26,7 @@ const app = () => (appCache ??= crearApp());
 const comoSistema = (url: string, body: object) =>
   request(app()).post(`${BASE}${url}`).set('authorization', 'Bearer mock-sistema').send(body);
 const comoContador = (url: string, body: object) =>
-  request(app()).post(`${BASE}${url}`).set('authorization', 'Bearer mock-contador').send(body);
+  request(app()).post(`${BASE}${url}`).set('authorization', 'Bearer mock-admin').send(body);
 const pagar = (body: object) =>
   comoContador('/pagos-vendedor', { vendedorId: 'V-1', referencia: 'TRF-1', ...body });
 
@@ -88,7 +88,7 @@ describe('HU-CON-10 - criterios de aceptación del F01', () => {
         valor: '90000.00',
         referencia: 'TRF-1',
         soporte: 'Comprobante 0001',
-        registrado_por: 'u-contador',
+        registrado_por: 'u-admin',
       },
     ]);
     const auditoria = await testPool().query(
@@ -130,7 +130,7 @@ describe('HU-CON-10 - criterios de aceptación del F01', () => {
     ]);
     const resumen = await request(app())
       .get(`${BASE}/cuentas-por-pagar/resumen`)
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(resumen.body[0]).toMatchObject({ vendedorId: 'V-1', saldoPendiente: '45000.00' });
   });
 });

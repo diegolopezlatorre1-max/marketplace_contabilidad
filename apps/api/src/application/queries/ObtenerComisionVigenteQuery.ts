@@ -37,7 +37,7 @@ export class ObtenerComisionVigenteQuery implements UseCase<
     entrada: { fecha?: string | undefined },
     ctx: ContextoEjecucion,
   ): Promise<EstadoComision> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const fecha = entrada.fecha
       ? parseFechaContable(entrada.fecha)
       : fechaContable(this.clock.now());

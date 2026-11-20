@@ -4,7 +4,7 @@ import type { ContextoEjecucion, UseCase } from '../ports/in/UseCase';
 import type { EstadoVendedorRepository } from '../ports/out/EstadoVendedorRepository';
 import type { PagoVendedorRepository } from '../ports/out/PagoVendedorRepository';
 import type { SellersGateway } from '../ports/out/SellersGateway';
-import { exigirRol, NoAutorizadoError, tieneAlgunRol } from '../security';
+import { alcanceVendedor, exigirRol } from '../security';
 
 export interface EstadoVendedorEntrada {
   vendedorId: string;
@@ -62,14 +62,9 @@ export class EstadoVendedorQuery implements UseCase<EstadoVendedorEntrada, Estad
   ) {}
 
   async execute(entrada: EstadoVendedorEntrada, ctx: ContextoEjecucion): Promise<EstadoVendedor> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO', 'VENDEDOR']);
-    // Un vendedor solo ve su propio estado (preparado para cuando el marketplace lo requiera).
-    if (
-      !tieneAlgunRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']) &&
-      ctx.actor.vendedorId !== entrada.vendedorId
-    ) {
-      throw new NoAutorizadoError('Un vendedor solo puede consultar su propio estado');
-    }
+    // ADMIN consulta cualquier vendedor; un VENDEDOR solo su propio estado.
+    exigirRol(ctx.actor, ['ADMIN', 'VENDEDOR']);
+    alcanceVendedor(ctx.actor, entrada.vendedorId);
     const vendedorId = entrada.vendedorId.trim();
     if (!vendedorId) throw new InvalidValueError('El vendedor es obligatorio');
     const desde = entrada.desde ? Periodo.parse(entrada.desde).codigo : undefined;

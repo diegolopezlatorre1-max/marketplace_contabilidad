@@ -61,8 +61,9 @@ npm run dev:web                          # http://localhost:5173
 ```
 
 - Documentación de la API (Swagger): http://localhost:3000/api/v1/contabilidad/docs
-- Autenticación de desarrollo (`AUTH_MODE=mock`): `Authorization: Bearer mock-contador`,
-  `mock-admin` o `mock-sistema`. El frontend ofrece un login de prueba por rol.
+- Autenticación de desarrollo (`AUTH_MODE=mock`): `Authorization: Bearer mock-admin` (ADMIN),
+  `mock-vendedor` (VENDEDOR, vendedor V-1), `mock-comprador` (COMPRADOR) o `mock-sistema`
+  (servicio: módulos que envían eventos). El frontend ofrece un login de prueba.
 
 ## Calidad
 

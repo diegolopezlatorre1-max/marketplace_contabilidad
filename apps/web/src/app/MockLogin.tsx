@@ -1,8 +1,5 @@
 /** Inicio de sesión de desarrollo (AUTH_MODE=mock en la API). No se usa dentro del marketplace. */
-const OPCIONES = [
-  { token: 'mock-contador', label: 'Contador' },
-  { token: 'mock-admin', label: 'Administrador financiero' },
-];
+const OPCIONES = [{ token: 'mock-admin', label: 'Administrador' }];
 
 export function MockLogin({ onLogin }: { onLogin: (token: string) => void }) {
   return (

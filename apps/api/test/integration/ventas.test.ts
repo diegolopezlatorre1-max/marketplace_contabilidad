@@ -107,7 +107,7 @@ describe('HU-CON-01 - registrar una venta confirmada', () => {
       {
         entidad: 'venta_contable',
         accion: 'REGISTRAR',
-        usuario: 'sistema-marketplace',
+        usuario: 'servicio:marketplace',
         correlation_id: 'corr-hu01',
       },
     ]);
@@ -231,7 +231,7 @@ describe('GET /ventas', () => {
     const listar = (q: string) =>
       request(app())
         .get(`/api/v1/contabilidad/ventas${q}`)
-        .set('authorization', 'Bearer mock-contador');
+        .set('authorization', 'Bearer mock-admin');
 
     const todas = await listar('');
     expect(todas.body.total).toBe(3);
@@ -255,7 +255,7 @@ describe('GET /periodos y GET /cuentas-por-pagar', () => {
     await enviar(orden('ORD-1', ['V-1', 'V-2'], ['100000.00', '50000.00']));
     await enviar(orden('ORD-2', ['V-1'], ['20000.00'], '2026-10-16T15:00:00Z'));
     const consultar = (url: string) =>
-      request(app()).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-contador');
+      request(app()).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     expect((await consultar('/periodos')).body).toEqual({ periodos: ['2026-10-Q2', '2026-10-Q1'] });
 
@@ -292,7 +292,7 @@ describe('HU-CON-02 - GET /ventas/:id', () => {
       .set('authorization', 'Bearer mock-admin')
       .send({ porcentaje: '12.5', vigenteDesde: '2026-10-06' });
     const consultar = (url: string) =>
-      request(app()).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-contador');
+      request(app()).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     const { id } = (await consultar('/ventas')).body.items[0];
     const detalle = await consultar(`/ventas/${id}`);
@@ -324,7 +324,7 @@ describe('HU-CON-03 - GET /cuentas-por-pagar/resumen', () => {
     const resumen = (q: string) =>
       request(app())
         .get(`/api/v1/contabilidad/cuentas-por-pagar/resumen${q}`)
-        .set('authorization', 'Bearer mock-contador');
+        .set('authorization', 'Bearer mock-admin');
 
     const q1 = await resumen('?periodo=2026-10-Q1');
     expect(q1.status).toBe(200);

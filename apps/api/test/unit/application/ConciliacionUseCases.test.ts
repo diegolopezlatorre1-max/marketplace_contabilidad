@@ -15,8 +15,13 @@ import { Money } from '../../../src/domain/shared';
 import { VentaContable } from '../../../src/domain/venta/VentaContable';
 import { crearBaseEnMemoria } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Pagos', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
+const sistema: Actor = {
+  id: 'sistema-marketplace',
+  nombre: 'Pagos',
+  roles: [],
+  servicio: 'marketplace',
+};
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
 const reloj = { now: () => new Date('2026-10-16T15:00:00Z') };
 
 function crearEntorno() {

@@ -114,7 +114,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
     vendedores,
     clock,
   );
-  // HU-CON-11: consulta de la auditoría (solo ADMIN_FINANCIERO).
+  // HU-CON-11: consulta de la auditoría (solo ADMIN).
   const consultarAuditoria = new ConsultarAuditoriaQuery(new PgAuditoriaRepository(pool));
   // HU-CON-07: estado financiero por vendedor.
   const estadoVendedor = new EstadoVendedorQuery(

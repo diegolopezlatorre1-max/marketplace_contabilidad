@@ -6,7 +6,7 @@ import type {
   FiltroCuentasPorPagar,
 } from '../ports/out/CuentaPorPagarRepository';
 import type { SellersGateway } from '../ports/out/SellersGateway';
-import { exigirRol } from '../security';
+import { alcanceVendedor, exigirRol } from '../security';
 import { conNombreVendedor } from './nombreVendedor';
 
 type CuentaConNombre = CuentaPorPagarResumen & { vendedorNombre: string };
@@ -22,8 +22,13 @@ export class ListarCuentasPorPagarQuery implements UseCase<
   ) {}
 
   async execute(filtro: FiltroCuentasPorPagar, ctx: ContextoEjecucion): Promise<CuentaConNombre[]> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    // ADMIN ve todas las cuentas; un VENDEDOR solo las suyas.
+    exigirRol(ctx.actor, ['ADMIN', 'VENDEDOR']);
+    const vendedorId = alcanceVendedor(ctx.actor, filtro.vendedorId);
     const periodo = filtro.periodo ? Periodo.parse(filtro.periodo).codigo : undefined;
-    return conNombreVendedor(await this.cuentas.listar({ ...filtro, periodo }), this.vendedores);
+    return conNombreVendedor(
+      await this.cuentas.listar({ ...filtro, vendedorId, periodo }),
+      this.vendedores,
+    );
   }
 }

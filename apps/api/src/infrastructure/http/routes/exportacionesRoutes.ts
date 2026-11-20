@@ -13,20 +13,16 @@ export function exportacionesRoutes({
 }): Router {
   const router = Router();
 
-  router.get(
-    '/exportaciones/excel',
-    requireRole('CONTADOR', 'ADMIN_FINANCIERO'),
-    async (req, res) => {
-      const filtro = parse(req, 'query', reporteIngresosQuerySchema);
-      const archivo = await exportarExcel.execute(filtro, contexto(res));
-      res
-        .status(200)
-        .type(archivo.contentType)
-        .attachment(archivo.nombre)
-        .setHeader('cache-control', 'no-store')
-        .send(archivo.contenido);
-    },
-  );
+  router.get('/exportaciones/excel', requireRole('ADMIN'), async (req, res) => {
+    const filtro = parse(req, 'query', reporteIngresosQuerySchema);
+    const archivo = await exportarExcel.execute(filtro, contexto(res));
+    res
+      .status(200)
+      .type(archivo.contentType)
+      .attachment(archivo.nombre)
+      .setHeader('cache-control', 'no-store')
+      .send(archivo.contenido);
+  });
 
   return router;
 }

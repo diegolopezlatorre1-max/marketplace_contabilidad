@@ -33,7 +33,7 @@ export class ListarVentasQuery implements UseCase<ListarVentasEntrada, PaginaVen
     entrada: ListarVentasEntrada,
     ctx: ContextoEjecucion,
   ): Promise<PaginaVentasConNombre> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const desde = entrada.desde ? parseFechaContable(entrada.desde) : undefined;
     const hasta = entrada.hasta ? parseFechaContable(entrada.hasta) : undefined;
     if (desde && hasta && desde > hasta) {

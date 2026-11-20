@@ -24,7 +24,7 @@ columnas del Excel (D-09).
 | D-01 | Moneda | COP única | CONFIRMADA 2026-10-08 | Contador | Sprint 1 | `domain/shared/Money.ts` (`MONEDA`) |
 | D-02 | Redondeo | HALF_UP, 2 decimales; el neto se calcula por resta (bruto − comisión) para garantizar bruto = comisión + neto | CONFIRMADA 2026-10-08 | Contador | Sprint 1 | `domain/shared/decimal.ts`, `Money.percentage()` |
 | D-03 | Periodo de liquidación (H-05) | Quincenal: Q1 = días 1–15, Q2 = 16–fin de mes, en hora de Colombia | CONFIRMADA 2026-10-08 | Contador | Sprint 1 | `domain/shared/Periodo.ts` |
-| D-04 | Alcance del % de comisión (H-03) | Global con vigencias; modelo preparado para VENDEDOR y CATEGORIA (prioridad vendedor > categoría > global). Lo configura el rol ADMIN_FINANCIERO (HU-CON-09) | CONFIRMADA 2026-10-08 | Contador / Administración | Sprint 1 | Sprint 1: `ConfiguracionComision` |
+| D-04 | Alcance del % de comisión (H-03) | Global con vigencias; modelo preparado para VENDEDOR y CATEGORIA (prioridad vendedor > categoría > global). Lo configura el rol ADMIN (HU-CON-09) | CONFIRMADA 2026-10-08 | Contador / Administración | Sprint 1 | Sprint 1: `ConfiguracionComision` |
 | D-05 | Órdenes multi-vendedor (H-12) | Un registro contable por (orden, vendedor) | ADOPTADA (contrato v1) | Equipo Órdenes | Sprint 1 | Contrato `orden.confirmada.lineas[]` |
 | D-06 | Pago al vendedor (H-04) | Nueva HU-CON-10; el pago descuenta primero el saldo a favor del marketplace y se aplica FIFO por periodo a las cuentas pendientes | CONFIRMADA 2026-11-06 | Contador | Sprint 3 | `domain/pagoVendedor/PagoVendedor.ts` |
 | D-07 | Ajustes (H-06) | Reverso proporcional de comisión y neto con el % aplicado originalmente; devoluciones parciales permitidas hasta el valor no ajustado; si la cuenta ya está pagada se genera saldo a favor del marketplace que se descuenta en la siguiente liquidación | CONFIRMADA 2026-11-06 | Contador | Sprint 2 | `domain/ajuste/AjusteContable.ts`, `CuentaPorPagar.revertir()` |
@@ -32,7 +32,7 @@ columnas del Excel (D-09).
 | D-09 | Columnas del Excel (H-07) | fecha, número de orden, vendedor, valor bruto, % comisión, comisión, valor neto, estado de pago, estado de conciliación, ajustes | CONFIRMADA 2026-11-06 | Admin. financiero | Sprint 3 | `application/queries/ExportarExcelUseCase.ts` (`COLUMNAS_VENTAS`) |
 | D-10 | Impuestos y facturación (H-09, H-10) | Won't Have: facturación electrónica DIAN, IVA/retenciones, nómina, contabilidad general | PROVISIONAL | Contador | Fase 5 | — |
 | D-11 | Partida doble / PUC | Fuera del alcance de los sprints 1–3; opcional en la Fase 5 | PROVISIONAL | Contador | Fase 5 | — |
-| D-12 | Roles (H-11) | CONTADOR, ADMIN_FINANCIERO, SISTEMA (módulos) | ADOPTADA | Administración | Sprint 1 | `application/security.ts` |
+| D-12 | Roles (H-11) | ADMIN, COMPRADOR, VENDEDOR; los módulos se autentican como servicio (antes CONTADOR, ADMIN_FINANCIERO, SISTEMA; cambiado por GUIA_EQUIPO_6) | ADOPTADA | Administración | Sprint 1 | `application/security.ts` |
 | D-13 | Auditoría (H-11) | Todo comando registra en `contabilidad.auditoria`; consulta en HU-CON-11 | ADOPTADA | — | — | `PgAuditLogger` |
 | D-14 | Sprints (H-08, H-13, H-14, H-15) | 2 semanas; carga 18 / 18 / 12 pts; HU-CON-04 dividida en 04a/04b; objetivo Sprint 2: "Conciliación, ajustes y reporte de ingresos" | ADOPTADA | Equipo | Sprint 1 | Plan de desarrollo |
 

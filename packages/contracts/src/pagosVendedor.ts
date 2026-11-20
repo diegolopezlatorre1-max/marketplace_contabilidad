@@ -3,7 +3,7 @@ import { fechaContableSchema } from './comisiones';
 import { montoPositivoSchema, paginacionQuerySchema } from './common';
 
 /**
- * POST /pagos-vendedor (HU-CON-10, rol CONTADOR). El pago descuenta primero el saldo a favor
+ * POST /pagos-vendedor (HU-CON-10, rol ADMIN). El pago descuenta primero el saldo a favor
  * del marketplace y se aplica a las cuentas pendientes más antiguas (FIFO por periodo, D-06).
  */
 export const registrarPagoVendedorSchema = z.object({

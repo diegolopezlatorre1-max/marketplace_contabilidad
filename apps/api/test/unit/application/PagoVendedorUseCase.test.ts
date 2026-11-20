@@ -10,9 +10,14 @@ import { ListarPagosVendedorQuery } from '../../../src/application/queries/Lista
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
 import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Órdenes', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
-const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN_FINANCIERO'] };
+const sistema: Actor = {
+  id: 'sistema-marketplace',
+  nombre: 'Órdenes',
+  roles: [],
+  servicio: 'marketplace',
+};
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
+const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN'] };
 const comoContador = { actor: contador, correlationId: 'corr-pago' };
 const reloj = { now: () => new Date('2026-11-10T15:00:00Z') };
 
@@ -195,10 +200,14 @@ describe('RegistrarPagoVendedorUseCase (HU-CON-10)', () => {
     });
   });
 
-  it('solo el contador registra pagos', async () => {
+  it('solo el ADMIN registra pagos', async () => {
     const e = await entorno();
+    const vendedor: Actor = { id: 'u-v', nombre: 'V', roles: ['VENDEDOR'], vendedorId: 'V-1' };
     await expect(
-      e.registrar.execute({ vendedorId: 'V-1', valor: '1.00', referencia: 'X' }, { actor: admin }),
+      e.registrar.execute(
+        { vendedorId: 'V-1', valor: '1.00', referencia: 'X' },
+        { actor: vendedor },
+      ),
     ).rejects.toBeInstanceOf(NoAutorizadoError);
   });
 

@@ -12,7 +12,7 @@ import type {
 } from '../ports/out/PagoRecibidoRepository';
 import { exigirRol } from '../security';
 
-const LECTORES = ['CONTADOR', 'ADMIN_FINANCIERO'] as const;
+const LECTORES = ['ADMIN'] as const;
 
 /** Valida el rango de fechas contables (AAAA-MM-DD, inclusive). */
 function conRango<F extends { desde?: string | undefined; hasta?: string | undefined }>(

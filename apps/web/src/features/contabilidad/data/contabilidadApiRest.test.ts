@@ -15,7 +15,7 @@ function crear(rutas: Record<string, { status?: number; body: unknown }>) {
       return respuesta(404, { title: `Sin ruta ${url}`, status: 404, code: 'NO_ENCONTRADO' });
     return respuesta(ruta.status ?? 200, ruta.body);
   });
-  const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-contador', fetchFn });
+  const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-admin', fetchFn });
   return { fetchFn, contabilidad: crearContabilidadApiRest(api) };
 }
 

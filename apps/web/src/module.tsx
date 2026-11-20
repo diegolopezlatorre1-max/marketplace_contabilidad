@@ -93,7 +93,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             index
             element={
-              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+              <RequireRole roles={['ADMIN']}>
                 <InicioPage />
               </RequireRole>
             }
@@ -101,7 +101,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="ventas"
             element={
-              <RequireRole roles={['CONTADOR']}>
+              <RequireRole roles={['ADMIN']}>
                 <ContabilidadPanel
                   key="ventas"
                   api={contabilidad}
@@ -114,7 +114,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="ventas/:id"
             element={
-              <RequireRole roles={['CONTADOR']}>
+              <RequireRole roles={['ADMIN']}>
                 <DetalleVentaPage
                   api={contabilidad}
                   rutaVolver={rutaDelModulo(basePath, 'ventas')}
@@ -125,7 +125,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="cuentas-por-pagar"
             element={
-              <RequireRole roles={['CONTADOR']}>
+              <RequireRole roles={['ADMIN']}>
                 <ContabilidadPanel
                   key="cuentas"
                   api={contabilidad}
@@ -139,7 +139,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="vendedores"
             element={
-              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+              <RequireRole roles={['ADMIN']}>
                 <EstadoVendedorPage api={contabilidad} />
               </RequireRole>
             }
@@ -147,7 +147,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="pagos-vendedor"
             element={
-              <RequireRole roles={['CONTADOR']}>
+              <RequireRole roles={['ADMIN']}>
                 <PagosVendedorPage api={contabilidad} />
               </RequireRole>
             }
@@ -155,7 +155,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="configuracion/comision"
             element={
-              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+              <RequireRole roles={['ADMIN']}>
                 <ConfiguracionComisionPanel api={contabilidad} />
               </RequireRole>
             }
@@ -163,7 +163,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="conciliaciones"
             element={
-              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+              <RequireRole roles={['ADMIN']}>
                 <ConciliacionesPage />
               </RequireRole>
             }
@@ -171,7 +171,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="ajustes"
             element={
-              <RequireRole roles={['CONTADOR']}>
+              <RequireRole roles={['ADMIN']}>
                 <AjustesPage api={contabilidad} rutaVenta={rutaVenta} />
               </RequireRole>
             }
@@ -179,7 +179,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="reportes/ingresos"
             element={
-              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+              <RequireRole roles={['ADMIN']}>
                 <ReporteIngresosPage api={contabilidad} />
               </RequireRole>
             }
@@ -187,7 +187,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="auditoria"
             element={
-              <RequireRole roles={['ADMIN_FINANCIERO']}>
+              <RequireRole roles={['ADMIN']}>
                 <AuditoriaPage />
               </RequireRole>
             }
@@ -195,7 +195,7 @@ function ModuloConUsuario({ api, onLogout }: { api: ApiClient; onLogout?: () => 
           <Route
             path="documentacion-api"
             element={
-              <RequireRole roles={['CONTADOR', 'ADMIN_FINANCIERO']}>
+              <RequireRole roles={['ADMIN']}>
                 <DocumentacionApiPage />
               </RequireRole>
             }
