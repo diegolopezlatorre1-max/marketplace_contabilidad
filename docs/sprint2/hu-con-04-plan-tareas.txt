@@ -1,0 +1,94 @@
+================================================================================
+ MARKETPLACE - MÓDULO DE CONTABILIDAD
+ SPRINT 2 - HU-CON-04 CONCILIAR PAGOS RECIBIDOS CONTRA ÓRDENES
+ PLAN DE TAREAS
+================================================================================
+ Prioridad .......... Must
+ Puntos ............. 8 (04a: 5, 04b: 3)
+ Responsable ........ Carlos
+ Rama ............... feat/hu-con-04-conciliacion (desde dev)
+ Referencias ........ docs/Plan_Desarrollo_Modulo_Contabilidad.txt (Fase 3)
+                      docs/fase0/contratos-integracion.md (pago.recibido)
+                      docs/fase0/decisiones.md (D-08 tolerancia)
+================================================================================
+
+Estado: [ ] pendiente   [~] en progreso   [x] hecha
+
+
+1. CONTEXTO
+-----------
+  Historia: como Contador quiero relacionar cada pago recibido de la pasarela
+  con las órdenes que paga, para detectar diferencias y saber qué está
+  conciliado y qué no.
+
+  Flujo: el módulo de Pagos envía pago.recibido (o el contador importa un CSV)
+  -> Contabilidad registra el pago -> se concilia contra una o varias órdenes
+  -> diferencia = valor del pago - valor aplicado a las órdenes
+  -> CONCILIADA (|diferencia| <= tolerancia) o PENDIENTE (diferencia visible).
+
+
+2. DECISIONES DE ESTA HISTORIA (2026-10-16)
+-------------------------------------------
+  - El pago se concilia contra ÓRDENES (numero_orden), no contra ventas por
+    vendedor: el contrato pago.recibido trae "ordenes": ["ORD-1001"]. El valor
+    de una orden es la suma del valor bruto de sus ventas (venta_contable).
+    (Ajuste al plan original, que ligaba el detalle a venta_id.)
+  - Una conciliación por pago. Cada orden lleva su valor aplicado; si no se
+    indica, se aplica su saldo pendiente. Lo aplicado a una orden, sumando todas
+    las conciliaciones, no puede superar su valor: una orden se puede pagar en
+    partes con varios pagos.
+  - Política (D-08): diferencia = valor del pago - suma aplicada.
+    |diferencia| <= tolerancia -> CONCILIADA; si no -> PENDIENTE. Tolerancia 0
+    por defecto (provisional, se inyecta en los casos de uso).
+  - pago.recibido es idempotente por eventId (inbox) y por referencia de la
+    pasarela (UNIQUE): la misma referencia con otro eventId -> 409.
+    Si el evento trae órdenes se concilia automáticamente (usuario SISTEMA); si
+    las órdenes no sirven (inexistentes o sin saldo) el pago se registra igual y
+    queda SIN_CONCILIAR con el motivo en la respuesta.
+  - Conciliar no modifica las cuentas por pagar: el pago recibido es dinero que
+    entra al marketplace; el pago al vendedor es otra historia.
+  - Concurrencia: bloqueo del pago (FOR UPDATE) y de cada orden
+    (pg_advisory_xact_lock, en orden) para que dos conciliaciones simultáneas
+    no apliquen dos veces el mismo saldo.
+  - Migración 006 (Carlos). Las de Diego en el Sprint 2 usan 007 en adelante.
+  - Al quedar CONCILIADA se publica contabilidad.conciliacion.cerrada (outbox).
+
+
+3. TAREAS
+---------
+
+04a - Relacionar pago recibido con órdenes (5 pts)
+  T-31 [x] Dominio: PagoRecibido, Conciliacion, DetalleConciliacion,
+           PoliticaConciliacion (domain/conciliacion). Pruebas unitarias.
+  T-32 [x] BD: migración 006_conciliacion.sql (pago_recibido, conciliacion,
+           conciliacion_detalle) y repositorios Postgres.
+  T-33 [x] Aplicación: RegistrarPagoRecibidoUseCase (SISTEMA, inbox) y
+           ConciliarPagoUseCase (CONTADOR, auditoría CONCILIAR).
+  T-34 [x] Integración: MockPaymentsGateway, npm run simular:pago y
+           CsvPaymentsImporter + POST /pagos-recibidos/importar (CONTADOR).
+
+04b - Diferencias y estado de conciliación (3 pts)
+  T-35 [x] API: POST /eventos/pago-recibido, GET /pagos-recibidos,
+           POST /conciliaciones, GET /conciliaciones, GET /conciliaciones/{id}.
+           Contratos (packages/contracts/src/conciliaciones.ts) y OpenAPI.
+  T-36 [x] Web: pantalla Conciliación (bandeja de pagos, asistente para
+           conciliar, lista con semáforo y diferencia).
+  T-37 [x] Pruebas: unitarias, integración y carpeta de Postman.
+
+
+4. CRITERIOS DE ACEPTACIÓN (escenarios)
+---------------------------------------
+  - Pago de 150.000 contra órdenes de 100.000 + 50.000 -> CONCILIADA, dif. 0.
+  - Pago de 95.000 contra una orden de 100.000 -> diferencia -5.000, PENDIENTE.
+  - Orden inexistente -> rechazo; aplicar más del saldo de una orden -> rechazo.
+  - Una orden pagada con dos pagos parciales cuadra.
+  - Evento repetido -> YA_PROCESADO; referencia repetida -> 409.
+  - Cada conciliación queda auditada con usuario y fecha.
+
+
+5. VERIFICACIÓN
+---------------
+  - npm run lint, typecheck, test, test:integration.
+  - Manual: simular:orden + simular:pago; conciliar desde la pantalla.
+  - npx newman run docs/postman/contabilidad.postman_collection.json
+================================================================================

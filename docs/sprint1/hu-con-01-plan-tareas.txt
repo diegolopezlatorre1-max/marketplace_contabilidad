@@ -1,0 +1,121 @@
+================================================================================
+ MARKETPLACE - MÓDULO DE CONTABILIDAD
+ SPRINT 1 - HU-CON-01 REGISTRAR AUTOMÁTICAMENTE UNA VENTA CONFIRMADA
+ PLAN DE TAREAS
+================================================================================
+ Prioridad .......... Must
+ Puntos ............. 5
+ Responsable ........ Carlos
+ Rama ............... feat/hu-con-01-registrar-venta (desde dev)
+ Referencias ........ docs/sprint1/plan-sprint1.md
+                      docs/fase0/contratos-integracion.md (orden.confirmada v1)
+                      docs/fase0/decisiones.md (D-02, D-03, D-05)
+================================================================================
+
+Estado: [ ] pendiente   [~] en progreso   [x] hecha
+
+
+1. CONTEXTO
+-----------
+  Historia: como Contador quiero que cada orden confirmada se registre
+  automáticamente en contabilidad, con su comisión y la cuenta por pagar al
+  vendedor, sin duplicados.
+
+  Flujo: Órdenes envía orden.confirmada -> Contabilidad registra una venta por
+  línea/vendedor (D-05) -> calcula la comisión con el % vigente (HU-CON-09,
+  HU-CON-02) -> acumula el neto en la cuenta por pagar del vendedor en la
+  quincena (HU-CON-03) -> inbox, auditoría y outbox. Todo en una transacción.
+
+
+2. DECISIONES DE ESTA HISTORIA (2026-10-15)
+-------------------------------------------
+  - Carlos implementa el flujo completo, incluida la persistencia de comisión y
+    cuenta por pagar (T-15, T-16, T-21 y la generación de T-22), sobre el
+    dominio de Diego (ComisionVenta, CuentaPorPagar). Las consultas y la API de
+    cuentas por pagar (T-17, T-22 consultas, T-24) siguen con Diego.
+  - Idempotencia: inbox por eventId + UNIQUE (numero_orden, vendedor_id).
+    Un bloqueo transaccional (pg_advisory_xact_lock) por eventId y por número
+    de orden serializa eventos simultáneos: el segundo responde YA_PROCESADO
+    (mismo eventId) u ORDEN_DUPLICADA -> 409 (otro eventId, misma orden).
+  - Evento con estado distinto a CONFIRMADA: se guarda en evento_ignorado y en
+    el inbox (un reenvío responde YA_PROCESADO); respuesta IGNORADO.
+  - Las líneas se procesan ordenadas por vendedorId para evitar bloqueos
+    cruzados entre cuentas por pagar.
+  - Cuenta por pagar: una fila por (vendedor, periodo) que se bloquea con
+    FOR UPDATE al acumular; las órdenes que la componen se obtienen de
+    venta_contable (vendedor + periodo).
+  - La fecha contable y la quincena de la venta se calculan con la fecha de la
+    orden en hora de Colombia (FechaContable, Periodo).
+  - Web (T-12): la pantalla de ventas ya existe en la interfaz de Diego (con
+    datos simulados); conectarla a GET /ventas queda para esa rama.
+
+
+3. TAREAS
+---------
+
+T-07 [x] Dominio - VentaContable
+  Archivos .. apps/api/src/domain/venta/VentaContable.ts (+ prueba)
+  Detalle ... numeroOrden, vendedorId, categoriaId?, fecha, fechaContable,
+              periodo, valorBruto (Money > 0), estadoOrigen. Solo acepta
+              CONFIRMADA (OrdenNoConfirmadaError).
+
+T-08 [x] BD / Infra - venta_contable
+  Archivos .. migrations/003_venta_contable.sql, PgVentaContableRepository
+  Detalle ... UNIQUE (numero_orden, vendedor_id); índices por fecha y vendedor.
+              Listado paginado con filtros y desglose de comisión.
+
+T-15 [x] BD - comision (de Diego, lo hace Carlos)
+  Archivos .. migrations/004_comision.sql
+  Detalle ... venta_id UNIQUE FK; CHECK valor_bruto = valor_comision + valor_neto.
+
+T-16 [x] Infra - PgComisionRepository (de Diego, lo hace Carlos)
+
+T-21 [x] BD - cuenta_por_pagar (de Diego, lo hace Carlos)
+  Archivos .. migrations/005_cuenta_por_pagar.sql
+  Detalle ... UNIQUE (vendedor_id, periodo); índice (vendedor_id, periodo,
+              estado); CHECK valor_pagado <= total_neto.
+
+T-22 [x] Generar cuenta por pagar (parte de generación)
+  Archivos .. PgCuentaPorPagarRepository; CuentaPorPagar.reconstituir
+
+T-09 [x] Aplicación - RegistrarVentaConfirmadaUseCase
+  Detalle ... rol SISTEMA; bloqueo; inbox; estado; por línea: venta, % vigente,
+              comisión, cuenta por pagar; auditoría (venta_contable,
+              REGISTRAR) y outbox contabilidad.venta.registrada.
+              ListarVentasQuery (CONTADOR, ADMIN_FINANCIERO).
+
+T-10 [x] API
+  Detalle ... POST /eventos/orden-confirmada (SISTEMA): 201 PROCESADO,
+              200 YA_PROCESADO / IGNORADO. GET /ventas?desde=&hasta=
+              &vendedorId=&page=&size=. Contratos en packages/contracts/src/
+              ventas.ts. OpenAPI.
+
+T-11 [x] Integración - MockOrdersGateway y simulador
+  Detalle ... Generador de eventos orden.confirmada de prueba y script
+              npm run simular:orden (POST con el token mock-sistema).
+
+T-12 [ ] Web - en la rama de la interfaz (ver decisiones).
+
+T-13 [x] Pruebas
+  Detalle ... orden nueva se registra; evento repetido -> YA_PROCESADO; orden
+              PENDIENTE -> IGNORADO; multi-vendedor -> N ventas; dos eventos
+              simultáneos -> un solo registro; sin % vigente -> 422 sin
+              cambios; 100.000 al 10 % -> 10.000 / 90.000; netos 90.000 y
+              45.000 del mismo vendedor y quincena -> saldo 135.000.
+
+
+4. CRITERIOS DE ACEPTACIÓN
+--------------------------
+  - Una orden confirmada genera una venta por vendedor, con su comisión y su
+    cuenta por pagar, en una sola transacción.
+  - Un evento repetido no duplica registros y responde YA_PROCESADO.
+  - Una orden en estado distinto a CONFIRMADA no se registra (IGNORADO).
+  - Cada registro queda auditado y publica contabilidad.venta.registrada.
+
+
+5. VERIFICACIÓN
+---------------
+  - npm run lint, npm run typecheck, npm test, npm run test:integration.
+  - Manual: db:migrate + db:seed + dev:api; npm run simular:orden y
+    GET /ventas con mock-contador en /docs.
+================================================================================

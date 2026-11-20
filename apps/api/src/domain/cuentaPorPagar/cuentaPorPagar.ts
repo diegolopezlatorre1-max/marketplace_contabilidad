@@ -1,0 +1,106 @@
+import type { ComisionVenta } from '../comision/ComisionVenta';
+import { InvalidValueError } from '../shared/DomainError';
+import { Money } from '../shared/Money';
+import { Periodo } from '../shared/Periodo';
+
+/** PARCIAL (HU-CON-10): tiene pagos, pero aún queda saldo pendiente. */
+export type EstadoCuenta = 'PENDIENTE' | 'PARCIAL' | 'PAGADO';
+
+/** Cuenta por pagar a un vendedor en una quincena (vendedor + periodo). */
+export class CuentaPorPagar {
+  private totalNeto = Money.CERO;
+  private pagado = Money.CERO;
+  private readonly ordenes = new Set<string>();
+
+  private constructor(
+    readonly vendedorId: string,
+    readonly periodo: Periodo,
+  ) {}
+
+  static abrir(vendedorId: string, periodo: Periodo): CuentaPorPagar {
+    if (!vendedorId.trim()) throw new InvalidValueError('El vendedor es obligatorio');
+    return new CuentaPorPagar(vendedorId, periodo);
+  }
+
+  /** Reconstruye una cuenta persistida (la usa el repositorio). */
+  static reconstituir(datos: {
+    vendedorId: string;
+    periodo: Periodo;
+    totalNeto: Money;
+    pagado: Money;
+    ordenes: readonly string[];
+  }): CuentaPorPagar {
+    if (datos.pagado.isNegative() || datos.pagado.greaterThan(datos.totalNeto)) {
+      throw new InvalidValueError('El valor pagado no puede superar el total neto');
+    }
+    const cuenta = CuentaPorPagar.abrir(datos.vendedorId, datos.periodo);
+    cuenta.totalNeto = datos.totalNeto;
+    cuenta.pagado = datos.pagado;
+    datos.ordenes.forEach((o) => cuenta.ordenes.add(o));
+    return cuenta;
+  }
+
+  get valorTotalNeto(): Money {
+    return this.totalNeto;
+  }
+
+  get valorPagado(): Money {
+    return this.pagado;
+  }
+
+  /** Suma el valor neto de una venta (bruto − comisión) a la cuenta. */
+  acumular(comision: ComisionVenta, fechaVenta: Date): void {
+    if (comision.vendedorId !== this.vendedorId) {
+      throw new InvalidValueError('La venta pertenece a otro vendedor');
+    }
+    if (!Periodo.fromDate(fechaVenta).equals(this.periodo)) {
+      throw new InvalidValueError(`La venta no pertenece al periodo ${this.periodo.codigo}`);
+    }
+    if (this.ordenes.has(comision.numeroOrden)) {
+      throw new InvalidValueError(`La orden ${comision.numeroOrden} ya está en la cuenta`);
+    }
+    this.ordenes.add(comision.numeroOrden);
+    this.totalNeto = this.totalNeto.add(comision.valorNeto);
+  }
+
+  /** Aplica a la cuenta una parte de un pago al vendedor (HU-CON-10, `PagoVendedor`). */
+  registrarPago(valor: Money): void {
+    if (!valor.isPositive()) throw new InvalidValueError('El pago debe ser mayor que cero');
+    if (valor.greaterThan(this.saldoPendiente)) {
+      throw new InvalidValueError('El pago supera el saldo pendiente');
+    }
+    this.pagado = this.pagado.add(valor);
+  }
+
+  /**
+   * HU-CON-06 (D-07): resta el neto revertido por un ajuste. Solo se descuenta del saldo
+   * pendiente; lo que ya se pagó al vendedor se devuelve como saldo a favor del marketplace.
+   */
+  revertir(neto: Money): Money {
+    if (neto.isNegative()) throw new InvalidValueError('El neto revertido no puede ser negativo');
+    const aplicable = neto.greaterThan(this.saldoPendiente) ? this.saldoPendiente : neto;
+    this.totalNeto = this.totalNeto.subtract(aplicable);
+    return neto.subtract(aplicable);
+  }
+
+  get saldoPendiente(): Money {
+    return this.totalNeto.subtract(this.pagado);
+  }
+
+  get estado(): EstadoCuenta {
+    if (this.totalNeto.isPositive() && this.saldoPendiente.isZero()) return 'PAGADO';
+    return this.pagado.isPositive() ? 'PARCIAL' : 'PENDIENTE';
+  }
+
+  toJSON() {
+    return {
+      vendedorId: this.vendedorId,
+      periodo: this.periodo.codigo,
+      totalNeto: this.totalNeto.toString(),
+      valorPagado: this.pagado.toString(),
+      saldoPendiente: this.saldoPendiente.toString(),
+      estado: this.estado,
+      ordenes: [...this.ordenes],
+    };
+  }
+}

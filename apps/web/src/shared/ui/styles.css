@@ -1,0 +1,182 @@
+/*
+ * Estilos base del módulo, con prefijo "ct-" para no chocar con el marketplace.
+ * La librería de componentes definitiva se alineará con la del marketplace (decisión pendiente).
+ */
+:root {
+  --ct-bg: #f5f6f8;
+  --ct-surface: #ffffff;
+  --ct-text: #1f2933;
+  --ct-muted: #6b7280;
+  --ct-border: #e5e7eb;
+  --ct-primary: #1d4ed8;
+  --ct-ok: #15803d;
+  --ct-error: #b91c1c;
+  --ct-sidebar: #111827;
+  --ct-sidebar-text: #e5e7eb;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ct-bg: #0f172a;
+    --ct-surface: #1e293b;
+    --ct-text: #e5e7eb;
+    --ct-muted: #94a3b8;
+    --ct-border: #334155;
+    --ct-primary: #60a5fa;
+    --ct-ok: #4ade80;
+    --ct-error: #f87171;
+    --ct-sidebar: #020617;
+  }
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
+  background: var(--ct-bg);
+  color: var(--ct-text);
+}
+
+button {
+  font: inherit;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--ct-primary);
+  background: var(--ct-primary);
+  color: #fff;
+  cursor: pointer;
+}
+
+.ct-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.ct-sidebar {
+  width: 230px;
+  flex-shrink: 0;
+  background: var(--ct-sidebar);
+  color: var(--ct-sidebar-text);
+  padding: 1rem;
+}
+
+.ct-brand {
+  font-size: 1.2rem;
+  margin: 0 0 1.5rem;
+}
+
+.ct-sidebar ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.ct-sidebar a,
+.ct-nav-disabled {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.ct-sidebar a.active {
+  background: rgba(255, 255, 255, 0.12);
+  font-weight: 600;
+}
+
+.ct-nav-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ct-nav-disabled small {
+  font-size: 0.7rem;
+}
+
+.ct-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.ct-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--ct-surface);
+  border-bottom: 1px solid var(--ct-border);
+}
+
+.ct-content {
+  padding: 1.5rem;
+  max-width: 1100px;
+}
+
+.ct-card {
+  background: var(--ct-surface);
+  border: 1px solid var(--ct-border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.ct-card h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+
+.ct-dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1.5rem;
+  margin: 0;
+}
+
+.ct-dl dt {
+  color: var(--ct-muted);
+}
+
+.ct-dl dd {
+  margin: 0;
+}
+
+.ct-ok {
+  color: var(--ct-ok);
+  font-weight: 600;
+}
+
+.ct-error {
+  color: var(--ct-error);
+  font-weight: 600;
+}
+
+.ct-login {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  padding: 1rem;
+}
+
+.ct-login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (max-width: 720px) {
+  .ct-layout {
+    flex-direction: column;
+  }
+
+  .ct-sidebar {
+    width: auto;
+  }
+}

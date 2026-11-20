@@ -1,0 +1,163 @@
+================================================================================
+ MARKETPLACE - MÓDULO DE CONTABILIDAD
+ SPRINT 1 - HU-CON-09 CONFIGURAR EL PORCENTAJE DE COMISIÓN
+ PLAN DE TAREAS
+================================================================================
+ Prioridad .......... Must
+ Puntos ............. 3
+ Responsable ........ Carlos
+ Rama ............... feat/hu-con-09-configurar-comision (desde dev)
+ Fechas ............. 2026-10-13 a 2026-10-16 (calendario del Sprint 1)
+ Referencias ........ docs/sprint1/plan-sprint1.md
+                      docs/fase0/decisiones.md (D-04)
+                      docs/Plan_Desarrollo_Modulo_Contabilidad.txt (Fase 2)
+================================================================================
+
+Estado: [ ] pendiente   [~] en progreso   [x] hecha
+
+
+1. CONTEXTO
+-----------
+  Es la primera historia de la cadena del Sprint 1: la HU-CON-01 (registrar
+  venta confirmada) necesita el porcentaje vigente para que la HU-CON-02
+  calcule la comisión.
+
+  Historia: como Administrador financiero quiero configurar el porcentaje de
+  comisión con fechas de vigencia, para que cada venta se liquide con el
+  porcentaje vigente en su fecha y quede trazabilidad de los cambios.
+
+  Decisión D-04: comisión global con vigencias; el modelo queda preparado
+  para alcance VENDEDOR y CATEGORIA con prioridad
+  vendedor > categoría > global. Solo el rol ADMIN_FINANCIERO configura.
+
+
+2. DECISIONES DE ESTA HISTORIA (2026-10-09)
+-------------------------------------------
+  - Alcance: el dominio, la BD y el puerto CommissionConfigProvider soportan
+    GLOBAL, VENDEDOR y CATEGORIA. En el Sprint 1 el PUT y la pantalla solo
+    configuran GLOBAL.
+  - Vigencias retroactivas permitidas, sin solapamiento: la nueva vigencia
+    debe empezar después del inicio de la vigencia abierta del mismo
+    alcance/referencia; la anterior se cierra el día previo al inicio de la
+    nueva. Si no se cumple -> error CONFLICTO (HTTP 409).
+  - Las vigencias son fechas (DATE), día contable en hora de Colombia
+    (igual que Periodo.ts). vigente_hasta es inclusive; NULL = abierta.
+  - Las ventas ya registradas no cambian: guardan el % aplicado (HU-CON-02).
+
+
+3. TAREAS
+---------
+
+T-01 [x] Dominio - ConfiguracionComision
+  Archivos .. apps/api/src/domain/comision/ConfiguracionComision.ts
+              (carpeta comision/ compartida con ComisionVenta de la HU-CON-02)
+              apps/api/test/unit/domain/ConfiguracionComision.test.ts
+  Detalle ... - Propiedades: id, porcentaje (value object Porcentaje),
+                alcance (GLOBAL | VENDEDOR | CATEGORIA), referenciaId
+                (obligatorio salvo en GLOBAL, prohibido en GLOBAL),
+                vigenteDesde, vigenteHasta (opcional, inclusive).
+              - crear(...), cerrarEn(fecha) -> vigenteHasta = fecha - 1 día
+                (rechaza si queda antes de vigenteDesde), cubre(fecha).
+              - seleccionarVigente(configs, fecha, vendedorId, categoriaId?)
+                con prioridad vendedor > categoría > global.
+  Pruebas ... validaciones, cierre de la anterior, no solapamiento,
+              vigencia en los bordes (primer y último día), prioridad.
+
+T-02 [x] BD / Infraestructura
+  Archivos .. apps/api/migrations/002_configuracion_comision.sql
+              apps/api/src/application/ports/out/CommissionConfigProvider.ts
+              apps/api/src/application/ports/out/ConfiguracionComisionRepository.ts
+              apps/api/src/infrastructure/persistence/postgres/
+                PgConfiguracionComisionRepository.ts
+  Detalle ... - Tabla contabilidad.configuracion_comision: porcentaje
+                NUMERIC(7,4) entre 0 y 100, alcance con CHECK,
+                referencia_id, vigente_desde DATE, vigente_hasta DATE NULL,
+                creado_por, creado_en.
+              - CHECK vigente_hasta >= vigente_desde y CHECK de
+                referencia según alcance.
+              - EXCLUDE USING gist (extensión btree_gist) sobre alcance,
+                referencia y daterange(desde, hasta, '[]'): segunda barrera
+                contra solapamientos. errorHandler traduce 23P01 -> 409.
+              - Puerto CommissionConfigProvider.obtenerVigente(fecha,
+                vendedorId, categoriaId?) -> Porcentaje (acordado en T-27).
+                Sin configuración -> COMISION_NO_CONFIGURADA (422).
+              - Puerto ConfiguracionComisionRepository: abiertaPara (con
+                FOR UPDATE), guardar, actualizarCierre, historial.
+              - Se agrega a TransactionalRepositories y createRepositories
+                para que la HU-CON-01 lo use dentro de su UnitOfWork.
+  Pruebas ... actualizar las tablas esperadas en fundaciones.test.ts.
+
+T-03 [x] Aplicación
+  Archivos .. apps/api/src/application/commands/ConfigurarComisionUseCase.ts
+              apps/api/src/application/queries/ObtenerComisionVigenteQuery.ts
+              apps/api/test/unit/application/
+  Detalle ... - ConfigurarComisionUseCase: exige rol ADMIN_FINANCIERO; en una
+                UnitOfWork bloquea la vigencia abierta, valida la fecha, la
+                cierra, inserta la nueva y registra auditoría
+                (entidad configuracion_comision, acción CONFIGURAR, valores
+                anteriores y nuevos, correlationId).
+              - ObtenerComisionVigenteQuery: vigente a una fecha (por defecto
+                hoy, vía Clock) e historial de vigencias.
+  Pruebas ... rol, cierre de la anterior, retroactiva válida, solapamiento
+              rechazado, auditoría registrada (repositorios en memoria).
+
+T-04 [x] API
+  Archivos .. packages/contracts/src/comisiones.ts (+ index.ts, errors.ts)
+              apps/api/src/infrastructure/http/routes/comisionesRoutes.ts
+              apps/api/src/infrastructure/http/express/createContabilidadRouter.ts
+              apps/api/src/bootstrap/container.ts
+              apps/api/src/infrastructure/http/openapi.ts
+              apps/api/test/integration/comisiones.test.ts
+  Detalle ... - GET /comisiones/configuracion (CONTADOR, ADMIN_FINANCIERO):
+                vigente + historial.
+              - PUT /comisiones/configuracion (solo ADMIN_FINANCIERO):
+                { porcentaje: "12.5", vigenteDesde: "2026-10-16" }.
+                Responde 200 con el estado actualizado.
+              - DTOs y esquemas zod en contracts; código de error
+                COMISION_NO_CONFIGURADA; documentación OpenAPI.
+  Pruebas ... 401 / 403 / 400; contra PostgreSQL: PUT cierra la anterior,
+              GET vigente por fecha, auditoría en BD, solapamiento -> 409.
+
+T-05 [ ] Web (se desarrolla en otra rama)
+  Archivos .. apps/web/src/features/comision/ConfiguracionComisionPage.tsx
+              apps/web/src/module.tsx
+              apps/web/src/shared/ui/Layout.tsx
+  Detalle ... - Ruta /configuracion/comision: porcentaje vigente, formulario
+                (porcentaje, vigente desde) solo para ADMIN_FINANCIERO y
+                tabla con el historial de vigencias.
+              - react-query (consulta + mutación), errores con ApiError.
+              - Habilitar el ítem "Comisión" del menú.
+
+T-06 [x] Seed
+  Archivos .. apps/api/seeds/010_comision_global.sql
+  Detalle ... Comisión GLOBAL del 10 % vigente desde 2026-01-01. Idempotente
+              (WHERE NOT EXISTS).
+
+
+4. CRITERIOS DE ACEPTACIÓN
+--------------------------
+  - Solo ADMIN_FINANCIERO puede configurar; el CONTADOR solo consulta.
+  - Al registrar una nueva vigencia la anterior queda cerrada el día previo.
+  - Nunca hay dos vigencias solapadas para el mismo alcance/referencia.
+  - Para cualquier fecha se obtiene el porcentaje vigente en esa fecha.
+  - Cada cambio queda en contabilidad.auditoria con usuario y valores.
+  - La pantalla muestra el porcentaje vigente y el historial.
+
+
+5. VERIFICACIÓN
+---------------
+  - npm run lint, npm run typecheck, npm test (raíz).
+  - npm run test:integration -w @contabilidad/api (o :docker).
+  - Manual: db:migrate + db:seed + dev; en /docs:
+      GET con mock-contador -> 10 %.
+      PUT con mock-contador -> 403.
+      PUT con mock-admin 12 % desde hoy -> la anterior cerrada ayer y
+      registro en contabilidad.auditoria.
+  - Web: entrar como admin, cambiar el porcentaje y ver el historial.
+
+
+6. CIERRE
+---------
+  - Marcar T-01 a T-06 como hechas en docs/sprint1/plan-sprint1.md.
+  - PR a dev con la plantilla del DoD; lo revisa Diego (T-29).
+================================================================================

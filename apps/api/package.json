@@ -1,0 +1,52 @@
+{
+  "name": "@contabilidad/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "API REST del módulo de contabilidad (Express + PostgreSQL, arquitectura hexagonal)",
+  "main": "./src/bootstrap/container.ts",
+  "scripts": {
+    "dev": "tsx watch src/bootstrap/main.ts",
+    "start": "node dist/main.js",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:integration:docker": "vitest run --project integration --mode docker",
+    "test:all": "vitest run",
+    "db:create": "tsx scripts/create-database.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:seed": "tsx scripts/seed.ts",
+    "simular:orden": "tsx scripts/simular-orden.ts",
+    "simular:pago": "tsx scripts/simular-pago.ts"
+  },
+  "dependencies": {
+    "@contabilidad/contracts": "*",
+    "cors": "^2.8.5",
+    "decimal.js": "^10.5.0",
+    "dotenv": "^16.4.7",
+    "exceljs": "^4.4.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "pg": "^8.13.3",
+    "pino": "^9.6.0",
+    "pino-http": "^10.4.0",
+    "swagger-ui-express": "^5.0.1",
+    "yaml": "^2.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.0",
+    "@types/pg": "^8.11.11",
+    "@types/supertest": "^6.0.2",
+    "@types/swagger-ui-express": "^4.1.8",
+    "fast-check": "^4.10.2",
+    "pino-pretty": "^13.0.0",
+    "supertest": "^7.0.0",
+    "tsup": "^8.5.1",
+    "tsx": "^4.19.3"
+  }
+}

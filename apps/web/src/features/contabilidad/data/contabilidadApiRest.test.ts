@@ -1,0 +1,355 @@
+import { describe, expect, it, vi } from 'vitest';
+import { ApiError, createApiClient } from '../../../shared/api/client';
+import { crearContabilidadApiRest, OperacionNoDisponibleError } from './contabilidadApiRest';
+
+function respuesta(status: number, body: unknown, contentType = 'application/json') {
+  return new Response(JSON.stringify(body), { status, headers: { 'content-type': contentType } });
+}
+
+/** Responde según la URL pedida y registra cada llamada. */
+function crear(rutas: Record<string, { status?: number; body: unknown }>) {
+  const fetchFn = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+    const url = String(input);
+    const ruta = rutas[url];
+    if (!ruta)
+      return respuesta(404, { title: `Sin ruta ${url}`, status: 404, code: 'NO_ENCONTRADO' });
+    return respuesta(ruta.status ?? 200, ruta.body);
+  });
+  const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-contador', fetchFn });
+  return { fetchFn, contabilidad: crearContabilidadApiRest(api) };
+}
+
+const venta = (numeroOrden: string, fechaContable: string) => ({
+  id: `id-${numeroOrden}`,
+  numeroOrden,
+  vendedorId: 'V-1',
+  vendedorNombre: 'Artesanías del Valle S.A.S.',
+  categoriaId: null,
+  fecha: `${fechaContable}T15:00:00.000Z`,
+  fechaContable,
+  periodo: '2026-10-Q1',
+  valorBruto: '100000.00',
+  porcentajeAplicado: '10.0000',
+  comision: '10000.00',
+  valorNeto: '90000.00',
+});
+
+describe('crearContabilidadApiRest', () => {
+  it('lista periodos', async () => {
+    const { contabilidad } = crear({ '/api/periodos': { body: { periodos: ['2026-10-Q2'] } } });
+    await expect(contabilidad.listarPeriodos()).resolves.toEqual(['2026-10-Q2']);
+  });
+
+  it('lista comisiones del periodo recorriendo todas las páginas', async () => {
+    const { contabilidad, fetchFn } = crear({
+      '/api/ventas?periodo=2026-10-Q1&page=1&size=200': {
+        body: { items: [venta('ORD-2', '2026-10-05')], page: 1, size: 200, total: 2 },
+      },
+      '/api/ventas?periodo=2026-10-Q1&page=2&size=200': {
+        body: { items: [venta('ORD-1', '2026-10-03')], page: 2, size: 200, total: 2 },
+      },
+    });
+    const filas = await contabilidad.listarComisiones('2026-10-Q1');
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(filas.map((f) => f.numeroOrden)).toEqual(['ORD-1', 'ORD-2']);
+    expect(filas[0]).toEqual({
+      id: 'id-ORD-1',
+      numeroOrden: 'ORD-1',
+      vendedorId: 'V-1',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
+      periodo: '2026-10-Q1',
+      fecha: '2026-10-03',
+      valorBruto: '100000.00',
+      porcentajeAplicado: '10.0000',
+      comision: '10000.00',
+      valorNeto: '90000.00',
+    });
+  });
+
+  it('filtra comisiones por vendedor (ventas de una cuenta)', async () => {
+    const { contabilidad } = crear({
+      '/api/ventas?periodo=2026-10-Q1&vendedorId=V-1&page=1&size=200': {
+        body: { items: [venta('ORD-1', '2026-10-03')], page: 1, size: 200, total: 1 },
+      },
+    });
+    const filas = await contabilidad.listarComisiones('2026-10-Q1', 'V-1');
+    expect(filas.map((f) => f.numeroOrden)).toEqual(['ORD-1']);
+  });
+
+  it('obtiene el detalle de una venta', async () => {
+    const { contabilidad } = crear({
+      '/api/ventas/id-ORD-1': {
+        body: {
+          ...venta('ORD-1', '2026-10-03'),
+          estadoOrigen: 'CONFIRMADA',
+          registradoEn: '2026-10-03T15:00:01.000Z',
+        },
+      },
+    });
+    await expect(contabilidad.obtenerVenta('id-ORD-1')).resolves.toMatchObject({
+      id: 'id-ORD-1',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
+      comision: '10000.00',
+      valorNeto: '90000.00',
+      estadoOrigen: 'CONFIRMADA',
+      registradoEn: '2026-10-03T15:00:01.000Z',
+    });
+  });
+
+  it('obtiene el resumen de saldos por vendedor', async () => {
+    const saldo = {
+      vendedorId: 'V-1',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
+      cuentas: 1,
+      totalNeto: '135000.00',
+      valorPagado: '0.00',
+      saldoPendiente: '135000.00',
+    };
+    const { contabilidad } = crear({
+      '/api/cuentas-por-pagar/resumen?periodo=2026-10-Q1': { body: [saldo] },
+    });
+    await expect(contabilidad.resumirPorVendedor('2026-10-Q1')).resolves.toEqual([saldo]);
+  });
+
+  it('lista cuentas por pagar con filtros', async () => {
+    const cuenta = {
+      vendedorId: 'V-1',
+      vendedorNombre: 'Artesanías del Valle S.A.S.',
+      periodo: '2026-10-Q1',
+      totalNeto: '90000.00',
+      valorPagado: '0.00',
+      saldoPendiente: '90000.00',
+      estado: 'PENDIENTE',
+    };
+    const { contabilidad } = crear({
+      '/api/cuentas-por-pagar?periodo=2026-10-Q1&estado=PENDIENTE': { body: [cuenta] },
+    });
+    await expect(
+      contabilidad.listarCuentasPorPagar({ periodo: '2026-10-Q1', estado: 'PENDIENTE' }),
+    ).resolves.toEqual([cuenta]);
+  });
+
+  it('lista y registra ajustes de una venta (HU-CON-06)', async () => {
+    const ajuste = {
+      id: 'aj-1',
+      ventaId: 'id-ORD-1',
+      numeroOrden: 'ORD-1',
+      vendedorId: 'V-1',
+      tipo: 'DEVOLUCION',
+      motivo: 'Producto defectuoso',
+      fecha: '2026-10-10T17:00:00.000Z',
+      fechaContable: '2026-10-10',
+      periodo: '2026-10-Q1',
+      valor: '30000.00',
+      porcentajeAplicado: '10.0000',
+      comisionRevertida: '3000.00',
+      netoRevertido: '27000.00',
+      saldoAFavor: '0.00',
+      origen: 'MANUAL',
+      registradoPor: 'u-contador',
+      registradoEn: '2026-10-10T17:00:01.000Z',
+    };
+    const { contabilidad, fetchFn } = crear({
+      '/api/ajustes?ventaId=id-ORD-1&size=200': {
+        body: { items: [ajuste], page: 1, size: 200, total: 1 },
+      },
+      '/api/ajustes': { status: 201, body: ajuste },
+      '/api/ajustes?desde=2026-10-01&hasta=2026-10-31&vendedorId=V-1&page=1&size=200': {
+        body: { items: [ajuste], page: 1, size: 200, total: 1 },
+      },
+    });
+    const fila = {
+      id: 'aj-1',
+      tipo: 'DEVOLUCION',
+      motivo: 'Producto defectuoso',
+      fechaContable: '2026-10-10',
+      valor: '30000.00',
+      comisionRevertida: '3000.00',
+      netoRevertido: '27000.00',
+      saldoAFavor: '0.00',
+      origen: 'MANUAL',
+      registradoPor: 'u-contador',
+    };
+    await expect(contabilidad.listarAjustes('id-ORD-1')).resolves.toEqual([fila]);
+    await expect(
+      contabilidad.buscarAjustes({ desde: '2026-10-01', hasta: '2026-10-31', vendedorId: 'V-1' }),
+    ).resolves.toEqual([{ ...fila, ventaId: 'id-ORD-1', numeroOrden: 'ORD-1', vendedorId: 'V-1' }]);
+
+    const nuevo = {
+      ventaId: 'id-ORD-1',
+      tipo: 'DEVOLUCION' as const,
+      motivo: 'Producto defectuoso',
+      valor: '30000',
+    };
+    await expect(contabilidad.registrarAjuste(nuevo)).resolves.toEqual(fila);
+    const [, opciones] = fetchFn.mock.calls.at(-1) as unknown as [string, RequestInit];
+    expect(opciones.method).toBe('POST');
+    expect(JSON.parse(String(opciones.body))).toEqual(nuevo);
+  });
+
+  it('obtiene el reporte de ingresos del rango (HU-CON-05)', async () => {
+    const reporte = {
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
+      vendedorId: 'V-1',
+      ventas: { cantidad: 1, valorBruto: '100000.00', comision: '10000.00', valorNeto: '90000.00' },
+      ajustes: { cantidad: 0, valorBruto: '0.00', comision: '0.00', valorNeto: '0.00' },
+      totales: { valorBruto: '100000.00', comision: '10000.00', valorNeto: '90000.00' },
+      control: { cuadra: true, detalle: 'ok' },
+      porDia: [],
+    };
+    const { contabilidad } = crear({
+      '/api/reportes/ingresos?desde=2026-10-01&hasta=2026-10-31&vendedorId=V-1': { body: reporte },
+    });
+    await expect(
+      contabilidad.obtenerReporte({ desde: '2026-10-01', hasta: '2026-10-31', vendedorId: 'V-1' }),
+    ).resolves.toEqual(reporte);
+  });
+
+  it('lee y configura vigencias del porcentaje', async () => {
+    const historial = [
+      {
+        id: 'b',
+        porcentaje: '12.0000',
+        alcance: 'GLOBAL',
+        referenciaId: null,
+        vigenteDesde: '2026-10-16',
+        vigenteHasta: null,
+        creadoPor: 'u-admin',
+      },
+      {
+        id: 'a',
+        porcentaje: '10.0000',
+        alcance: 'GLOBAL',
+        referenciaId: null,
+        vigenteDesde: '2026-01-01',
+        vigenteHasta: '2026-10-15',
+        creadoPor: 'seed',
+      },
+    ];
+    const { contabilidad, fetchFn } = crear({
+      '/api/comisiones/configuracion': {
+        body: { fecha: '2026-10-16', vigente: historial[0], historial },
+      },
+    });
+    const vigencias = await contabilidad.listarVigencias();
+    expect(vigencias[1]).toEqual({
+      desde: '2026-01-01',
+      hasta: '2026-10-15',
+      porcentaje: '10.0000',
+      creadoPor: 'seed',
+    });
+
+    const nueva = await contabilidad.configurarPorcentaje({
+      desde: '2026-10-16',
+      porcentaje: '12',
+    });
+    expect(nueva).toMatchObject({ desde: '2026-10-16', porcentaje: '12.0000', hasta: null });
+    const [, opciones] = fetchFn.mock.calls.at(-1) as unknown as [string, RequestInit];
+    expect(opciones.method).toBe('PUT');
+    expect(JSON.parse(String(opciones.body))).toEqual({
+      porcentaje: '12',
+      vigenteDesde: '2026-10-16',
+    });
+  });
+
+  it('propaga el error de la API con su detalle', async () => {
+    const { contabilidad } = crear({
+      '/api/comisiones/configuracion': {
+        status: 409,
+        body: { title: 'Regla', status: 409, code: 'CONFLICTO', detail: 'Se solapa' },
+      },
+    });
+    const error = await contabilidad
+      .configurarPorcentaje({ desde: '2026-01-01', porcentaje: '12' })
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).message).toBe('Se solapa');
+  });
+
+  it('no permite registrar ventas desde la interfaz', async () => {
+    const { contabilidad } = crear({});
+    await expect(
+      contabilidad.registrarVenta({
+        numeroOrden: 'X',
+        vendedorId: 'V',
+        vendedorNombre: 'V',
+        fecha: '2026-10-01',
+        valorBruto: '1',
+      }),
+    ).rejects.toThrow(OperacionNoDisponibleError);
+  });
+
+  it('descarga la exportación a Excel con su nombre de archivo (HU-CON-08)', async () => {
+    const fetchFn = vi.fn(
+      async () =>
+        new Response(new Uint8Array([0x50, 0x4b]), {
+          status: 200,
+          headers: {
+            'content-type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'content-disposition': 'attachment; filename="contabilidad_2026-10-01_2026-10-31.xlsx"',
+          },
+        }),
+    );
+    const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-admin', fetchFn });
+    const archivo = await crearContabilidadApiRest(api).exportarExcel({
+      desde: '2026-10-01',
+      hasta: '2026-10-31',
+    });
+    expect(fetchFn).toHaveBeenCalledWith(
+      '/api/exportaciones/excel?desde=2026-10-01&hasta=2026-10-31',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(archivo.nombre).toBe('contabilidad_2026-10-01_2026-10-31.xlsx');
+    expect(archivo.contenido.size).toBe(2);
+  });
+
+  it('una exportación rechazada se traduce a ApiError', async () => {
+    const { contabilidad } = crear({});
+    await expect(
+      contabilidad.exportarExcel({ desde: '2026-10-31', hasta: '2026-10-01' }),
+    ).rejects.toBeInstanceOf(ApiError);
+  });
+
+  it('consulta el estado del vendedor por quincenas (HU-CON-07)', async () => {
+    const cuerpo = { vendedorId: 'V 1', periodos: [] };
+    const { contabilidad } = crear({
+      '/api/vendedores/V%201/estado?desde=2026-10-Q1&hasta=2026-10-Q2': { body: cuerpo },
+    });
+    await expect(
+      contabilidad.obtenerEstadoVendedor('V 1', '2026-10-Q1', '2026-10-Q2'),
+    ).resolves.toEqual(cuerpo);
+  });
+
+  it('registra pagos a vendedores y pagina su historial (HU-CON-10)', async () => {
+    const pago = {
+      id: 'p-1',
+      vendedorId: 'V-1',
+      fecha: '2026-11-09T17:00:00.000Z',
+      fechaContable: '2026-11-09',
+      valor: '90000.00',
+      saldoAFavorAplicado: '0.00',
+      referencia: 'TRF-1',
+      soporte: null,
+      aplicaciones: [],
+      registradoPor: 'u-contador',
+      registradoEn: '2026-11-09T17:00:00.000Z',
+    };
+    const { contabilidad, fetchFn } = crear({
+      '/api/pagos-vendedor': { status: 201, body: pago },
+      '/api/pagos-vendedor?vendedorId=V-1&page=1&size=200': {
+        body: { items: [pago], page: 1, size: 200, total: 2 },
+      },
+      '/api/pagos-vendedor?vendedorId=V-1&page=2&size=200': {
+        body: { items: [{ ...pago, id: 'p-2' }], page: 2, size: 200, total: 2 },
+      },
+    });
+    const nuevo = { vendedorId: 'V-1', valor: '90000.00', referencia: 'TRF-1' };
+    await expect(contabilidad.registrarPago(nuevo)).resolves.toEqual(pago);
+    const [, init] = fetchFn.mock.calls[0]!;
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual(nuevo);
+    const lista = await contabilidad.listarPagos({ vendedorId: 'V-1' });
+    expect(lista.map((p) => p.id)).toEqual(['p-1', 'p-2']);
+  });
+});

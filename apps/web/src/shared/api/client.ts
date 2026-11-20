@@ -1,0 +1,78 @@
+import type { ProblemDetails } from '@contabilidad/contracts';
+
+/** Error de la API con el detalle problem+json devuelto por el backend. */
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    readonly problem: ProblemDetails | null,
+  ) {
+    super(problem?.detail ?? problem?.title ?? `Error HTTP ${status}`);
+    this.name = 'ApiError';
+  }
+}
+
+export interface ApiClientOptions {
+  baseUrl: string;
+  getToken: () => string | null;
+  fetchFn?: typeof fetch;
+}
+
+export type ApiClient = ReturnType<typeof createApiClient>;
+
+/** Cliente HTTP del módulo. La URL base y el token los provee el host (standalone o marketplace). */
+export function createApiClient({ baseUrl, getToken, fetchFn = fetch }: ApiClientOptions) {
+  async function request<T>(
+    method: string,
+    path: string,
+    body?: unknown,
+    /** Cuerpo de texto ya serializado (p. ej. un CSV) en lugar de JSON. */
+    texto?: { contenido: string; contentType: string },
+  ): Promise<T> {
+    const headers: Record<string, string> = { accept: 'application/json' };
+    const token = getToken();
+    if (token) headers.authorization = `Bearer ${token}`;
+    if (texto) headers['content-type'] = texto.contentType;
+    else if (body !== undefined) headers['content-type'] = 'application/json';
+
+    const contenido = texto
+      ? texto.contenido
+      : body !== undefined
+        ? JSON.stringify(body)
+        : undefined;
+    const res = await fetchFn(`${baseUrl}${path}`, {
+      method,
+      headers,
+      ...(contenido !== undefined ? { body: contenido } : {}),
+    });
+
+    const esJson = res.headers.get('content-type')?.includes('json') ?? false;
+    const data: unknown = esJson ? await res.json() : null;
+    if (!res.ok) throw new ApiError(res.status, (data as ProblemDetails | null) ?? null);
+    return data as T;
+  }
+
+  /** Descarga un archivo (p. ej. un .xlsx) con el nombre que indica Content-Disposition. */
+  async function descargar(path: string): Promise<{ nombre: string; contenido: Blob }> {
+    const headers: Record<string, string> = {};
+    const token = getToken();
+    if (token) headers.authorization = `Bearer ${token}`;
+    const res = await fetchFn(`${baseUrl}${path}`, { method: 'GET', headers });
+    if (!res.ok) {
+      const esJson = res.headers.get('content-type')?.includes('json') ?? false;
+      throw new ApiError(res.status, esJson ? ((await res.json()) as ProblemDetails) : null);
+    }
+    const disposicion = res.headers.get('content-disposition') ?? '';
+    const nombre = /filename="?([^";]+)"?/.exec(disposicion)?.[1] ?? 'descarga';
+    return { nombre, contenido: await res.blob() };
+  }
+
+  return {
+    get: <T>(path: string) => request<T>('GET', path),
+    descargar,
+    post: <T>(path: string, body: unknown) => request<T>('POST', path, body),
+    put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
+    /** POST de un archivo de texto (p. ej. text/csv). */
+    postTexto: <T>(path: string, contenido: string, contentType: string) =>
+      request<T>('POST', path, undefined, { contenido, contentType }),
+  };
+}
