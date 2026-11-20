@@ -24,7 +24,7 @@ export class ResumenSaldoVendedorQuery implements UseCase<
     entrada: { periodo?: string | undefined },
     ctx: ContextoEjecucion,
   ): Promise<SaldoConNombre[]> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const periodo = entrada.periodo ? Periodo.parse(entrada.periodo).codigo : undefined;
     return conNombreVendedor(await this.cuentas.resumirPorVendedor(periodo), this.vendedores);
   }

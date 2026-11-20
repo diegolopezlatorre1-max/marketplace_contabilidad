@@ -38,11 +38,11 @@ const contador = {
   get: (url: string) =>
     request(app())
       .get(BASE + url)
-      .set('authorization', 'Bearer mock-contador'),
+      .set('authorization', 'Bearer mock-admin'),
   post: (url: string, body: object) =>
     request(app())
       .post(BASE + url)
-      .set('authorization', 'Bearer mock-contador')
+      .set('authorization', 'Bearer mock-admin')
       .send(body),
 };
 
@@ -126,13 +126,13 @@ describe('HU-CON-04 - conciliar pagos recibidos contra órdenes', () => {
     expect(res.body).toMatchObject({
       estado: 'PENDIENTE',
       diferencia: '-5000.00',
-      usuario: 'u-contador',
+      usuario: 'u-admin',
     });
 
     const auditoria = await testPool().query(
       `SELECT usuario, correlation_id FROM contabilidad.auditoria WHERE accion = 'CONCILIAR'`,
     );
-    expect(auditoria.rows).toEqual([{ usuario: 'u-contador', correlation_id: 'corr-hu04' }]);
+    expect(auditoria.rows).toEqual([{ usuario: 'u-admin', correlation_id: 'corr-hu04' }]);
     const bandeja = (await contador.get('/pagos-recibidos?estado=PENDIENTE')).body;
     expect(bandeja).toEqual([expect.objectContaining({ id: pagoId, diferencia: '-5000.00' })]);
   });
@@ -214,7 +214,7 @@ describe('HU-CON-04 - conciliar pagos recibidos contra órdenes', () => {
     ].join('\n');
     const res = await request(app())
       .post(`${BASE}/pagos-recibidos/importar`)
-      .set('authorization', 'Bearer mock-contador')
+      .set('authorization', 'Bearer mock-admin')
       .set('content-type', 'text/csv')
       .send(csv);
     expect(res.status).toBe(200);

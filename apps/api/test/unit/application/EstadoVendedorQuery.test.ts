@@ -8,9 +8,14 @@ import { NoAutorizadoError, type Actor } from '../../../src/application/security
 import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
 import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Órdenes', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
-const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN_FINANCIERO'] };
+const sistema: Actor = {
+  id: 'sistema-marketplace',
+  nombre: 'Órdenes',
+  roles: [],
+  servicio: 'marketplace',
+};
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
+const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN'] };
 const reloj = { now: () => new Date('2026-11-25T15:00:00Z') };
 
 /**

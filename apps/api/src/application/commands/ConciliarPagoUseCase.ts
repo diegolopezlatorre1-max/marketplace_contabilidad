@@ -41,7 +41,7 @@ export class ConciliarPagoUseCase implements UseCase<ConciliarPagoEntrada, Conci
     entrada: ConciliarPagoEntrada,
     ctx: ContextoEjecucion,
   ): Promise<ConciliacionResumen> {
-    exigirRol(ctx.actor, ['CONTADOR']);
+    exigirRol(ctx.actor, ['ADMIN']);
     return this.uow.run(async (repos) => {
       // Bloqueado: dos conciliaciones simultáneas del mismo pago se serializan.
       const pago = await repos.pagosRecibidos.obtenerParaConciliar(entrada.pagoId);

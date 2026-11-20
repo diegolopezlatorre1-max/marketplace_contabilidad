@@ -10,12 +10,16 @@
       "value": "http://localhost:3000/api/v1/contabilidad"
     },
     {
-      "key": "tokenContador",
-      "value": "mock-contador"
-    },
-    {
       "key": "tokenAdmin",
       "value": "mock-admin"
+    },
+    {
+      "key": "tokenVendedor",
+      "value": "mock-vendedor"
+    },
+    {
+      "key": "tokenComprador",
+      "value": "mock-comprador"
     },
     {
       "key": "tokenSistema",
@@ -58,7 +62,7 @@
           ]
         },
         {
-          "name": "Me - contador",
+          "name": "Me - vendedor",
           "request": {
             "method": "GET",
             "header": [],
@@ -76,7 +80,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenVendedor}}",
                   "type": "string"
                 }
               ]
@@ -89,7 +93,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Rol CONTADOR', () => pm.expect(pm.response.json().roles).to.include('CONTADOR'));"
+                  "pm.test('Rol VENDEDOR', () => pm.expect(pm.response.json().roles).to.include('VENDEDOR'));"
                 ]
               }
             }
@@ -127,7 +131,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Rol ADMIN_FINANCIERO', () => pm.expect(pm.response.json().roles).to.include('ADMIN_FINANCIERO'));"
+                  "pm.test('Rol ADMIN', () => pm.expect(pm.response.json().roles).to.include('ADMIN'));"
                 ]
               }
             }
@@ -170,7 +174,7 @@
       "name": "2. HU-CON-09 Comisión",
       "item": [
         {
-          "name": "Consultar comisión vigente (contador)",
+          "name": "Consultar comisión vigente (administrador)",
           "request": {
             "method": "GET",
             "header": [],
@@ -190,7 +194,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -215,7 +219,7 @@
           ]
         },
         {
-          "name": "Configurar como contador -> 403",
+          "name": "Configurar como vendedor -> 403",
           "request": {
             "method": "PUT",
             "header": [
@@ -239,7 +243,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenVendedor}}",
                   "type": "string"
                 }
               ]
@@ -740,7 +744,7 @@
           ]
         },
         {
-          "name": "Enviar como contador -> 403",
+          "name": "Enviar como administrador -> 403",
           "request": {
             "method": "POST",
             "header": [
@@ -764,7 +768,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -821,7 +825,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -872,7 +876,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -920,7 +924,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -959,7 +963,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1004,7 +1008,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1052,7 +1056,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1104,7 +1108,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1153,7 +1157,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1201,7 +1205,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1614,7 +1618,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1708,7 +1712,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1766,7 +1770,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1818,7 +1822,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1866,7 +1870,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1910,7 +1914,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1954,7 +1958,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2035,7 +2039,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2086,7 +2090,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2133,7 +2137,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2180,7 +2184,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2224,7 +2228,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2369,7 +2373,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2429,7 +2433,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2495,7 +2499,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2543,7 +2547,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2659,7 +2663,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2713,7 +2717,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2765,7 +2769,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2794,7 +2798,7 @@
           ]
         },
         {
-          "name": "Pago como administrador -> 403",
+          "name": "Pago como vendedor -> 403",
           "request": {
             "method": "POST",
             "header": [
@@ -2817,7 +2821,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenAdmin}}",
+                  "value": "{{tokenVendedor}}",
                   "type": "string"
                 }
               ]
@@ -2868,7 +2872,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2967,7 +2971,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -3081,7 +3085,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -3181,7 +3185,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -3359,7 +3363,7 @@
           ]
         },
         {
-          "name": "Consultar como contador -> 403",
+          "name": "Consultar como comprador -> 403",
           "request": {
             "method": "GET",
             "header": [],
@@ -3377,7 +3381,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenComprador}}",
                   "type": "string"
                 }
               ]
@@ -3506,7 +3510,7 @@
           ]
         },
         {
-          "name": "Exportar como contador -> 200",
+          "name": "Exportar como administrador -> 200",
           "request": {
             "method": "GET",
             "header": [],
@@ -3539,7 +3543,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]

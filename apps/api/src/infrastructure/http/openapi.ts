@@ -42,7 +42,7 @@ export function buildOpenApi(version: string) {
       version,
       description:
         'API REST del módulo de contabilidad. Autenticación: `Authorization: Bearer <token>`. ' +
-        'En desarrollo (AUTH_MODE=mock) use `mock-contador`, `mock-admin` o `mock-sistema`. ' +
+        'En desarrollo (AUTH_MODE=mock) use `mock-admin`, `mock-vendedor`, `mock-comprador` o `mock-sistema` (servicio). ' +
         'Los montos viajan como string decimal con 2 decimales.',
     },
     servers: [{ url: '/api/v1/contabilidad' }],
@@ -454,7 +454,7 @@ export function buildOpenApi(version: string) {
             entidad: { type: 'string', example: 'pago_vendedor' },
             entidadId: { type: 'string' },
             accion: { type: 'string', example: 'REGISTRAR' },
-            usuario: { type: 'string', example: 'u-contador' },
+            usuario: { type: 'string', example: 'u-admin' },
             fecha: { type: 'string', format: 'date-time' },
             valoresAnteriores: { type: 'object', nullable: true, additionalProperties: true },
             valoresNuevos: { type: 'object', nullable: true, additionalProperties: true },
@@ -758,7 +758,11 @@ export function buildOpenApi(version: string) {
             nombre: { type: 'string' },
             roles: {
               type: 'array',
-              items: { type: 'string', enum: ['CONTADOR', 'ADMIN_FINANCIERO', 'SISTEMA'] },
+              items: { type: 'string', enum: ['ADMIN', 'COMPRADOR', 'VENDEDOR'] },
+            },
+            vendedorId: {
+              type: 'string',
+              description: 'Vendedor que representa el usuario (solo con el rol VENDEDOR)',
             },
           },
         },
@@ -820,7 +824,7 @@ export function buildOpenApi(version: string) {
             '200': estadoComision,
             '400': problema('Fecha inválida'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
         put: {
@@ -838,7 +842,7 @@ export function buildOpenApi(version: string) {
             '200': estadoComision,
             '400': problema('Datos inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
             '409': problema('La nueva vigencia se solaparía con la actual'),
           },
         },
@@ -849,7 +853,7 @@ export function buildOpenApi(version: string) {
           summary:
             'Registra una orden confirmada: venta, comisión y cuenta por pagar por vendedor (HU-CON-01)',
           description:
-            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId: un reenvío ' +
+            'Webhook del módulo de Órdenes (servicio). Idempotente por eventId: un reenvío ' +
             'responde YA_PROCESADO sin duplicar registros.',
           security: [{ bearer: [] }],
           requestBody: {
@@ -873,7 +877,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('El evento no cumple el contrato v1'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol SISTEMA'),
+            '403': problema('Requiere autenticarse como servicio (módulo del marketplace)'),
             '409': problema('ORDEN_DUPLICADA: la orden ya se registró con otro eventId'),
             '422': problema('COMISION_NO_CONFIGURADA: no hay porcentaje vigente en la fecha'),
           },
@@ -920,7 +924,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -941,7 +945,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Identificador inválido'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
             '404': problema('La venta no existe'),
           },
         },
@@ -969,7 +973,7 @@ export function buildOpenApi(version: string) {
               },
             },
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1003,7 +1007,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN, o VENDEDOR para sus propias cuentas'),
           },
         },
       },
@@ -1040,7 +1044,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Rango inválido (falta una fecha, desde > hasta o más de 366 días)'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1080,7 +1084,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
         post: {
@@ -1103,7 +1107,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Datos inválidos (p. ej. fecha anterior a la venta o futura)'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR'),
+            '403': problema('Requiere rol ADMIN'),
             '404': problema('ORDEN_INEXISTENTE: la venta no existe'),
             '422': problema('AJUSTE_EXCEDE_SALDO: supera lo que queda por ajustar'),
           },
@@ -1146,7 +1150,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Rango inválido, invertido o mayor a 366 días'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1201,7 +1205,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1237,7 +1241,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Quincenas inválidas o rango invertido'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN, o VENDEDOR para su propio estado'),
           },
         },
       },
@@ -1278,7 +1282,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN, o VENDEDOR para sus propios pagos'),
           },
         },
         post: {
@@ -1305,7 +1309,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Datos inválidos (p. ej. fecha futura)'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR'),
+            '403': problema('Requiere rol ADMIN'),
             '409': problema('REFERENCIA_DUPLICADA: ya hay un pago al vendedor con esa referencia'),
             '422': problema('PAGO_EXCEDE_SALDO: supera lo que se le debe al vendedor'),
           },
@@ -1317,7 +1321,7 @@ export function buildOpenApi(version: string) {
           summary:
             'Cancelación de una orden: revierte todo lo no ajustado de cada línea (HU-CON-06)',
           description:
-            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId. Una orden que ' +
+            'Webhook del módulo de Órdenes (servicio). Idempotente por eventId. Una orden que ' +
             'nunca se registró (p. ej. cancelada antes de confirmarse) responde IGNORADO.',
           security: [{ bearer: [] }],
           requestBody: {
@@ -1341,7 +1345,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('El evento no cumple el contrato v1'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol SISTEMA'),
+            '403': problema('Requiere autenticarse como servicio (módulo del marketplace)'),
           },
         },
       },
@@ -1350,7 +1354,7 @@ export function buildOpenApi(version: string) {
           tags: ['Ajustes'],
           summary: 'Devolución total o parcial de una orden (HU-CON-06)',
           description:
-            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId. Si una línea ' +
+            'Webhook del módulo de Órdenes (servicio). Idempotente por eventId. Si una línea ' +
             'supera lo que queda por ajustar, responde 422 y no registra nada del evento.',
           security: [{ bearer: [] }],
           requestBody: {
@@ -1374,7 +1378,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('El evento no cumple el contrato v1'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol SISTEMA'),
+            '403': problema('Requiere autenticarse como servicio (módulo del marketplace)'),
             '422': problema('AJUSTE_EXCEDE_SALDO: una línea supera lo que queda por ajustar'),
           },
         },
@@ -1406,7 +1410,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Periodo inválido'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1415,7 +1419,7 @@ export function buildOpenApi(version: string) {
           tags: ['Conciliación'],
           summary: 'Registra un pago recibido de la pasarela (HU-CON-04)',
           description:
-            'Webhook del módulo de Pagos (rol SISTEMA). Idempotente por eventId; la misma ' +
+            'Webhook del módulo de Pagos (servicio). Idempotente por eventId; la misma ' +
             'referencia con otro eventId responde 409. Si trae órdenes, se concilia automáticamente.',
           security: [{ bearer: [] }],
           requestBody: {
@@ -1443,7 +1447,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('El evento no cumple el contrato v1'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol SISTEMA'),
+            '403': problema('Requiere autenticarse como servicio (módulo del marketplace)'),
             '409': problema('REFERENCIA_DUPLICADA: ya existe un pago con esa referencia'),
           },
         },
@@ -1475,7 +1479,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('CSV inválido (encabezado o archivo vacío)'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1514,7 +1518,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1541,7 +1545,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Datos inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR'),
+            '403': problema('Requiere rol ADMIN'),
             '404': problema('PAGO_INEXISTENTE u ORDEN_INEXISTENTE'),
             '409': problema('CONCILIACION_DUPLICADA: el pago ya está conciliado'),
             '422': problema('APLICADO_EXCEDE_SALDO: se aplica más que el saldo de la orden'),
@@ -1581,7 +1585,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1602,7 +1606,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Identificador inválido'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
             '404': problema('No existe la conciliación'),
           },
         },

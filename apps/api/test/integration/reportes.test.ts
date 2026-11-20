@@ -48,11 +48,11 @@ async function vender(numeroOrden: string, valor: string, instante: string, vend
 const devolver = (ventaId: string, valor: string, fecha: string) =>
   request(app())
     .post(`${BASE}/ajustes`)
-    .set('authorization', 'Bearer mock-contador')
+    .set('authorization', 'Bearer mock-admin')
     .send({ ventaId, tipo: 'DEVOLUCION', motivo: 'Devolución', valor, fecha });
 
 const reporte = (q: string) =>
-  request(app()).get(`${BASE}/reportes/ingresos${q}`).set('authorization', 'Bearer mock-contador');
+  request(app()).get(`${BASE}/reportes/ingresos${q}`).set('authorization', 'Bearer mock-admin');
 
 beforeEach(async () => {
   await limpiarTablas();

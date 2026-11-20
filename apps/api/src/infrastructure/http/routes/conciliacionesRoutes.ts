@@ -20,7 +20,7 @@ import type {
 } from '../../../application/queries/ConciliacionQueries';
 import { CsvInvalidoError, leerCsvPagos } from '../../integration/payments/CsvPaymentsImporter';
 import { HttpError } from '../HttpError';
-import { requireRole } from '../middlewares/auth';
+import { requireRole, requireServicio } from '../middlewares/auth';
 import { parse } from '../middlewares/validate';
 import { contexto } from '../requestContext';
 
@@ -34,13 +34,13 @@ interface Deps {
 }
 
 const idParamSchema = z.object({ id: z.string().uuid() });
-const LECTORES = ['CONTADOR', 'ADMIN_FINANCIERO'] as const;
+const LECTORES = ['ADMIN'] as const;
 
 /** HU-CON-04: pagos recibidos de la pasarela y su conciliación contra órdenes. */
 export function conciliacionesRoutes(deps: Deps): Router {
   const router = Router();
 
-  router.post('/eventos/pago-recibido', requireRole('SISTEMA'), async (req, res) => {
+  router.post('/eventos/pago-recibido', requireServicio(), async (req, res) => {
     const evento = parse(req, 'body', pagoRecibidoSchema);
     const body: PagoRecibidoProcesadoResponse = await deps.registrarPago.execute(
       evento,
@@ -51,7 +51,7 @@ export function conciliacionesRoutes(deps: Deps): Router {
 
   router.post(
     '/pagos-recibidos/importar',
-    requireRole('CONTADOR'),
+    requireRole('ADMIN'),
     express.text({ type: ['text/csv', 'text/plain'], limit: '1mb' }),
     async (req, res) => {
       if (typeof req.body !== 'string' || !req.body.trim()) {
@@ -87,7 +87,7 @@ export function conciliacionesRoutes(deps: Deps): Router {
     res.json(body);
   });
 
-  router.post('/conciliaciones', requireRole('CONTADOR'), async (req, res) => {
+  router.post('/conciliaciones', requireRole('ADMIN'), async (req, res) => {
     const entrada = parse(req, 'body', conciliarPagoSchema);
     const body: ConciliacionDto = await deps.conciliarPago.execute(entrada, contexto(res));
     res.status(201).json(body);

@@ -27,7 +27,7 @@ const app = () => (appCache ??= crearApp());
 const comoSistema = (url: string, body: object) =>
   request(app()).post(`${BASE}${url}`).set('authorization', 'Bearer mock-sistema').send(body);
 const ajustar = (body: object) =>
-  request(app()).post(`${BASE}/ajustes`).set('authorization', 'Bearer mock-contador').send(body);
+  request(app()).post(`${BASE}/ajustes`).set('authorization', 'Bearer mock-admin').send(body);
 
 /** Registra ORD-1 (V-1: 100.000, V-2: 50.000) el 5 de octubre y devuelve el id de la venta de V-1. */
 async function ventaRegistrada(): Promise<string> {
@@ -117,7 +117,7 @@ describe('HU-CON-06 - criterios de aceptación del F01', () => {
         neto_revertido: '27000.00',
         saldo_a_favor: '0.00',
         origen: 'MANUAL',
-        registrado_por: 'u-contador',
+        registrado_por: 'u-admin',
       },
     ]);
     const auditoria = await testPool().query(
@@ -137,7 +137,7 @@ describe('HU-CON-06 - criterios de aceptación del F01', () => {
     expect(await cuenta('V-1')).toEqual({ total_neto: '63000.00', saldo: '63000.00' });
     const resumen = await request(app())
       .get(`${BASE}/cuentas-por-pagar/resumen`)
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(resumen.body[0]).toMatchObject({ vendedorId: 'V-1', saldoPendiente: '63000.00' });
   });
 });
@@ -236,7 +236,7 @@ describe('HU-CON-06 - reglas D-07 y eventos', () => {
     });
     const res = await request(app())
       .get(`${BASE}/ajustes?desde=2026-10-10&hasta=2026-10-31`)
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(res.body).toMatchObject({
       total: 1,
       items: [{ motivo: 'b', fechaContable: '2026-10-12' }],

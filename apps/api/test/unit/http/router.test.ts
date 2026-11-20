@@ -142,22 +142,34 @@ describe('Router del módulo', () => {
     expect(res.status).toBe(401);
   });
 
+  it('GET /me incluye el vendedor del usuario con rol VENDEDOR', async () => {
+    const res = await request(app())
+      .get('/api/v1/contabilidad/me')
+      .set('authorization', 'Bearer mock-vendedor');
+    expect(res.body).toEqual({
+      id: 'u-vendedor',
+      nombre: 'Vendedor de prueba',
+      roles: ['VENDEDOR'],
+      vendedorId: 'V-1',
+    });
+  });
+
   it('GET /me devuelve el usuario y sus roles', async () => {
     const res = await request(app())
       .get('/api/v1/contabilidad/me')
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
-      id: 'u-contador',
-      nombre: 'Contador de prueba',
-      roles: ['CONTADOR'],
+      id: 'u-admin',
+      nombre: 'Administrador de prueba',
+      roles: ['ADMIN'],
     });
   });
 
   it('responde 404 problem+json en rutas inexistentes', async () => {
     const res = await request(app())
       .get('/api/v1/contabilidad/no-existe')
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(res.status).toBe(404);
     expect(res.body.code).toBe('NO_ENCONTRADO');
   });
@@ -199,7 +211,7 @@ describe('Rutas de comisión', () => {
   });
 
   it('GET responde al contador aunque no haya configuración', async () => {
-    const res = await request(app()).get(URL).set('authorization', 'Bearer mock-contador');
+    const res = await request(app()).get(URL).set('authorization', 'Bearer mock-admin');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ fecha: '2026-10-05', vigente: null, historial: [] });
   });
@@ -207,14 +219,14 @@ describe('Rutas de comisión', () => {
   it('GET rechaza una fecha mal formada', async () => {
     const res = await request(app())
       .get(`${URL}?fecha=16-10-2026`)
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(res.status).toBe(400);
   });
 
-  it('PUT es exclusivo del ADMIN_FINANCIERO', async () => {
+  it('PUT es exclusivo del ADMIN', async () => {
     const res = await request(app())
       .put(URL)
-      .set('authorization', 'Bearer mock-contador')
+      .set('authorization', 'Bearer mock-vendedor')
       .send(valido);
     expect(res.status).toBe(403);
     expect(res.body.code).toBe('NO_AUTORIZADO');
@@ -263,7 +275,7 @@ describe('Rutas de ventas', () => {
   it('POST /eventos/orden-confirmada es exclusivo del rol SISTEMA', async () => {
     const res = await request(app())
       .post(EVENTOS)
-      .set('authorization', 'Bearer mock-contador')
+      .set('authorization', 'Bearer mock-admin')
       .send(evento);
     expect(res.status).toBe(403);
   });
@@ -301,7 +313,7 @@ describe('Rutas de ventas', () => {
 
     const ventas = await request(servidor)
       .get('/api/v1/contabilidad/ventas?vendedorId=V-1')
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(ventas.status).toBe(200);
     expect(ventas.body).toMatchObject({ page: 1, size: 50, total: 1 });
     expect(ventas.body.items[0]).toMatchObject({ numeroOrden: 'ORD-1001', valorNeto: '90000.00' });
@@ -320,9 +332,7 @@ describe('Rutas de ventas', () => {
     const servidor = app();
     await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
     const contador = (url: string) =>
-      request(servidor)
-        .get(`/api/v1/contabilidad${url}`)
-        .set('authorization', 'Bearer mock-contador');
+      request(servidor).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     expect((await contador('/periodos')).body).toEqual({ periodos: ['2026-10-Q1'] });
     const cuentas = await contador('/cuentas-por-pagar?periodo=2026-10-Q1&estado=PENDIENTE');
@@ -346,9 +356,7 @@ describe('Rutas de ventas', () => {
     const servidor = app();
     await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
     const contador = (url: string) =>
-      request(servidor)
-        .get(`/api/v1/contabilidad${url}`)
-        .set('authorization', 'Bearer mock-contador');
+      request(servidor).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     const { id } = (await contador('/ventas')).body.items[0];
     const detalle = await contador(`/ventas/${id}`);
@@ -374,9 +382,7 @@ describe('Rutas de ventas', () => {
     const servidor = app();
     await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
     const contador = (url: string) =>
-      request(servidor)
-        .get(`/api/v1/contabilidad${url}`)
-        .set('authorization', 'Bearer mock-contador');
+      request(servidor).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     const resumen = await contador('/cuentas-por-pagar/resumen?periodo=2026-10-Q1');
     expect(resumen.status).toBe(200);
@@ -398,7 +404,7 @@ describe('Rutas de ventas', () => {
     for (const q of ['?periodo=2026-10-Q3', '?estado=PAGADA']) {
       const res = await request(app())
         .get(`/api/v1/contabilidad/cuentas-por-pagar${q}`)
-        .set('authorization', 'Bearer mock-contador');
+        .set('authorization', 'Bearer mock-admin');
       expect(res.status, q).toBe(400);
     }
     const sistema = await request(app())
@@ -410,7 +416,7 @@ describe('Rutas de ventas', () => {
   it('GET /ventas valida filtros y rol', async () => {
     const malFiltro = await request(app())
       .get('/api/v1/contabilidad/ventas?desde=05-10-2026')
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(malFiltro.status).toBe(400);
     const sistema = await request(app())
       .get('/api/v1/contabilidad/ventas')
@@ -457,9 +463,9 @@ describe('Rutas de conciliación', () => {
 
   it('POST /eventos/pago-recibido es del rol SISTEMA y valida el contrato', async () => {
     const servidor = app();
-    expect(
-      (await como(servidor, 'mock-contador').post('/eventos/pago-recibido', pago)).status,
-    ).toBe(403);
+    expect((await como(servidor, 'mock-admin').post('/eventos/pago-recibido', pago)).status).toBe(
+      403,
+    );
     const invalido = await como(servidor, 'mock-sistema').post('/eventos/pago-recibido', {
       ...pago,
       valor: 95000,
@@ -484,7 +490,7 @@ describe('Rutas de conciliación', () => {
       '/eventos/pago-recibido',
       pago,
     );
-    const contador = como(servidor, 'mock-contador');
+    const contador = como(servidor, 'mock-admin');
 
     const bandeja = await contador.get('/pagos-recibidos?estado=SIN_CONCILIAR');
     expect(bandeja.body.map((p: { id: string }) => p.id)).toEqual([registrado.pagoId]);
@@ -519,7 +525,7 @@ describe('Rutas de conciliación', () => {
 
   it('responde 404 / 400 / 422 según el error', async () => {
     const servidor = app();
-    const contador = como(servidor, 'mock-contador');
+    const contador = como(servidor, 'mock-admin');
     expect((await contador.get('/conciliaciones/no-es-uuid')).status).toBe(400);
     expect(
       (await contador.get('/conciliaciones/00000000-0000-4000-8000-000000000000')).status,
@@ -559,11 +565,11 @@ describe('Rutas de conciliación', () => {
         .send(body);
 
     expect((await importar('mock-sistema', csv)).status).toBe(403);
-    const res = await importar('mock-contador', csv);
+    const res = await importar('mock-admin', csv);
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({ importados: 1, duplicados: 1, errores: 1 });
-    expect((await importar('mock-contador', ['a,b,c', '1,2,3'].join('\n'))).status).toBe(400);
-    expect((await importar('mock-contador', '{}', 'application/json')).status).toBe(400);
+    expect((await importar('mock-admin', ['a,b,c', '1,2,3'].join('\n'))).status).toBe(400);
+    expect((await importar('mock-admin', '{}', 'application/json')).status).toBe(400);
   });
 });
 
@@ -600,7 +606,7 @@ describe('Rutas de ajustes (HU-CON-06)', () => {
       .send(orden);
     const ventas = await request(servidor)
       .get(`${BASE}/ventas`)
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     return { servidor, ventaId: ventas.body.items[0].id as string };
   }
 
@@ -608,7 +614,7 @@ describe('Rutas de ajustes (HU-CON-06)', () => {
     const { servidor, ventaId } = await conVenta();
     const res = await request(servidor)
       .post(`${BASE}/ajustes`)
-      .set('authorization', 'Bearer mock-contador')
+      .set('authorization', 'Bearer mock-admin')
       .send({ ventaId, tipo: 'DEVOLUCION', motivo: 'Producto defectuoso', valor: '30000.00' });
     expect(res.status).toBe(201);
     expect(res.body).toMatchObject({
@@ -629,13 +635,13 @@ describe('Rutas de ajustes (HU-CON-06)', () => {
 
     const cuentas = await request(servidor)
       .get(`${BASE}/cuentas-por-pagar`)
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(cuentas.body[0].saldoPendiente).toBe('63000.00');
   });
 
   it('POST /ajustes valida el cuerpo, el rol, la venta y el saldo ajustable', async () => {
     const { servidor, ventaId } = await conVenta();
-    const enviar = (body: object, token = 'mock-contador') =>
+    const enviar = (body: object, token = 'mock-admin') =>
       request(servidor).post(`${BASE}/ajustes`).set('authorization', `Bearer ${token}`).send(body);
 
     for (const body of [
@@ -690,7 +696,7 @@ describe('Rutas de ajustes (HU-CON-06)', () => {
         .post(`${BASE}/eventos/orden-devuelta`)
         .set('authorization', `Bearer ${token}`)
         .send(body);
-    expect((await enviar(devuelta, 'mock-contador')).status).toBe(403);
+    expect((await enviar(devuelta, 'mock-admin')).status).toBe(403);
     expect((await enviar({ ...devuelta, lineas: [{ vendedorId: 'V-1' }] })).status).toBe(400);
     expect((await enviar(devuelta)).status).toBe(201);
   });
@@ -717,12 +723,12 @@ describe('Rutas de pagos a vendedores (HU-CON-10)', () => {
       .post(`${BASE}/eventos/orden-confirmada`)
       .set('authorization', 'Bearer mock-sistema')
       .send(orden);
-    const pagar = (body: object, token = 'mock-contador') =>
+    const pagar = (body: object, token = 'mock-admin') =>
       request(servidor)
         .post(`${BASE}/pagos-vendedor`)
         .set('authorization', `Bearer ${token}`)
         .send(body);
-    const consultar = (url: string, token = 'mock-contador') =>
+    const consultar = (url: string, token = 'mock-admin') =>
       request(servidor).get(`${BASE}${url}`).set('authorization', `Bearer ${token}`);
     return { pagar, consultar };
   }
@@ -766,10 +772,37 @@ describe('Rutas de pagos a vendedores (HU-CON-10)', () => {
     expect((await pagar({ vendedorId: 'V-1', valor: '-5', referencia: 'X' })).status).toBe(400);
     expect((await pagar({ vendedorId: 'V-1', valor: '5.00' })).status).toBe(400);
     expect(
-      (await pagar({ vendedorId: 'V-1', valor: '5.00', referencia: 'X' }, 'mock-admin')).status,
+      (await pagar({ vendedorId: 'V-1', valor: '5.00', referencia: 'X' }, 'mock-vendedor')).status,
     ).toBe(403);
     expect((await consultar('/pagos-vendedor?desde=2026-13-01')).status).toBe(400);
     expect((await consultar('/pagos-vendedor', 'mock-sistema')).status).toBe(403);
+  });
+
+  it('un VENDEDOR solo ve sus propios pagos y cuentas; el COMPRADOR no accede', async () => {
+    const { pagar, consultar } = await conVenta();
+    expect(
+      (await pagar({ vendedorId: 'V-1', valor: '40000.00', referencia: 'TRF-1' })).status,
+    ).toBe(201);
+
+    // mock-vendedor representa a V-1: sin filtro recibe solo lo suyo.
+    const pagos = await consultar('/pagos-vendedor', 'mock-vendedor');
+    expect(pagos.status).toBe(200);
+    expect(pagos.body).toMatchObject({ total: 1, items: [{ vendedorId: 'V-1' }] });
+    const cuentas = await consultar('/cuentas-por-pagar', 'mock-vendedor');
+    expect(cuentas.status).toBe(200);
+    expect(cuentas.body).toMatchObject([{ vendedorId: 'V-1' }]);
+
+    // Pedir datos de otro vendedor es 403.
+    expect((await consultar('/pagos-vendedor?vendedorId=V-2', 'mock-vendedor')).status).toBe(403);
+    expect((await consultar('/cuentas-por-pagar?vendedorId=V-2', 'mock-vendedor')).status).toBe(
+      403,
+    );
+    // El resumen de todos los vendedores es solo para ADMIN.
+    expect((await consultar('/cuentas-por-pagar/resumen', 'mock-vendedor')).status).toBe(403);
+
+    for (const url of ['/pagos-vendedor', '/cuentas-por-pagar', '/ventas']) {
+      expect((await consultar(url, 'mock-comprador')).status).toBe(403);
+    }
   });
 });
 
@@ -808,13 +841,23 @@ describe('Ruta del estado por vendedor (HU-CON-07)', () => {
   });
 
   it('valida las quincenas y el rol', async () => {
-    const consultar = (url: string, token = 'mock-contador') =>
+    const consultar = (url: string, token = 'mock-admin') =>
       request(app()).get(`${BASE}${url}`).set('authorization', `Bearer ${token}`);
     expect((await consultar('/vendedores/V-1/estado?desde=2026-10-01')).status).toBe(400);
     expect(
       (await consultar('/vendedores/V-1/estado?desde=2026-11-Q1&hasta=2026-10-Q1')).status,
     ).toBe(400);
     expect((await consultar('/vendedores/V-1/estado', 'mock-sistema')).status).toBe(403);
+    expect((await consultar('/vendedores/V-1/estado', 'mock-comprador')).status).toBe(403);
+  });
+
+  it('un VENDEDOR consulta su propio estado pero no el de otro vendedor', async () => {
+    const consultar = (url: string) =>
+      request(app()).get(`${BASE}${url}`).set('authorization', 'Bearer mock-vendedor');
+    expect((await consultar('/vendedores/V-1/estado')).status).toBe(200);
+    const ajeno = await consultar('/vendedores/V-2/estado');
+    expect(ajeno.status).toBe(403);
+    expect(ajeno.body.code).toBe('NO_AUTORIZADO');
   });
 });
 
@@ -845,10 +888,11 @@ describe('Ruta de auditoría (HU-CON-11)', () => {
     expect(res.body).toMatchObject({
       total: 1,
       items: [
-        { entidad: 'venta_contable', usuario: 'sistema-marketplace', accion: expect.any(String) },
+        { entidad: 'venta_contable', usuario: 'servicio:marketplace', accion: expect.any(String) },
       ],
     });
-    expect((await consultar('/auditoria', 'mock-contador')).status).toBe(403);
+    expect((await consultar('/auditoria', 'mock-comprador')).status).toBe(403);
+    expect((await consultar('/auditoria', 'mock-vendedor')).status).toBe(403);
     expect((await consultar('/auditoria?entidad=desconocida')).status).toBe(400);
     expect((await consultar('/auditoria?desde=2026-13-01')).status).toBe(400);
   });
@@ -860,7 +904,7 @@ describe('Ruta de exportación a Excel (HU-CON-08)', () => {
   it('GET /exportaciones/excel descarga un .xlsx con el nombre del rango', async () => {
     const res = await request(app())
       .get(`${BASE}/exportaciones/excel?desde=2026-10-01&hasta=2026-10-31&vendedorId=V-1`)
-      .set('authorization', 'Bearer mock-contador')
+      .set('authorization', 'Bearer mock-admin')
       .buffer(true)
       .parse((r, callback) => {
         const partes: Buffer[] = [];
@@ -907,7 +951,7 @@ describe('Ruta del reporte de ingresos (HU-CON-05)', () => {
       .post('/api/v1/contabilidad/eventos/orden-confirmada')
       .set('authorization', 'Bearer mock-sistema')
       .send(orden);
-    for (const token of ['mock-contador', 'mock-admin']) {
+    for (const token of ['mock-admin', 'mock-admin']) {
       const res = await request(servidor)
         .get(`${URL}?desde=2026-10-01&hasta=2026-10-31`)
         .set('authorization', `Bearer ${token}`);
@@ -938,9 +982,7 @@ describe('Ruta del reporte de ingresos (HU-CON-05)', () => {
       '?desde=2026-10-31&hasta=2026-10-01',
       '?desde=2024-01-01&hasta=2025-01-01',
     ]) {
-      const res = await request(app())
-        .get(`${URL}${q}`)
-        .set('authorization', 'Bearer mock-contador');
+      const res = await request(app()).get(`${URL}${q}`).set('authorization', 'Bearer mock-admin');
       expect(res.status, q).toBe(400);
     }
     const sistema = await request(app())

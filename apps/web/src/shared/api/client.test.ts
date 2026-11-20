@@ -8,12 +8,12 @@ function respuesta(status: number, body: unknown, contentType = 'application/jso
 describe('createApiClient', () => {
   it('envía el token Bearer y devuelve el JSON', async () => {
     const fetchFn = vi.fn().mockResolvedValue(respuesta(200, { ok: true }));
-    const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-contador', fetchFn });
+    const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-admin', fetchFn });
 
     await expect(api.get('/me')).resolves.toEqual({ ok: true });
     expect(fetchFn).toHaveBeenCalledWith('/api/me', {
       method: 'GET',
-      headers: { accept: 'application/json', authorization: 'Bearer mock-contador' },
+      headers: { accept: 'application/json', authorization: 'Bearer mock-admin' },
     });
   });
 
@@ -30,7 +30,7 @@ describe('createApiClient', () => {
 
   it('envía archivos de texto con su content-type', async () => {
     const fetchFn = vi.fn().mockResolvedValue(respuesta(200, { importados: 1 }));
-    const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-contador', fetchFn });
+    const api = createApiClient({ baseUrl: '/api', getToken: () => 'mock-admin', fetchFn });
 
     await expect(api.postTexto('/pagos-recibidos/importar', 'a,b', 'text/csv')).resolves.toEqual({
       importados: 1,
@@ -39,7 +39,7 @@ describe('createApiClient', () => {
       method: 'POST',
       headers: {
         accept: 'application/json',
-        authorization: 'Bearer mock-contador',
+        authorization: 'Bearer mock-admin',
         'content-type': 'text/csv',
       },
       body: 'a,b',

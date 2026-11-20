@@ -75,7 +75,7 @@ beforeEach(async () => {
     origen: 'API',
     ordenes: ['ORD-1'],
   });
-  await post('/pagos-vendedor', 'mock-contador', {
+  await post('/pagos-vendedor', 'mock-admin', {
     vendedorId: 'V-1',
     valor: '90000.00',
     referencia: 'TRF-1',
@@ -83,7 +83,7 @@ beforeEach(async () => {
   const { rows } = await testPool().query<{ id: string }>(
     `SELECT id FROM contabilidad.venta_contable WHERE numero_orden = 'ORD-2'`,
   );
-  await post('/ajustes', 'mock-contador', {
+  await post('/ajustes', 'mock-admin', {
     ventaId: rows[0]!.id,
     tipo: 'DEVOLUCION',
     motivo: 'Defectuoso',
@@ -162,8 +162,8 @@ describe('HU-CON-08 - criterios de aceptación del F01', () => {
     expect((await descargar('?desde=2026-10-01&hasta=2026-10-31', 'mock-sistema')).status).toBe(
       403,
     );
-    expect((await descargar('?desde=2026-10-01&hasta=2026-10-31', 'mock-contador')).status).toBe(
-      200,
+    expect((await descargar('?desde=2026-10-01&hasta=2026-10-31', 'mock-vendedor')).status).toBe(
+      403,
     );
   });
 });

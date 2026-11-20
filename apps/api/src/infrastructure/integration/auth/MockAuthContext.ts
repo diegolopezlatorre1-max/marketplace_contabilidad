@@ -3,22 +3,26 @@ import type { Actor } from '../../../application/security';
 
 /**
  * Autenticación de desarrollo (AUTH_MODE=mock). Tokens fijos:
- *   Authorization: Bearer mock-contador
- *   Authorization: Bearer mock-admin
- *   Authorization: Bearer mock-sistema   (otros módulos: Órdenes, Pagos)
- * En la Fase 6 se reemplaza por JwtAuthContext con el token del marketplace.
+ *   Authorization: Bearer mock-admin       (rol ADMIN)
+ *   Authorization: Bearer mock-vendedor    (rol VENDEDOR, vendedor V-1)
+ *   Authorization: Bearer mock-comprador   (rol COMPRADOR)
+ *   Authorization: Bearer mock-sistema     (servicio: módulos Órdenes, Pagos, PQR)
+ * En producción se usa Supabase Auth; los servicios se autentican con su clave (Fase 2).
  */
 export const USUARIOS_MOCK: Record<string, Actor> = {
-  'mock-contador': { id: 'u-contador', nombre: 'Contador de prueba', roles: ['CONTADOR'] },
-  'mock-admin': {
-    id: 'u-admin',
-    nombre: 'Administrador financiero de prueba',
-    roles: ['ADMIN_FINANCIERO'],
+  'mock-admin': { id: 'u-admin', nombre: 'Administrador de prueba', roles: ['ADMIN'] },
+  'mock-vendedor': {
+    id: 'u-vendedor',
+    nombre: 'Vendedor de prueba',
+    roles: ['VENDEDOR'],
+    vendedorId: 'V-1',
   },
+  'mock-comprador': { id: 'u-comprador', nombre: 'Comprador de prueba', roles: ['COMPRADOR'] },
   'mock-sistema': {
-    id: 'sistema-marketplace',
+    id: 'servicio:marketplace',
     nombre: 'Módulos del marketplace',
-    roles: ['SISTEMA'],
+    roles: [],
+    servicio: 'marketplace',
   },
 };
 

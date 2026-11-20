@@ -30,16 +30,12 @@ function aRespuesta(estado: EstadoComision): ConfiguracionComisionResponse {
 export function comisionesRoutes({ configurarComision, obtenerComision }: Deps): Router {
   const router = Router();
 
-  router.get(
-    '/comisiones/configuracion',
-    requireRole('CONTADOR', 'ADMIN_FINANCIERO'),
-    async (req, res) => {
-      const query = parse(req, 'query', obtenerComisionQuerySchema);
-      res.json(aRespuesta(await obtenerComision.execute(query, contexto(res))));
-    },
-  );
+  router.get('/comisiones/configuracion', requireRole('ADMIN'), async (req, res) => {
+    const query = parse(req, 'query', obtenerComisionQuerySchema);
+    res.json(aRespuesta(await obtenerComision.execute(query, contexto(res))));
+  });
 
-  router.put('/comisiones/configuracion', requireRole('ADMIN_FINANCIERO'), async (req, res) => {
+  router.put('/comisiones/configuracion', requireRole('ADMIN'), async (req, res) => {
     const body = parse(req, 'body', configurarComisionSchema);
     res.json(aRespuesta(await configurarComision.execute(body, contexto(res))));
   });

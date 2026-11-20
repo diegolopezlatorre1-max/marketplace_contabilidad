@@ -8,8 +8,8 @@ import { DomainError } from '../../../src/domain/shared';
 import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
 import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema', nombre: 'Órdenes', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
+const sistema: Actor = { id: 'sistema', nombre: 'Órdenes', roles: [], servicio: 'marketplace' };
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
 const ctx = { actor: contador, correlationId: 'corr-1' };
 const reloj = { now: () => new Date('2026-10-05T15:00:00Z') };
 const vendedores = new MockSellersGateway({ 'V-1': 'Vendedor Uno' });

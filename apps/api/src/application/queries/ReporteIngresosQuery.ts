@@ -91,7 +91,7 @@ export class ReporteIngresosQuery implements UseCase<ReporteIngresosEntrada, Rep
   constructor(private readonly reporte: ReporteIngresosRepository) {}
 
   async execute(entrada: ReporteIngresosEntrada, ctx: ContextoEjecucion): Promise<ReporteIngresos> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const desde = parseFechaContable(entrada.desde);
     const hasta = parseFechaContable(entrada.hasta);
     if (desde > hasta) {

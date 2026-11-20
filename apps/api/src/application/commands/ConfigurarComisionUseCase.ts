@@ -33,7 +33,7 @@ export class ConfigurarComisionUseCase implements UseCase<
     entrada: ConfigurarComisionEntrada,
     ctx: ContextoEjecucion,
   ): Promise<EstadoComision> {
-    exigirRol(ctx.actor, ['ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const nueva = ConfiguracionComision.crear({
       id: this.generarId(),
       porcentaje: Porcentaje.of(entrada.porcentaje),

@@ -9,15 +9,11 @@ import { contexto } from '../requestContext';
 export function reportesRoutes({ reporteIngresos }: { reporteIngresos: ReporteIngresosQuery }) {
   const router = Router();
 
-  router.get(
-    '/reportes/ingresos',
-    requireRole('CONTADOR', 'ADMIN_FINANCIERO'),
-    async (req, res) => {
-      const filtro = parse(req, 'query', reporteIngresosQuerySchema);
-      const body: ReporteIngresosDto = await reporteIngresos.execute(filtro, contexto(res));
-      res.json(body);
-    },
-  );
+  router.get('/reportes/ingresos', requireRole('ADMIN'), async (req, res) => {
+    const filtro = parse(req, 'query', reporteIngresosQuerySchema);
+    const body: ReporteIngresosDto = await reporteIngresos.execute(filtro, contexto(res));
+    res.json(body);
+  });
 
   return router;
 }

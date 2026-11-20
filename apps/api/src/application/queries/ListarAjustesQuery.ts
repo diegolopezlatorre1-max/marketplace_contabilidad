@@ -12,7 +12,7 @@ export class ListarAjustesQuery implements UseCase<FiltroAjustes, PaginaAjustes>
   constructor(private readonly ajustes: AjusteContableRepository) {}
 
   async execute(filtro: FiltroAjustes, ctx: ContextoEjecucion): Promise<PaginaAjustes> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const desde = filtro.desde ? parseFechaContable(filtro.desde) : undefined;
     const hasta = filtro.hasta ? parseFechaContable(filtro.hasta) : undefined;
     if (desde && hasta && desde > hasta) {
