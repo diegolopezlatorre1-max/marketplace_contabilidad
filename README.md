@@ -64,6 +64,10 @@ npm run dev:web                          # http://localhost:5173
 - Autenticación de desarrollo (`AUTH_MODE=mock`): `Authorization: Bearer mock-admin` (ADMIN),
   `mock-vendedor` (VENDEDOR, vendedor V-1), `mock-comprador` (COMPRADOR) o `mock-sistema`
   (servicio: módulos que envían eventos). El frontend ofrece un login de prueba.
+- Autenticación real (`AUTH_MODE=supabase`): el access token de Supabase Auth se valida con
+  `getClaims` (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`) y el rol se lee de
+  `app_metadata.role` (`admin`, `vendedor`, `comprador`). Los módulos que envían eventos usan la
+  cabecera `x-api-key` con su clave de `SERVICE_API_KEYS`.
 
 ## Calidad
 

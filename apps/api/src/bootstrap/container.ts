@@ -35,8 +35,12 @@ import { ReporteIngresosQuery } from '../application/queries/ReporteIngresosQuer
 import { ResumenSaldoVendedorQuery } from '../application/queries/ResumenSaldoVendedorQuery';
 import type { AppConfig } from '../infrastructure/config/env';
 import { createContabilidadRouter } from '../infrastructure/http/express/createContabilidadRouter';
-import { JwtAuthContext } from '../infrastructure/integration/auth/JwtAuthContext';
+import { ApiKeyServiceAuth } from '../infrastructure/integration/auth/ApiKeyServiceAuth';
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
+import {
+  crearClienteSupabase,
+  SupabaseAuthContext,
+} from '../infrastructure/integration/auth/SupabaseAuthContext';
 import { MockSellersGateway } from '../infrastructure/integration/sellers/MockSellersGateway';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
 import { PgAjusteContableRepository } from '../infrastructure/persistence/postgres/PgAjusteContableRepository';
@@ -55,7 +59,8 @@ import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWor
 export const VERSION_MODULO = '0.1.0';
 
 export interface ContabilidadModuleOptions {
-  config: Pick<AppConfig, 'INTEGRATION_MODE' | 'AUTH_MODE'>;
+  config: Pick<AppConfig, 'INTEGRATION_MODE' | 'AUTH_MODE'> &
+    Partial<Pick<AppConfig, 'SUPABASE_URL' | 'SUPABASE_PUBLISHABLE_KEY' | 'SERVICE_API_KEYS'>>;
   pool: pg.Pool;
   logger: Logger;
   /** Permite inyectar adaptadores alternativos (p. ej. en pruebas o desde el marketplace). */
@@ -77,8 +82,8 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
 
   // Adaptadores de salida
   const clock = overrides?.clock ?? new SystemClock();
-  const auth =
-    overrides?.auth ?? (config.AUTH_MODE === 'jwt' ? new JwtAuthContext() : new MockAuthContext());
+  const auth = overrides?.auth ?? crearAuthContext(config);
+  const servicios = new ApiKeyServiceAuth(config.SERVICE_API_KEYS ?? {});
   const unitOfWork = new PgUnitOfWork(pool);
   const dbHealth = new PgDatabaseHealth(pool);
   const configuracionComision = new PgConfiguracionComisionRepository(pool);
@@ -136,6 +141,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const router = createContabilidadRouter({
     logger,
     auth,
+    servicios,
     version: VERSION_MODULO,
     integrationMode: config.INTEGRATION_MODE,
     queries: {
@@ -169,4 +175,18 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   });
 
   return { router, unitOfWork };
+}
+
+/** AUTH_MODE=supabase valida el access token con Supabase Auth; mock usa tokens de desarrollo. */
+function crearAuthContext(config: ContabilidadModuleOptions['config']): AuthContext {
+  if (config.AUTH_MODE !== 'supabase') return new MockAuthContext();
+  if (!config.SUPABASE_URL || !config.SUPABASE_PUBLISHABLE_KEY) {
+    throw new Error('AUTH_MODE=supabase requiere SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY');
+  }
+  return new SupabaseAuthContext(
+    crearClienteSupabase({
+      url: config.SUPABASE_URL,
+      publishableKey: config.SUPABASE_PUBLISHABLE_KEY,
+    }),
+  );
 }

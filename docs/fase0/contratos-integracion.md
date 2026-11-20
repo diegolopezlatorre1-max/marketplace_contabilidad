@@ -12,7 +12,8 @@ Este documento es la versión legible para acordar con los otros equipos.
 ## Reglas generales
 
 - Transporte inicial: HTTP POST a `/api/v1/contabilidad/eventos/<tipo>` (webhook),
-  con `Authorization: Bearer <token de servicio>` (se autentica como servicio, no como rol de usuario).
+  con la cabecera `x-api-key: <clave de servicio>` (cada módulo tiene su clave en
+  `SERVICE_API_KEYS`; se autentica como servicio, no como rol de usuario).
   Con un broker de eventos, el payload es el mismo.
 - `eventId` es único por evento. Reenviar el mismo evento es seguro: la respuesta es
   `YA_PROCESADO` y no se crean registros duplicados.
@@ -104,8 +105,9 @@ neto de costos de la pasarela? ¿Envían los costos por separado?
 
 ## Autenticación (Administración)
 
-- Usuarios: token JWT emitido por el marketplace; Contabilidad necesita el emisor,
-  las claves públicas (JWKS) y el claim que trae los roles.
+- Usuarios: access token de Supabase Auth (proyecto compartido), validado con `getClaims`.
+  Rol en `app_metadata.role`; vendedor = UUID del usuario o `app_metadata.vendedor_id`
+  (pendiente de confirmar con el administrador del proyecto Supabase).
 - Roles de aplicación (GUIA_EQUIPO_6): ADMIN, COMPRADOR, VENDEDOR. Los módulos se autentican
   como servicio.
 

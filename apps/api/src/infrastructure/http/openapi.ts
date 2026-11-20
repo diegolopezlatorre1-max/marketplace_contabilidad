@@ -41,7 +41,9 @@ export function buildOpenApi(version: string) {
       title: 'API Módulo de Contabilidad - Marketplace',
       version,
       description:
-        'API REST del módulo de contabilidad. Autenticación: `Authorization: Bearer <token>`. ' +
+        'API REST del módulo de contabilidad. Usuarios: `Authorization: Bearer <access token de Supabase>` ' +
+        '(roles ADMIN, VENDEDOR, COMPRADOR en app_metadata.role). Módulos que envían eventos: ' +
+        'cabecera `x-api-key: <clave de servicio>`. ' +
         'En desarrollo (AUTH_MODE=mock) use `mock-admin`, `mock-vendedor`, `mock-comprador` o `mock-sistema` (servicio). ' +
         'Los montos viajan como string decimal con 2 decimales.',
     },
@@ -96,7 +98,10 @@ export function buildOpenApi(version: string) {
       },
     ],
     components: {
-      securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } },
+      securitySchemes: {
+        bearer: { type: 'http', scheme: 'bearer' },
+        apiKey: { type: 'apiKey', in: 'header', name: 'x-api-key' },
+      },
       schemas: {
         Problem: {
           type: 'object',
@@ -855,7 +860,7 @@ export function buildOpenApi(version: string) {
           description:
             'Webhook del módulo de Órdenes (servicio). Idempotente por eventId: un reenvío ' +
             'responde YA_PROCESADO sin duplicar registros.',
-          security: [{ bearer: [] }],
+          security: [{ apiKey: [] }, { bearer: [] }],
           requestBody: {
             required: true,
             content: {
@@ -1323,7 +1328,7 @@ export function buildOpenApi(version: string) {
           description:
             'Webhook del módulo de Órdenes (servicio). Idempotente por eventId. Una orden que ' +
             'nunca se registró (p. ej. cancelada antes de confirmarse) responde IGNORADO.',
-          security: [{ bearer: [] }],
+          security: [{ apiKey: [] }, { bearer: [] }],
           requestBody: {
             required: true,
             content: {
@@ -1356,7 +1361,7 @@ export function buildOpenApi(version: string) {
           description:
             'Webhook del módulo de Órdenes (servicio). Idempotente por eventId. Si una línea ' +
             'supera lo que queda por ajustar, responde 422 y no registra nada del evento.',
-          security: [{ bearer: [] }],
+          security: [{ apiKey: [] }, { bearer: [] }],
           requestBody: {
             required: true,
             content: {
@@ -1421,7 +1426,7 @@ export function buildOpenApi(version: string) {
           description:
             'Webhook del módulo de Pagos (servicio). Idempotente por eventId; la misma ' +
             'referencia con otro eventId responde 409. Si trae órdenes, se concilia automáticamente.',
-          security: [{ bearer: [] }],
+          security: [{ apiKey: [] }, { bearer: [] }],
           requestBody: {
             required: true,
             content: {

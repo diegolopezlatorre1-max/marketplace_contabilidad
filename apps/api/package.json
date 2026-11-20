@@ -22,6 +22,7 @@
   },
   "dependencies": {
     "@contabilidad/contracts": "*",
+    "@supabase/supabase-js": "^2.119.2",
     "cors": "^2.8.5",
     "decimal.js": "^10.5.0",
     "dotenv": "^16.4.7",

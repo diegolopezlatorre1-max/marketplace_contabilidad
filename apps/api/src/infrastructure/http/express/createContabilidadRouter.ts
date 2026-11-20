@@ -29,7 +29,7 @@ import type { ObtenerVentaQuery } from '../../../application/queries/ObtenerVent
 import type { ReporteIngresosQuery } from '../../../application/queries/ReporteIngresosQuery';
 import type { ResumenSaldoVendedorQuery } from '../../../application/queries/ResumenSaldoVendedorQuery';
 import type { AuthContext } from '../../../application/ports/out/AuthContext';
-import { authenticate } from '../middlewares/auth';
+import { authenticate, type ServiceAuthenticator } from '../middlewares/auth';
 import { correlationId } from '../middlewares/correlationId';
 import { errorHandler, notFound } from '../middlewares/errorHandler';
 import { buildOpenApi } from '../openapi';
@@ -48,6 +48,8 @@ import { ventasRoutes } from '../routes/ventasRoutes';
 export interface RouterDeps {
   logger: Logger;
   auth: AuthContext;
+  /** Claves de los módulos que envían eventos (x-api-key). */
+  servicios?: ServiceAuthenticator;
   version: string;
   integrationMode: HealthResponse['integrationMode'];
   queries: {
@@ -104,7 +106,7 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
   });
 
   // Rutas protegidas
-  router.use(authenticate(deps.auth));
+  router.use(authenticate(deps.auth, deps.servicios));
   router.use(meRoutes());
   router.use(
     comisionesRoutes({
