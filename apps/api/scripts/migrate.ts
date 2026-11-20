@@ -1,7 +1,10 @@
 import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createPool } from '../src/infrastructure/persistence/postgres/pool';
+import {
+  createPool,
+  opcionesPoolDesdeEntorno,
+} from '../src/infrastructure/persistence/postgres/pool';
 import { migrate } from '../src/infrastructure/persistence/postgres/migrator';
 
 const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../migrations');
@@ -15,7 +18,7 @@ if (!url) {
   process.exit(1);
 }
 
-const pool = createPool(url);
+const pool = createPool(url, opcionesPoolDesdeEntorno());
 try {
   const { aplicadas } = await migrate(pool, dir);
   console.log(
