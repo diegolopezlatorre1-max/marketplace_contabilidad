@@ -35,11 +35,13 @@ import { ExportarExcelUseCase } from '../../../src/application/queries/ExportarE
 import { ExcelJsExporter } from '../../../src/infrastructure/integration/spreadsheet/ExcelJsExporter';
 import { createContabilidadRouter } from '../../../src/infrastructure/http/express/createContabilidadRouter';
 import { errorHandler } from '../../../src/infrastructure/http/middlewares/errorHandler';
+import { ApiKeyServiceAuth } from '../../../src/infrastructure/integration/auth/ApiKeyServiceAuth';
 import { MockAuthContext } from '../../../src/infrastructure/integration/auth/MockAuthContext';
 import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
 import { comisionGlobal, crearBaseEnMemoria } from '../application/enMemoria';
 
 const logger = pino({ level: 'silent' });
+const CLAVE_ORDENES = 'clave-de-prueba-ordenes-123';
 const reloj = { now: () => new Date('2026-10-05T10:00:00Z') };
 
 // Sin configuraciones: las pruebas de este archivo solo cubren la capa HTTP.
@@ -61,6 +63,7 @@ function app(dbOk = true) {
   const router = createContabilidadRouter({
     logger,
     auth: new MockAuthContext(),
+    servicios: new ApiKeyServiceAuth({ ordenes: CLAVE_ORDENES }),
     version: 'test',
     integrationMode: 'mock',
     queries: {
@@ -1034,5 +1037,55 @@ describe('errorHandler', () => {
       .set('content-type', 'application/json')
       .send('{malo');
     expect(res.status).toBe(400);
+  });
+});
+
+describe('Autenticación de módulos por clave de servicio (x-api-key)', () => {
+  const BASE = '/api/v1/contabilidad';
+  const orden = {
+    eventId: 'evt-key-1',
+    version: 1,
+    ocurridoEn: '2026-10-05T10:00:00-05:00',
+    tipo: 'orden.confirmada',
+    numeroOrden: 'ORD-9001',
+    fecha: '2026-10-05T09:58:00-05:00',
+    estado: 'CONFIRMADA',
+    moneda: 'COP',
+    lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+  };
+
+  it('acepta el evento con una clave válida y lo identifica como el módulo', async () => {
+    const servidor = app();
+    const res = await request(servidor)
+      .post(`${BASE}/eventos/orden-confirmada`)
+      .set('x-api-key', CLAVE_ORDENES)
+      .send(orden);
+    expect(res.status).toBe(201);
+    const me = await request(servidor).get(`${BASE}/me`).set('x-api-key', CLAVE_ORDENES);
+    expect(me.body).toMatchObject({ id: 'servicio:ordenes', roles: [] });
+  });
+
+  it('una clave inválida o vacía es 401 aunque venga también un token válido', async () => {
+    for (const clave of ['otra-clave-cualquiera-xyz', '']) {
+      const res = await request(app())
+        .post(`${BASE}/eventos/orden-confirmada`)
+        .set('x-api-key', clave)
+        .set('authorization', 'Bearer mock-admin')
+        .send(orden);
+      expect(res.status).toBe(401);
+    }
+  });
+
+  it('un servicio no accede a las rutas de usuarios', async () => {
+    const res = await request(app()).get(`${BASE}/ventas`).set('x-api-key', CLAVE_ORDENES);
+    expect(res.status).toBe(403);
+  });
+
+  it('un usuario ADMIN no puede enviar eventos', async () => {
+    const res = await request(app())
+      .post(`${BASE}/eventos/orden-confirmada`)
+      .set('authorization', 'Bearer mock-admin')
+      .send(orden);
+    expect(res.status).toBe(403);
   });
 });

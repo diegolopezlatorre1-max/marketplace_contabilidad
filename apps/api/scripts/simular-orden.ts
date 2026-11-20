@@ -4,7 +4,7 @@ import { MockOrdersGateway } from '../src/infrastructure/integration/orders/Mock
 
 /**
  * Simulador del módulo de Órdenes (HU-CON-01): envía eventos orden.confirmada a la
- * API en ejecución (npm run dev:api) con el token de servicio mock-sistema.
+ * API en ejecución (npm run dev:api) con el token mock-sistema, o con --api-key <clave de servicio>.
  *
  *   npm run simular:orden                               una orden aleatoria
  *   npm run simular:orden -- --vendedores V-1,V-2       orden multi-vendedor
@@ -17,6 +17,8 @@ const { values } = parseArgs({
   options: {
     url: { type: 'string', default: `http://localhost:${process.env.PORT ?? 3000}` },
     token: { type: 'string', default: 'mock-sistema' },
+    // Clave de servicio (x-api-key); si se indica, reemplaza al token.
+    'api-key': { type: 'string' },
     orden: { type: 'string' },
     vendedores: { type: 'string' },
     valores: { type: 'string' },
@@ -51,7 +53,12 @@ for (let i = 0; i < Number(values.cantidad); i++) {
     try {
       res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'content-type': 'application/json', authorization: `Bearer ${values.token}` },
+        headers: {
+          'content-type': 'application/json',
+          ...(values['api-key']
+            ? { 'x-api-key': values['api-key'] }
+            : { authorization: `Bearer ${values.token}` }),
+        },
         body: JSON.stringify(evento),
       });
     } catch {
