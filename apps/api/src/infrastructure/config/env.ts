@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parseServiceApiKeys } from '../integration/auth/ApiKeyServiceAuth';
+import { MODOS_SSL } from '../persistence/postgres/pool';
 
 const opcional = z
   .string()
@@ -14,6 +15,9 @@ const envSchema = z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
     DATABASE_URL: z.string().url(),
+    // TLS hacia PostgreSQL: disable (local/CI) | verify (Supabase con su CA) | no-verify.
+    DATABASE_SSL: z.enum(MODOS_SSL).default('disable'),
+    DATABASE_SSL_CA: opcional,
     INTEGRATION_MODE: z.enum(['mock', 'http', 'events']).default('mock'),
     // mock: tokens fijos de desarrollo | supabase: access token validado con Supabase Auth.
     AUTH_MODE: z.enum(['mock', 'supabase']).default('mock'),

@@ -1,7 +1,10 @@
 import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createPool } from '../src/infrastructure/persistence/postgres/pool';
+import {
+  createPool,
+  opcionesPoolDesdeEntorno,
+} from '../src/infrastructure/persistence/postgres/pool';
 import { seed } from '../src/infrastructure/persistence/postgres/seeder';
 
 // Los seeds son datos de ejemplo: nunca se cargan en producción.
@@ -17,7 +20,7 @@ if (!url) {
 }
 
 const dir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../seeds');
-const pool = createPool(url);
+const pool = createPool(url, opcionesPoolDesdeEntorno());
 try {
   const cargados = await seed(pool, dir);
   console.log(

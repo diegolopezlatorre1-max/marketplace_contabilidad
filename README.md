@@ -69,6 +69,24 @@ npm run dev:web                          # http://localhost:5173
   `app_metadata.role` (`admin`, `vendedor`, `comprador`). Los módulos que envían eventos usan la
   cabecera `x-api-key` con su clave de `SERVICE_API_KEYS`.
 
+### Base de datos en Supabase
+
+El módulo usa su propio esquema `contabilidad` dentro del proyecto Supabase compartido; no toca
+Auth, usuarios ni las tablas de otros equipos.
+
+1. En `apps/api/.env`, `DATABASE_URL` = cadena del **Session pooler** (botón _Connect_) y
+   `DATABASE_SSL=verify` (con `DATABASE_SSL_CA` = certificado de _Database Settings → SSL_;
+   `no-verify` solo si no se dispone del certificado).
+2. `npm run db:migrate` crea el esquema y, con `008_rls.sql`, habilita RLS en todas sus tablas y
+   retira los permisos de `anon` y `authenticated`: nadie puede leerlas con la API de datos de
+   Supabase. El backend se conecta con el rol dueño de las tablas y aplica la autorización por rol
+   y por vendedor antes de cada consulta.
+3. Si el administrador prefiere ejecutar el SQL él mismo, entréguele los archivos de
+   `apps/api/migrations/` en orden.
+
+Toda tabla nueva debe habilitar RLS en su migración: la prueba `test/integration/rls.test.ts`
+falla si alguna queda sin él.
+
 ## Calidad
 
 ```bash

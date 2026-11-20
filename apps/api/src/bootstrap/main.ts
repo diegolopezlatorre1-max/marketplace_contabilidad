@@ -7,7 +7,10 @@ import { createContabilidadModule } from './container';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL, config.NODE_ENV === 'development');
-const pool = createPool(config.DATABASE_URL);
+const pool = createPool(config.DATABASE_URL, {
+  ssl: config.DATABASE_SSL,
+  ca: config.DATABASE_SSL_CA,
+});
 pool.on('error', (err) => logger.error({ err }, 'Error inesperado en el pool de PostgreSQL'));
 
 const { router } = createContabilidadModule({ config, pool, logger });
