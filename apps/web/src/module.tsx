@@ -22,7 +22,7 @@ import { basePathDesde, rutaDelModulo } from './shared/ui/rutas';
 import './shared/ui/styles.css';
 
 export interface ContabilidadModuleProps {
-  /** URL base de la API, p. ej. "/api/v1/contabilidad". */
+  /** URL base de la API, p. ej. "/api/contabilidad". */
   apiBaseUrl: string;
   /** Token del usuario autenticado; lo provee el host (marketplace o modo standalone). */
   getToken: () => string | null;

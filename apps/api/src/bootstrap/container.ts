@@ -75,7 +75,7 @@ export interface ContabilidadModule {
 /**
  * Composition root: el ÚNICO lugar donde se eligen adaptadores y se cablean
  * con los casos de uso. Integrar el módulo al marketplace = llamar a esta
- * función con su configuración y montar `router` en /api/v1/contabilidad.
+ * función con su configuración y montar `router` en /api/contabilidad.
  */
 export function createContabilidadModule(opts: ContabilidadModuleOptions): ContabilidadModule {
   const { config, pool, logger, overrides } = opts;

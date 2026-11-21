@@ -31,7 +31,7 @@ const propiedadesVenta = {
 };
 
 /**
- * Contrato OpenAPI publicado en /api/v1/contabilidad/docs.
+ * Contrato OpenAPI publicado en /docs (y /api/contabilidad/docs); JSON en /openapi.json.
  * Cada sprint agrega aquí los endpoints de sus historias.
  */
 export function buildOpenApi(version: string) {
@@ -47,7 +47,7 @@ export function buildOpenApi(version: string) {
         'En desarrollo (AUTH_MODE=mock) use `mock-admin`, `mock-vendedor`, `mock-comprador` o `mock-sistema` (servicio). ' +
         'Los montos viajan como string decimal con 2 decimales.',
     },
-    servers: [{ url: '/api/v1/contabilidad' }],
+    servers: [{ url: '/api/contabilidad' }],
     tags: [
       { name: 'Sistema', description: 'Estado del módulo y usuario autenticado.' },
       {

@@ -21,7 +21,7 @@ Variables de la colección (pestaña *Variables*):
 
 | Variable | Valor | Uso |
 |----------|-------|-----|
-| `baseUrl` | `http://localhost:3000/api/v1/contabilidad` | URL base |
+| `baseUrl` | `http://localhost:3000/api/contabilidad` | URL base |
 | `tokenAdmin` | `mock-admin` | Operaciones contables, comisiones y auditoría (rol ADMIN) |
 | `tokenVendedor` | `mock-vendedor` | Consulta de su propio estado y pagos (rol VENDEDOR, vendedor V-1) |
 | `tokenComprador` | `mock-comprador` | Sin acceso a funciones contables (rol COMPRADOR) |
@@ -63,10 +63,10 @@ edite el cuerpo de ese request.
 ## Alternativa: colección generada del contrato
 
 Postman también puede generar una colección a partir del contrato OpenAPI que publica
-la API: *Import* → *Link* → `http://localhost:3000/api/v1/contabilidad/openapi.json`.
+la API: *Import* → *Link* → `http://localhost:3000/openapi.json`.
 Trae todos los endpoints y ejemplos, pero sin tokens por rol ni verificaciones. Cambie
-`baseUrl` a `http://localhost:3000/api/v1/contabilidad`.
+`baseUrl` a `http://localhost:3000/api/contabilidad`.
 
 La documentación interactiva (Swagger) está en
-`http://localhost:3000/api/v1/contabilidad/docs`, y en la interfaz web, en el menú
+`http://localhost:3000/docs`, y en la interfaz web, en el menú
 "Documentación API".

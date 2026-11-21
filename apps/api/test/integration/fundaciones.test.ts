@@ -21,9 +21,34 @@ beforeEach(limpiarTablas);
 
 describe('Fase 1 - el módulo atraviesa todas las capas contra PostgreSQL', () => {
   it('GET /health consulta la base de datos real', async () => {
-    const res = await request(crearApp()).get('/api/v1/contabilidad/health');
+    const res = await request(crearApp()).get('/api/contabilidad/health');
     expect(res.status).toBe(200);
     expect(res.body.checks.baseDeDatos).toBe('ok');
+  });
+
+  it('publica /health, Swagger (/docs) y el contrato OpenAPI en la raíz del servicio', async () => {
+    const servidor = crearApp();
+    const health = await request(servidor).get('/health');
+    expect(health.status).toBe(200);
+    expect(health.body.checks.baseDeDatos).toBe('ok');
+
+    const docs = await request(servidor).get('/docs/');
+    expect(docs.status).toBe(200);
+    expect(docs.text).toContain('swagger-ui');
+    const css = await request(servidor).get('/docs/swagger-ui.css');
+    expect(css.status).toBe(200);
+    const sinBarra = await request(servidor).get('/docs');
+    expect(sinBarra.status).toBe(301);
+    expect(sinBarra.headers.location).toBe('/docs/');
+
+    const openapi = await request(servidor).get('/openapi.json');
+    expect(openapi.body.servers).toEqual([{ url: '/api/contabilidad' }]);
+  });
+
+  it('el prefijo anterior /api/v1/contabilidad sigue respondiendo, marcado como obsoleto', async () => {
+    const res = await request(crearApp()).get('/api/v1/contabilidad/health');
+    expect(res.status).toBe(200);
+    expect(res.headers.deprecation).toBe('true');
   });
 
   it('las migraciones crean el esquema contabilidad', async () => {

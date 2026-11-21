@@ -34,7 +34,7 @@ const evento = new MockPaymentsGateway().generarPagoRecibido({
   ...(ordenes?.length ? { ordenes } : {}),
   ...(values.fecha ? { fecha: new Date(values.fecha) } : {}),
 });
-const endpoint = `${values.url}/api/v1/contabilidad/eventos/pago-recibido`;
+const endpoint = `${values.url}/api/contabilidad/eventos/pago-recibido`;
 
 for (let intento = 1; intento <= Number(values.repetir); intento++) {
   let res: Response;

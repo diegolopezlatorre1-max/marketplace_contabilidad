@@ -3,7 +3,7 @@ import { describirTipo, ejemploDe, leerOpenApi, type OpenApiDoc } from './openap
 
 const doc: OpenApiDoc = {
   info: { title: 'API Contabilidad', version: '0.1.0', description: 'Use Bearer' },
-  servers: [{ url: '/api/v1/contabilidad' }],
+  servers: [{ url: '/api/contabilidad' }],
   tags: [
     { name: 'Sistema', description: 'Estado' },
     { name: 'Ventas', description: 'Ventas registradas' },
@@ -86,7 +86,7 @@ describe('leerOpenApi', () => {
       titulo: 'API Contabilidad',
       version: '0.1.0',
       descripcion: 'Use Bearer',
-      baseUrl: '/api/v1/contabilidad',
+      baseUrl: '/api/contabilidad',
     });
   });
 

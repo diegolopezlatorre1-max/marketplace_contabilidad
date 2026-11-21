@@ -36,6 +36,11 @@ const envSchema = z
           return z.NEVER;
         }
       }),
+    // Límite de peticiones por IP y ventana (GUIA_EQUIPO_6, sección 7).
+    RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+    RATE_LIMIT_GENERAL: z.coerce.number().int().positive().default(300),
+    RATE_LIMIT_EVENTOS: z.coerce.number().int().positive().default(3_000),
+    RATE_LIMIT_EXPORTACIONES: z.coerce.number().int().positive().default(20),
     CORS_ORIGINS: z
       .string()
       .default('http://localhost:5173')

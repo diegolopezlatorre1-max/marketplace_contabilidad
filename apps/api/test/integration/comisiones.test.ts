@@ -8,7 +8,7 @@ import { PgUnitOfWork } from '../../src/infrastructure/persistence/postgres/PgUn
 import { limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const URL = '/api/v1/contabilidad/comisiones/configuracion';
+const URL = '/api/contabilidad/comisiones/configuracion';
 // "Hoy" para las pruebas: 2026-10-16 en Bogotá.
 const reloj = { now: () => new Date('2026-10-16T15:00:00Z') };
 

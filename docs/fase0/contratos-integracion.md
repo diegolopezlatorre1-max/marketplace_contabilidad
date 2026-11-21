@@ -11,7 +11,7 @@ Este documento es la versión legible para acordar con los otros equipos.
 
 ## Reglas generales
 
-- Transporte inicial: HTTP POST a `/api/v1/contabilidad/eventos/<tipo>` (webhook),
+- Transporte inicial: HTTP POST a `/api/contabilidad/eventos/<tipo>` (webhook),
   con la cabecera `x-api-key: <clave de servicio>` (cada módulo tiene su clave en
   `SERVICE_API_KEYS`; se autentica como servicio, no como rol de usuario).
   Con un broker de eventos, el payload es el mismo.
