@@ -43,7 +43,7 @@ packages/contracts  Esquemas Zod y tipos compartidos (eventos, errores, DTOs)
 docker compose up --build   # postgres + api (migraciones y seeds) + web
 ```
 
-- Web: http://localhost:8080 · API: http://localhost:3000/api/v1/contabilidad
+- Web: http://localhost:8080 · API: http://localhost:3000/api/contabilidad
 - Si ya hay un PostgreSQL local en el puerto 5432: `POSTGRES_PORT=5433 docker compose up --build`.
 
 ### Sin Docker (desarrollo con recarga en caliente)
@@ -56,11 +56,16 @@ cp apps/api/.env.example apps/api/.env   # ajustar usuario/contraseña de Postgr
 npm run db:create                        # crea la BD de desarrollo y la de pruebas
 npm run db:migrate                       # aplica migraciones
 npm run db:seed                          # datos de ejemplo (apps/api/seeds, idempotentes)
-npm run dev:api                          # http://localhost:3000/api/v1/contabilidad
+npm run dev:api                          # http://localhost:3000/api/contabilidad
 npm run dev:web                          # http://localhost:5173
 ```
 
-- Documentación de la API (Swagger): http://localhost:3000/api/v1/contabilidad/docs
+- Documentación de la API (Swagger): http://localhost:3000/docs · contrato: http://localhost:3000/openapi.json
+- Health check: http://localhost:3000/health
+- El prefijo anterior `/api/v1/contabilidad` sigue respondiendo como alias obsoleto (cabecera
+  `Deprecation: true`) mientras los demás equipos migran a `/api/contabilidad`.
+- Límite de peticiones por IP (`RATE_LIMIT_*`): 300/min general, 3000/min en `/eventos/*` y
+  20/min en `/exportaciones/*`; al superarlo responde 429 `DEMASIADAS_PETICIONES`.
 - Autenticación de desarrollo (`AUTH_MODE=mock`): `Authorization: Bearer mock-admin` (ADMIN),
   `mock-vendedor` (VENDEDOR, vendedor V-1), `mock-comprador` (COMPRADOR) o `mock-sistema`
   (servicio: módulos que envían eventos). El frontend ofrece un login de prueba.
@@ -103,11 +108,11 @@ npm run build
 ```ts
 // Backend (monolito modular):
 const { router } = createContabilidadModule({ config, pool, logger });
-app.use('/api/v1/contabilidad', router);
+app.use('/api/contabilidad', router);
 
 // Frontend:
 <Route path="/contabilidad/*" element={
-  <ContabilidadModule apiBaseUrl="/api/v1/contabilidad" getToken={getToken} />
+  <ContabilidadModule apiBaseUrl="/api/contabilidad" getToken={getToken} />
 } />
 ```
 

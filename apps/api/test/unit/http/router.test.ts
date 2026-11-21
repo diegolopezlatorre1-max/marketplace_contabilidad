@@ -101,12 +101,12 @@ function app(dbOk = true) {
       registrarPagoVendedor: new RegistrarPagoVendedorUseCase(base.uow, reloj),
     },
   });
-  return express().use('/api/v1/contabilidad', router);
+  return express().use('/api/contabilidad', router);
 }
 
 describe('Router del módulo', () => {
   it('GET /health responde 200 sin autenticación', async () => {
-    const res = await request(app()).get('/api/v1/contabilidad/health');
+    const res = await request(app()).get('/api/contabilidad/health');
     expect(res.status).toBe(200);
     expect(res.body).toMatchObject({
       status: 'ok',
@@ -118,20 +118,20 @@ describe('Router del módulo', () => {
   });
 
   it('GET /health responde 503 si la base de datos no está disponible', async () => {
-    const res = await request(app(false)).get('/api/v1/contabilidad/health');
+    const res = await request(app(false)).get('/api/contabilidad/health');
     expect(res.status).toBe(503);
     expect(res.body.status).toBe('degradado');
   });
 
   it('propaga un correlation-id recibido', async () => {
     const res = await request(app())
-      .get('/api/v1/contabilidad/health')
+      .get('/api/contabilidad/health')
       .set('x-correlation-id', 'abc-123');
     expect(res.headers['x-correlation-id']).toBe('abc-123');
   });
 
   it('GET /me exige autenticación con formato problem+json', async () => {
-    const res = await request(app()).get('/api/v1/contabilidad/me');
+    const res = await request(app()).get('/api/contabilidad/me');
     expect(res.status).toBe(401);
     expect(res.headers['content-type']).toContain('application/problem+json');
     expect(res.body).toMatchObject({ status: 401, code: 'NO_AUTENTICADO' });
@@ -140,14 +140,14 @@ describe('Router del módulo', () => {
 
   it('GET /me rechaza tokens desconocidos', async () => {
     const res = await request(app())
-      .get('/api/v1/contabilidad/me')
+      .get('/api/contabilidad/me')
       .set('authorization', 'Bearer token-falso');
     expect(res.status).toBe(401);
   });
 
   it('GET /me incluye el vendedor del usuario con rol VENDEDOR', async () => {
     const res = await request(app())
-      .get('/api/v1/contabilidad/me')
+      .get('/api/contabilidad/me')
       .set('authorization', 'Bearer mock-vendedor');
     expect(res.body).toEqual({
       id: 'u-vendedor',
@@ -159,7 +159,7 @@ describe('Router del módulo', () => {
 
   it('GET /me devuelve el usuario y sus roles', async () => {
     const res = await request(app())
-      .get('/api/v1/contabilidad/me')
+      .get('/api/contabilidad/me')
       .set('authorization', 'Bearer mock-admin');
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -171,14 +171,14 @@ describe('Router del módulo', () => {
 
   it('responde 404 problem+json en rutas inexistentes', async () => {
     const res = await request(app())
-      .get('/api/v1/contabilidad/no-existe')
+      .get('/api/contabilidad/no-existe')
       .set('authorization', 'Bearer mock-admin');
     expect(res.status).toBe(404);
     expect(res.body.code).toBe('NO_ENCONTRADO');
   });
 
   it('publica el contrato OpenAPI', async () => {
-    const res = await request(app()).get('/api/v1/contabilidad/openapi.json');
+    const res = await request(app()).get('/api/contabilidad/openapi.json');
     expect(res.status).toBe(200);
     expect(res.body.openapi).toBe('3.0.3');
     expect(Object.keys(res.body.paths)).toContain('/health');
@@ -206,7 +206,7 @@ describe('Router del módulo', () => {
 });
 
 describe('Rutas de comisión', () => {
-  const URL = '/api/v1/contabilidad/comisiones/configuracion';
+  const URL = '/api/contabilidad/comisiones/configuracion';
   const valido = { porcentaje: '12.5', vigenteDesde: '2026-10-16' };
 
   it('GET exige autenticación', async () => {
@@ -262,7 +262,7 @@ describe('Rutas de comisión', () => {
 });
 
 describe('Rutas de ventas', () => {
-  const EVENTOS = '/api/v1/contabilidad/eventos/orden-confirmada';
+  const EVENTOS = '/api/contabilidad/eventos/orden-confirmada';
   const evento = {
     eventId: 'evt-001',
     version: 1,
@@ -315,7 +315,7 @@ describe('Rutas de ventas', () => {
     expect(repetido.body.resultado).toBe('YA_PROCESADO');
 
     const ventas = await request(servidor)
-      .get('/api/v1/contabilidad/ventas?vendedorId=V-1')
+      .get('/api/contabilidad/ventas?vendedorId=V-1')
       .set('authorization', 'Bearer mock-admin');
     expect(ventas.status).toBe(200);
     expect(ventas.body).toMatchObject({ page: 1, size: 50, total: 1 });
@@ -335,7 +335,7 @@ describe('Rutas de ventas', () => {
     const servidor = app();
     await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
     const contador = (url: string) =>
-      request(servidor).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
+      request(servidor).get(`/api/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     expect((await contador('/periodos')).body).toEqual({ periodos: ['2026-10-Q1'] });
     const cuentas = await contador('/cuentas-por-pagar?periodo=2026-10-Q1&estado=PENDIENTE');
@@ -359,7 +359,7 @@ describe('Rutas de ventas', () => {
     const servidor = app();
     await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
     const contador = (url: string) =>
-      request(servidor).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
+      request(servidor).get(`/api/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     const { id } = (await contador('/ventas')).body.items[0];
     const detalle = await contador(`/ventas/${id}`);
@@ -385,7 +385,7 @@ describe('Rutas de ventas', () => {
     const servidor = app();
     await request(servidor).post(EVENTOS).set('authorization', 'Bearer mock-sistema').send(evento);
     const contador = (url: string) =>
-      request(servidor).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
+      request(servidor).get(`/api/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     const resumen = await contador('/cuentas-por-pagar/resumen?periodo=2026-10-Q1');
     expect(resumen.status).toBe(200);
@@ -406,30 +406,30 @@ describe('Rutas de ventas', () => {
   it('GET /cuentas-por-pagar valida filtros y rol', async () => {
     for (const q of ['?periodo=2026-10-Q3', '?estado=PAGADA']) {
       const res = await request(app())
-        .get(`/api/v1/contabilidad/cuentas-por-pagar${q}`)
+        .get(`/api/contabilidad/cuentas-por-pagar${q}`)
         .set('authorization', 'Bearer mock-admin');
       expect(res.status, q).toBe(400);
     }
     const sistema = await request(app())
-      .get('/api/v1/contabilidad/cuentas-por-pagar')
+      .get('/api/contabilidad/cuentas-por-pagar')
       .set('authorization', 'Bearer mock-sistema');
     expect(sistema.status).toBe(403);
   });
 
   it('GET /ventas valida filtros y rol', async () => {
     const malFiltro = await request(app())
-      .get('/api/v1/contabilidad/ventas?desde=05-10-2026')
+      .get('/api/contabilidad/ventas?desde=05-10-2026')
       .set('authorization', 'Bearer mock-admin');
     expect(malFiltro.status).toBe(400);
     const sistema = await request(app())
-      .get('/api/v1/contabilidad/ventas')
+      .get('/api/contabilidad/ventas')
       .set('authorization', 'Bearer mock-sistema');
     expect(sistema.status).toBe(403);
   });
 });
 
 describe('Rutas de conciliación', () => {
-  const BASE = '/api/v1/contabilidad';
+  const BASE = '/api/contabilidad';
   const orden = {
     eventId: 'evt-o1',
     version: 1,
@@ -577,7 +577,7 @@ describe('Rutas de conciliación', () => {
 });
 
 describe('Rutas de ajustes (HU-CON-06)', () => {
-  const BASE = '/api/v1/contabilidad';
+  const BASE = '/api/contabilidad';
   const orden = {
     eventId: 'evt-001',
     version: 1,
@@ -706,7 +706,7 @@ describe('Rutas de ajustes (HU-CON-06)', () => {
 });
 
 describe('Rutas de pagos a vendedores (HU-CON-10)', () => {
-  const BASE = '/api/v1/contabilidad';
+  const BASE = '/api/contabilidad';
   const orden = {
     eventId: 'evt-001',
     version: 1,
@@ -810,7 +810,7 @@ describe('Rutas de pagos a vendedores (HU-CON-10)', () => {
 });
 
 describe('Ruta del estado por vendedor (HU-CON-07)', () => {
-  const BASE = '/api/v1/contabilidad';
+  const BASE = '/api/contabilidad';
   const orden = {
     eventId: 'evt-001',
     version: 1,
@@ -865,7 +865,7 @@ describe('Ruta del estado por vendedor (HU-CON-07)', () => {
 });
 
 describe('Ruta de auditoría (HU-CON-11)', () => {
-  const BASE = '/api/v1/contabilidad';
+  const BASE = '/api/contabilidad';
 
   it('GET /auditoria lista los movimientos solo para el administrador financiero', async () => {
     const servidor = app();
@@ -902,7 +902,7 @@ describe('Ruta de auditoría (HU-CON-11)', () => {
 });
 
 describe('Ruta de exportación a Excel (HU-CON-08)', () => {
-  const BASE = '/api/v1/contabilidad';
+  const BASE = '/api/contabilidad';
 
   it('GET /exportaciones/excel descarga un .xlsx con el nombre del rango', async () => {
     const res = await request(app())
@@ -935,7 +935,7 @@ describe('Ruta de exportación a Excel (HU-CON-08)', () => {
 });
 
 describe('Ruta del reporte de ingresos (HU-CON-05)', () => {
-  const URL = '/api/v1/contabilidad/reportes/ingresos';
+  const URL = '/api/contabilidad/reportes/ingresos';
   const orden = {
     eventId: 'evt-001',
     version: 1,
@@ -951,7 +951,7 @@ describe('Ruta del reporte de ingresos (HU-CON-05)', () => {
   it('GET entrega totales, control y detalle por día para el contador y el administrador', async () => {
     const servidor = app();
     await request(servidor)
-      .post('/api/v1/contabilidad/eventos/orden-confirmada')
+      .post('/api/contabilidad/eventos/orden-confirmada')
       .set('authorization', 'Bearer mock-sistema')
       .send(orden);
     for (const token of ['mock-admin', 'mock-admin']) {
@@ -1041,7 +1041,7 @@ describe('errorHandler', () => {
 });
 
 describe('Autenticación de módulos por clave de servicio (x-api-key)', () => {
-  const BASE = '/api/v1/contabilidad';
+  const BASE = '/api/contabilidad';
   const orden = {
     eventId: 'evt-key-1',
     version: 1,

@@ -35,7 +35,7 @@ const lista = (v?: string) =>
     .map((s) => s.trim())
     .filter(Boolean);
 const gateway = new MockOrdersGateway();
-const endpoint = `${values.url}/api/v1/contabilidad/eventos/orden-confirmada`;
+const endpoint = `${values.url}/api/contabilidad/eventos/orden-confirmada`;
 
 for (let i = 0; i < Number(values.cantidad); i++) {
   const vendedores = lista(values.vendedores);

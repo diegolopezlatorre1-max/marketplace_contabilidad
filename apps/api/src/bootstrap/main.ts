@@ -14,7 +14,17 @@ const pool = createPool(config.DATABASE_URL, {
 pool.on('error', (err) => logger.error({ err }, 'Error inesperado en el pool de PostgreSQL'));
 
 const { router } = createContabilidadModule({ config, pool, logger });
-const app = createHttpApp({ router, logger, corsOrigins: config.CORS_ORIGINS });
+const app = createHttpApp({
+  router,
+  logger,
+  corsOrigins: config.CORS_ORIGINS,
+  rateLimit: {
+    windowMs: config.RATE_LIMIT_WINDOW_MS,
+    general: config.RATE_LIMIT_GENERAL,
+    eventos: config.RATE_LIMIT_EVENTOS,
+    exportaciones: config.RATE_LIMIT_EXPORTACIONES,
+  },
+});
 
 const server = app.listen(config.PORT, () => {
   logger.info(

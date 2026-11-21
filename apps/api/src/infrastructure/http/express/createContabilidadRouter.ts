@@ -84,7 +84,7 @@ export interface RouterDeps {
 
 /**
  * Router autocontenido del módulo (validación, auth, errores incluidos).
- * Se monta en /api/v1/contabilidad tanto en el servidor propio como dentro de
+ * Se monta en /api/contabilidad tanto en el servidor propio como dentro de
  * la aplicación del marketplace (monolito modular), sin cambios.
  */
 export function createContabilidadRouter(deps: RouterDeps): Router {

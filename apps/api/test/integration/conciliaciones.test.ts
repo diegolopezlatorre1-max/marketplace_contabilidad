@@ -8,7 +8,7 @@ import { MockPaymentsGateway } from '../../src/infrastructure/integration/paymen
 import { limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const BASE = '/api/v1/contabilidad';
+const BASE = '/api/contabilidad';
 const reloj = { now: () => new Date('2026-10-16T15:00:00Z') };
 const ordenes = new MockOrdersGateway(reloj.now);
 const pagos = new MockPaymentsGateway(reloj.now);

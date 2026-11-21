@@ -7,7 +7,7 @@ import { MockOrdersGateway } from '../../src/infrastructure/integration/orders/M
 import { limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const BASE = '/api/v1/contabilidad';
+const BASE = '/api/contabilidad';
 const reloj = { now: () => new Date('2026-10-31T20:00:00Z') };
 const ordenes = new MockOrdersGateway(reloj.now);
 
