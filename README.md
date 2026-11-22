@@ -31,9 +31,23 @@ apps/api            API REST (Node + Express + TypeScript), arquitectura hexagon
   src/infrastructure  adaptadores: Express, PostgreSQL, auth, integraciones
   src/bootstrap       composition root (createContabilidadModule) y main
   migrations          migraciones SQL versionadas
-apps/web            Frontend React (Vite); se monta en el marketplace como <ContabilidadModule/>
+apps/web            Frontend React (Vite) de demostración — CONGELADO, fuera del entregable (ver abajo)
 packages/contracts  Esquemas Zod y tipos compartidos (eventos, errores, DTOs)
 ```
+
+### Alcance: solo backend (`apps/web` congelado)
+
+Según [`docs/integracion/GUIA_EQUIPO_6.md`](docs/integracion/GUIA_EQUIPO_6.md) (sección 4), **el
+alcance del módulo es el backend; no se construye interfaz gráfica**. El entregable es la API
+(`apps/api`), su contrato OpenAPI (`/docs`, `/openapi.json`) y los contratos de eventos. La interfaz
+la construye el marketplace consumiendo la API con el access token de Supabase.
+
+`apps/web` se conserva **congelado**:
+
+- No recibe funcionalidades nuevas ni se adapta a los cambios del backend (roles de Vendedor y
+  Comprador, login con Supabase, escrow). Solo se mantiene compilando para que la CI siga pasando.
+- Sirve para demostrar la API en local con `AUTH_MODE=mock` (login de prueba como Administrador).
+- No debe desplegarse ni presentarse como parte del módulo.
 
 ## Puesta en marcha
 
@@ -43,7 +57,7 @@ packages/contracts  Esquemas Zod y tipos compartidos (eventos, errores, DTOs)
 docker compose up --build   # postgres + api (migraciones y seeds) + web
 ```
 
-- Web: http://localhost:8080 · API: http://localhost:3000/api/contabilidad
+- API: http://localhost:3000/api/contabilidad · Web de demostración (congelada): http://localhost:8080
 - Si ya hay un PostgreSQL local en el puerto 5432: `POSTGRES_PORT=5433 docker compose up --build`.
 
 ### Sin Docker (desarrollo con recarga en caliente)
@@ -57,7 +71,7 @@ npm run db:create                        # crea la BD de desarrollo y la de prue
 npm run db:migrate                       # aplica migraciones
 npm run db:seed                          # datos de ejemplo (apps/api/seeds, idempotentes)
 npm run dev:api                          # http://localhost:3000/api/contabilidad
-npm run dev:web                          # http://localhost:5173
+npm run dev:web                          # demo congelada (opcional): http://localhost:5173
 ```
 
 - Documentación de la API (Swagger): http://localhost:3000/docs · contrato: http://localhost:3000/openapi.json
