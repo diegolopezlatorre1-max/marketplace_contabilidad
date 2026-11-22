@@ -9,6 +9,7 @@ export * from './escrow';
 export * from './estadoVendedor';
 export * from './pagosVendedor';
 export * from './events';
+export * from './eventosSalientes';
 export * from './reportes';
 export * from './system';
 export * from './ventas';

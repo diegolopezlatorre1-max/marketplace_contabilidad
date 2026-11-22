@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { parseServiceApiKeys } from '../integration/auth/ApiKeyServiceAuth';
+import { parseDestinosOutbox } from '../messaging/OutboxRelay';
 import { MODOS_SSL } from '../persistence/postgres/pool';
 
 const opcional = z
@@ -36,6 +37,25 @@ const envSchema = z
           return z.NEVER;
         }
       }),
+    // Relay del outbox: a dónde se entrega cada tipo de evento ("tipo=https://...,*=https://...").
+    // Sin destinos, los eventos quedan PENDIENTES en el outbox.
+    OUTBOX_DESTINOS: z
+      .string()
+      .optional()
+      .transform((v, ctx) => {
+        try {
+          return parseDestinosOutbox(v);
+        } catch (e) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: (e as Error).message });
+          return z.NEVER;
+        }
+      }),
+    // Clave que se envía en x-api-key a los destinos (si la exigen). Secreto.
+    OUTBOX_API_KEY: opcional,
+    OUTBOX_INTERVALO_MS: z.coerce.number().int().positive().default(5_000),
+    OUTBOX_LOTE: z.coerce.number().int().positive().max(500).default(20),
+    OUTBOX_MAX_INTENTOS: z.coerce.number().int().positive().default(8),
+    OUTBOX_TIMEOUT_MS: z.coerce.number().int().positive().default(5_000),
     // Límite de peticiones por IP y ventana (GUIA_EQUIPO_6, sección 7).
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
     RATE_LIMIT_GENERAL: z.coerce.number().int().positive().default(300),

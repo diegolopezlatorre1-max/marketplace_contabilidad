@@ -93,6 +93,7 @@ export async function guardarConciliacion(
   if (conciliacion.estado === 'CONCILIADA') {
     await repos.outbox.publicar({
       tipo: EVENTO_CONCILIACION_CERRADA,
+      ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
       payload: {
         conciliacionId: datos.id,
         pagoId: datos.pagoId,

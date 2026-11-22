@@ -55,6 +55,7 @@ import { PgEstadoVendedorRepository } from '../infrastructure/persistence/postgr
 import { PgAuditoriaRepository } from '../infrastructure/persistence/postgres/PgAuditoriaRepository';
 import { PgEscrowRepository } from '../infrastructure/persistence/postgres/PgEscrowRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
+import { PgOutboxMonitor } from '../infrastructure/persistence/postgres/PgOutboxMonitor';
 import { PgReporteIngresosRepository } from '../infrastructure/persistence/postgres/PgReporteIngresosRepository';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
 import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWork';
@@ -95,7 +96,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const vendedores = new MockSellersGateway();
 
   // Casos de uso / consultas
-  const obtenerEstado = new ObtenerEstadoModulo(dbHealth, clock);
+  const obtenerEstado = new ObtenerEstadoModulo(dbHealth, clock, new PgOutboxMonitor(pool));
   const obtenerComision = new ObtenerComisionVigenteQuery(configuracionComision, clock);
   const configurarComision = new ConfigurarComisionUseCase(unitOfWork, clock);
   const registrarVenta = new RegistrarVentaConfirmadaUseCase(unitOfWork, clock);

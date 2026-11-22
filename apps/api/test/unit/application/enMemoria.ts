@@ -337,6 +337,16 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
         const copia = { ...e.datos };
         db.datos.escrow = [...db.datos.escrow.filter((x) => x.pedidoId !== copia.pedidoId), copia];
       },
+      pedidosRetenidos: async (vendedorId, ahora) => {
+        const retenidos = new Set<string>();
+        for (const { venta } of db.datos.ventas) {
+          if (venta.vendedorId !== vendedorId) continue;
+          const d = db.datos.escrow.find((e) => e.pedidoId === venta.numeroOrden);
+          if (!d || EscrowPedido.reconstituir(d).retieneElPago(ahora))
+            retenidos.add(venta.numeroOrden);
+        }
+        return retenidos;
+      },
       netoRetenidoPorPeriodo: async (vendedorId, ahora) => {
         const retenido = new Map<string, Money>();
         for (const { venta } of db.datos.ventas) {

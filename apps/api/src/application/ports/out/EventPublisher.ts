@@ -1,6 +1,8 @@
 export interface EventoDeIntegracion {
   tipo: string;
   payload: Record<string, unknown>;
+  /** x-correlation-id de la petición que originó el evento (trazabilidad entre módulos). */
+  correlationId?: string;
 }
 
 /**

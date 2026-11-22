@@ -96,6 +96,7 @@ export class ActualizarEscrowUseCase implements UseCase<ActualizarEscrowEntrada,
       });
       await repos.outbox.publicar({
         tipo: EVENTO_ESCROW_ACTUALIZADO,
+        ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
         payload: { accion: entrada.accion, ...despues },
       });
       return { ...despues, resultado: 'ACTUALIZADO' };

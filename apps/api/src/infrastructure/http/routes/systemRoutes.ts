@@ -20,6 +20,7 @@ export function healthRoutes({ obtenerEstado, version, integrationMode }: Deps):
       version,
       integrationMode,
       checks: estado.checks,
+      ...(estado.outbox ? { outbox: estado.outbox } : {}),
       fecha: estado.fecha.toISOString(),
     };
     res.status(estado.status === 'ok' ? 200 : 503).json(body);

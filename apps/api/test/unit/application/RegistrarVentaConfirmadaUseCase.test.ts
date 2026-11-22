@@ -82,6 +82,8 @@ describe('RegistrarVentaConfirmadaUseCase', () => {
     expect(db.datos.outbox).toEqual([
       {
         tipo: 'contabilidad.venta.registrada',
+        // El evento conserva el x-correlation-id de la petición (trazabilidad entre módulos).
+        correlationId: 'corr-1',
         payload: expect.objectContaining({
           ventaId: 'venta-1',
           numeroOrden: 'ORD-1001',

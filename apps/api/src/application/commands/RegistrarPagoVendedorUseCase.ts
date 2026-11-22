@@ -5,6 +5,7 @@ import type { ContextoEjecucion, UseCase } from '../ports/in/UseCase';
 import type { Clock } from '../ports/out/Clock';
 import type { PagoVendedorRegistrado } from '../ports/out/PagoVendedorRepository';
 import type { UnitOfWork } from '../ports/out/UnitOfWork';
+import type { PagoVendedorRegistradoV2 } from '@contabilidad/contracts';
 import { exigirRol } from '../security';
 
 export const EVENTO_PAGO_VENDEDOR_REGISTRADO = 'contabilidad.pago-vendedor.registrado';
@@ -111,17 +112,30 @@ export class RegistrarPagoVendedorUseCase implements UseCase<
         valoresNuevos: { pago: json },
         ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
       });
+      // HU-NOT-05: el evento identifica al vendedor, el monto y las órdenes asociadas: las de las
+      // quincenas a las que se aplicó el pago, sin las que el escrow aún retiene.
+      const retenidos = await repos.escrow.pedidosRetenidos(vendedorId, ahora);
+      const ordenesDe = (periodo: string): string[] =>
+        (cuentas.find((c) => c.periodo.codigo === periodo)?.numerosOrden ?? [])
+          .filter((o) => !retenidos.has(o))
+          .sort();
+      const cuentasEvento = json.aplicaciones.map((a) => ({ ...a, ordenes: ordenesDe(a.periodo) }));
+      const evento: PagoVendedorRegistradoV2 = {
+        version: 2,
+        pagoId: pago.id,
+        vendedorId: pago.vendedorId,
+        fecha: json.fecha,
+        valor: json.valor,
+        moneda: 'COP',
+        saldoAFavorAplicado: json.saldoAFavorAplicado,
+        referencia: pago.referencia,
+        ordenes: [...new Set(cuentasEvento.flatMap((c) => c.ordenes))].sort(),
+        cuentas: cuentasEvento,
+      };
       await repos.outbox.publicar({
         tipo: EVENTO_PAGO_VENDEDOR_REGISTRADO,
-        payload: {
-          pagoId: pago.id,
-          vendedorId: pago.vendedorId,
-          fecha: json.fecha,
-          valor: json.valor,
-          saldoAFavorAplicado: json.saldoAFavorAplicado,
-          referencia: pago.referencia,
-          cuentas: json.aplicaciones,
-        },
+        ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
+        payload: { ...evento },
       });
 
       return aPagoVendedorRegistrado(pago, ahora);

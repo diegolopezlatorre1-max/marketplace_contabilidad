@@ -144,6 +144,7 @@ export class RegistrarVentaConfirmadaUseCase implements UseCase<
     });
     await repos.outbox.publicar({
       tipo: EVENTO_VENTA_REGISTRADA,
+      ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
       payload: {
         ventaId: venta.id,
         numeroOrden: venta.numeroOrden,

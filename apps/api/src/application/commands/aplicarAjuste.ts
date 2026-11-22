@@ -94,6 +94,7 @@ export async function aplicarAjuste(
   });
   await repos.outbox.publicar({
     tipo: EVENTO_AJUSTE_REGISTRADO,
+    ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
     payload: {
       ajusteId: ajuste.id,
       ventaId: ajuste.ventaId,
