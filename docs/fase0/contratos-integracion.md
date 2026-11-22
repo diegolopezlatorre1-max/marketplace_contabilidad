@@ -84,6 +84,29 @@ Este documento es la versión legible para acordar con los otros equipos.
 **Preguntas para el equipo de Pagos (se cierran antes del Sprint 2):** ¿el valor viene
 neto de costos de la pasarela? ¿Envían los costos por separado?
 
+## Marketplace → Contabilidad: escrow (GUIA_EQUIPO_6)
+
+Custodia del dinero de cada pedido entre la entrega y el pago al vendedor. `pedido_id` es el
+`numeroOrden` del evento `orden.confirmada`. Todas las operaciones son idempotentes: repetirlas
+responde `200` con `resultado: "SIN_CAMBIOS"`.
+
+| Ruta | Quién | Cuerpo (opcional) | Efecto |
+|------|-------|-------------------|--------|
+| `POST /api/contabilidad/escrow/marcar-entrega/{pedido_id}` | **Órdenes** (servicio, `x-api-key`) | `{ "fechaEntrega": "<ISO 8601>" }` (por defecto, ahora) | Retención de 72 h desde la entrega; **se libera sola** al cumplirse, sin otra llamada |
+| `POST /api/contabilidad/escrow/bloquear/{pedido_id}` | Módulo por definir (servicio, `x-api-key`) | `{ "motivo": "PQR-15" }` | Bloquea el pago mientras haya PQR |
+| `POST /api/contabilidad/escrow/desbloquear/{pedido_id}` | ADMIN de Contabilidad | `{ "motivo": "..." }` (**obligatorio**) | Desbloqueo manual; vuelve a la retención original o queda liberado |
+| `GET /api/contabilidad/escrow/{pedido_id}` | ADMIN | — | Consulta el estado |
+
+Estados: `SIN_ENTREGA`, `RETENIDO` (menos de 72 h desde la entrega), `LIBERADO` y `BLOQUEADO`.
+
+Efecto en HU-CON-10: **solo se paga el neto de pedidos `LIBERADO`** (entregados hace 72 h o más y
+sin bloqueo). Un pedido sin entrega registrada (con o sin registro de escrow), `RETENIDO` o
+`BLOQUEADO` no se puede usar en un pago a vendedor; si el pago cabe en la deuda pero no en lo
+disponible responde `422 SALDO_RETENIDO_ESCROW`. **Mientras Órdenes no llame `marcar-entrega`, no
+se le puede pagar ningún pedido al vendedor.**
+
+Pendiente de confirmar: qué módulo llamará `bloquear`.
+
 ## Contabilidad → Módulo de Vendedores (Sprint 1)
 
 `GET /vendedores/{id}` → `{ id, razonSocial, nit, datosPago: { banco, tipoCuenta, numeroCuenta } }`
@@ -102,6 +125,7 @@ neto de costos de la pasarela? ¿Envían los costos por separado?
 | `contabilidad.ajuste.registrado` | Ajuste por devolución o cancelación |
 | `contabilidad.pago-vendedor.registrado` | Pago a vendedor registrado |
 | `contabilidad.conciliacion.cerrada` | Conciliación marcada como conciliada |
+| `contabilidad.escrow.actualizado` | Cambio de estado del escrow de un pedido (entrega, bloqueo, desbloqueo) |
 
 ## Autenticación (Administración)
 

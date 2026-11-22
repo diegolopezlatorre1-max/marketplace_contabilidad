@@ -8,7 +8,7 @@ import { ReporteIngresosQuery } from '../../../src/application/queries/ReporteIn
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
 import { ExcelJsExporter } from '../../../src/infrastructure/integration/spreadsheet/ExcelJsExporter';
 import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
-import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
+import { comisionGlobal, crearBaseEnMemoria, liberarEscrow } from './enMemoria';
 
 const sistema: Actor = {
   id: 'sistema-marketplace',
@@ -44,6 +44,8 @@ async function entorno() {
       { actor: sistema },
     );
   }
+  // Escrow: los pedidos ya se entregaron hace más de 72 h (LIBERADOS).
+  liberarEscrow(base.db);
   await new RegistrarPagoVendedorUseCase(base.uow, reloj, id).execute(
     { vendedorId: 'V-1', valor: '90000.00', referencia: 'TRF-1' },
     { actor: contador },

@@ -63,6 +63,7 @@ describe('Fase 1 - el módulo atraviesa todas las capas contra PostgreSQL', () =
       'conciliacion_detalle',
       'configuracion_comision',
       'cuenta_por_pagar',
+      'escrow_pedido',
       'evento_ignorado',
       'inbox',
       'outbox',

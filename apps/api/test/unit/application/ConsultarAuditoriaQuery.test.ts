@@ -3,7 +3,7 @@ import { RegistrarPagoVendedorUseCase } from '../../../src/application/commands/
 import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import { ConsultarAuditoriaQuery } from '../../../src/application/queries/ConsultarAuditoriaQuery';
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
-import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
+import { comisionGlobal, crearBaseEnMemoria, liberarEscrow } from './enMemoria';
 
 const sistema: Actor = {
   id: 'sistema-marketplace',
@@ -31,6 +31,8 @@ async function entorno() {
     },
     { actor: sistema },
   );
+  // Escrow: los pedidos ya se entregaron hace más de 72 h (LIBERADOS).
+  liberarEscrow(base.db);
   await new RegistrarPagoVendedorUseCase(base.uow, reloj, () => 'pago-1').execute(
     { vendedorId: 'V-1', valor: '40000.00', referencia: 'TRF-1' },
     { actor: contador, correlationId: 'corr-1' },

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createContabilidadModule } from '../../src/bootstrap/container';
 import { createHttpApp } from '../../src/infrastructure/http/express/createHttpApp';
 import { MockOrdersGateway } from '../../src/infrastructure/integration/orders/MockOrdersGateway';
-import { limpiarTablas, testPool } from './db';
+import { liberarEscrow, limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
 const BASE = '/api/contabilidad';
@@ -45,6 +45,7 @@ beforeEach(async () => {
       fecha: new Date('2026-10-05T14:00:00Z'),
     }),
   );
+  await liberarEscrow(['ORD-1']);
   await post('/pagos-vendedor', 'mock-admin', {
     vendedorId: 'V-1',
     valor: '40000.00',

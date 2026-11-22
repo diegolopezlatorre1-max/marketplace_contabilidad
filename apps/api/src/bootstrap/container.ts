@@ -5,6 +5,7 @@ import type { AuthContext } from '../application/ports/out/AuthContext';
 import type { Clock } from '../application/ports/out/Clock';
 import type { UnitOfWork } from '../application/ports/out/UnitOfWork';
 import { ConciliarPagoUseCase } from '../application/commands/ConciliarPagoUseCase';
+import { ActualizarEscrowUseCase } from '../application/commands/ActualizarEscrowUseCase';
 import { ConfigurarComisionUseCase } from '../application/commands/ConfigurarComisionUseCase';
 import { ImportarPagosRecibidosUseCase } from '../application/commands/ImportarPagosRecibidosUseCase';
 import { RegistrarPagoRecibidoUseCase } from '../application/commands/RegistrarPagoRecibidoUseCase';
@@ -29,6 +30,7 @@ import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentas
 import { ListarPeriodosQuery } from '../application/queries/ListarPeriodosQuery';
 import { ListarVentasQuery } from '../application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../application/queries/ObtenerComisionVigenteQuery';
+import { ObtenerEscrowQuery } from '../application/queries/ObtenerEscrowQuery';
 import { ObtenerEstadoModulo } from '../application/queries/ObtenerEstadoModulo';
 import { ObtenerVentaQuery } from '../application/queries/ObtenerVentaQuery';
 import { ReporteIngresosQuery } from '../application/queries/ReporteIngresosQuery';
@@ -51,6 +53,7 @@ import { PgPagoRecibidoRepository } from '../infrastructure/persistence/postgres
 import { PgPagoVendedorRepository } from '../infrastructure/persistence/postgres/PgPagoVendedorRepository';
 import { PgEstadoVendedorRepository } from '../infrastructure/persistence/postgres/PgEstadoVendedorRepository';
 import { PgAuditoriaRepository } from '../infrastructure/persistence/postgres/PgAuditoriaRepository';
+import { PgEscrowRepository } from '../infrastructure/persistence/postgres/PgEscrowRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
 import { PgReporteIngresosRepository } from '../infrastructure/persistence/postgres/PgReporteIngresosRepository';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
@@ -111,6 +114,9 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const registrarPagoVendedor = new RegistrarPagoVendedorUseCase(unitOfWork, clock);
   const pagosVendedor = new PgPagoVendedorRepository(pool);
   const listarPagosVendedor = new ListarPagosVendedorQuery(pagosVendedor);
+  // Escrow (GUIA_EQUIPO_6): retención de 72 h tras la entrega y bloqueo por PQR.
+  const actualizarEscrow = new ActualizarEscrowUseCase(unitOfWork, clock);
+  const obtenerEscrow = new ObtenerEscrowQuery(new PgEscrowRepository(pool), clock);
   // HU-CON-08: exportación a Excel; reutiliza la consulta del reporte (mismos números).
   const exportarExcel = new ExportarExcelUseCase(
     reporteIngresos,
@@ -161,6 +167,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       estadoVendedor,
       consultarAuditoria,
       exportarExcel,
+      obtenerEscrow,
     },
     commands: {
       configurarComision,
@@ -171,6 +178,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       registrarAjuste,
       procesarAjusteOrden,
       registrarPagoVendedor,
+      actualizarEscrow,
     },
   });
 

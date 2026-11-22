@@ -5,7 +5,7 @@ import { DomainError } from '../domain/shared';
  *   ADMIN     → configura comisiones, consulta auditoría y opera las funciones contables.
  *   VENDEDOR  → consulta solo su propio estado, cuentas y pagos recibidos.
  *   COMPRADOR → no accede a funciones internas de contabilidad.
- * Los módulos que envían eventos (Órdenes, Pagos, PQR) no son roles: se autentican como
+ * Los módulos que envían eventos (Órdenes, Pagos) no son roles: se autentican como
  * servicio (ver Actor.servicio).
  */
 export const ROLES = ['ADMIN', 'COMPRADOR', 'VENDEDOR'] as const;

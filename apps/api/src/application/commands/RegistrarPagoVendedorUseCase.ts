@@ -32,8 +32,9 @@ export class ReferenciaPagoDuplicadaError extends DomainError {
 }
 
 /**
- * HU-CON-10: el contador registra el pago hecho a un vendedor. En una sola transacción descuenta
- * el saldo a favor del marketplace, aplica el pago FIFO a sus cuentas (D-06), guarda el pago con
+ * HU-CON-10: el ADMIN registra el pago hecho a un vendedor. En una sola transacción descuenta
+ * el saldo a favor del marketplace, aplica el pago FIFO a sus cuentas (D-06) sin tocar el neto
+ * retenido por escrow (pedidos sin entrega, entregados hace menos de 72 h o con PQR), guarda el pago con
  * su detalle, deja auditoría y publica contabilidad.pago-vendedor.registrado.
  */
 export class RegistrarPagoVendedorUseCase implements UseCase<
@@ -68,6 +69,8 @@ export class RegistrarPagoVendedorUseCase implements UseCase<
       }
       const cuentas = await repos.cuentasPorPagar.pendientesParaActualizar(vendedorId);
       const saldoAFavor = await repos.pagosVendedor.saldoAFavorDisponible(vendedorId);
+      // Escrow: solo se paga el neto de pedidos LIBERADOS (entregados hace 72 h o más, sin PQR).
+      const retenidoPorPeriodo = await repos.escrow.netoRetenidoPorPeriodo(vendedorId, ahora);
       const antes = cuentas.map((c) => ({
         periodo: c.periodo.codigo,
         valorPagado: c.valorPagado.toString(),
@@ -84,6 +87,7 @@ export class RegistrarPagoVendedorUseCase implements UseCase<
         soporte: entrada.soporte,
         cuentas,
         saldoAFavorDisponible: saldoAFavor,
+        retenidoPorPeriodo,
         registradoPor: ctx.actor.id,
         ahora,
       });

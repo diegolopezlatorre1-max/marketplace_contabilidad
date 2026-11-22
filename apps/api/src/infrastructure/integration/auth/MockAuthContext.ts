@@ -6,7 +6,7 @@ import type { Actor } from '../../../application/security';
  *   Authorization: Bearer mock-admin       (rol ADMIN)
  *   Authorization: Bearer mock-vendedor    (rol VENDEDOR, vendedor V-1)
  *   Authorization: Bearer mock-comprador   (rol COMPRADOR)
- *   Authorization: Bearer mock-sistema     (servicio: módulos Órdenes, Pagos, PQR)
+ *   Authorization: Bearer mock-sistema     (servicio: módulos Órdenes y Pagos)
  * En producción se usa Supabase Auth; los servicios se autentican con su clave (Fase 2).
  */
 export const USUARIOS_MOCK: Record<string, Actor> = {

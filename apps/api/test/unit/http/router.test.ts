@@ -3,7 +3,9 @@ import { pino } from 'pino';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { ActualizarEscrowUseCase } from '../../../src/application/commands/ActualizarEscrowUseCase';
 import { ConciliarPagoUseCase } from '../../../src/application/commands/ConciliarPagoUseCase';
+import { ObtenerEscrowQuery } from '../../../src/application/queries/ObtenerEscrowQuery';
 import { ProcesarAjusteOrdenUseCase } from '../../../src/application/commands/ProcesarAjusteOrdenUseCase';
 import { RegistrarAjusteUseCase } from '../../../src/application/commands/RegistrarAjusteUseCase';
 import { ListarAjustesQuery } from '../../../src/application/queries/ListarAjustesQuery';
@@ -89,6 +91,7 @@ function app(dbOk = true) {
         vendedores,
         reloj,
       ),
+      obtenerEscrow: new ObtenerEscrowQuery(base.repos.escrow, reloj),
     },
     commands: {
       configurarComision: new ConfigurarComisionUseCase(uowQueFalla, reloj),
@@ -99,6 +102,7 @@ function app(dbOk = true) {
       importarPagos: new ImportarPagosRecibidosUseCase(base.uow, reloj),
       conciliarPago: new ConciliarPagoUseCase(base.uow, reloj),
       registrarPagoVendedor: new RegistrarPagoVendedorUseCase(base.uow, reloj),
+      actualizarEscrow: new ActualizarEscrowUseCase(base.uow, reloj),
     },
   });
   return express().use('/api/contabilidad', router);
@@ -719,13 +723,19 @@ describe('Rutas de pagos a vendedores (HU-CON-10)', () => {
     lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
   };
 
-  /** Servidor con ORD-1001 registrada: V-1 debe 90.000 en 2026-10-Q1. */
+  /** Servidor con ORD-1001 registrada y LIBERADA en escrow: V-1 debe 90.000 en 2026-10-Q1. */
   async function conVenta() {
     const servidor = app();
     await request(servidor)
       .post(`${BASE}/eventos/orden-confirmada`)
       .set('authorization', 'Bearer mock-sistema')
       .send(orden);
+    // Órdenes marca la entrega con más de 72 h de antigüedad: el pedido ya se puede pagar.
+    await request(servidor)
+      .post(`${BASE}/escrow/marcar-entrega/ORD-1001`)
+      .set('authorization', 'Bearer mock-sistema')
+      .send({ fechaEntrega: '2026-10-01T00:00:00Z' })
+      .expect(200);
     const pagar = (body: object, token = 'mock-admin') =>
       request(servidor)
         .post(`${BASE}/pagos-vendedor`)
@@ -1087,5 +1097,102 @@ describe('Autenticación de módulos por clave de servicio (x-api-key)', () => {
       .set('authorization', 'Bearer mock-admin')
       .send(orden);
     expect(res.status).toBe(403);
+  });
+});
+
+describe('Rutas de escrow (GUIA_EQUIPO_6, sección 6)', () => {
+  const BASE = '/api/contabilidad';
+  const orden = {
+    eventId: 'evt-esc-1',
+    version: 1,
+    ocurridoEn: '2026-10-05T10:00:00-05:00',
+    tipo: 'orden.confirmada',
+    numeroOrden: 'ORD-1001',
+    fecha: '2026-10-05T09:58:00-05:00',
+    estado: 'CONFIRMADA',
+    moneda: 'COP',
+    lineas: [{ vendedorId: 'V-1', valorBruto: '100000.00' }],
+  };
+  function como(servidor: ReturnType<typeof app>, token: string) {
+    return {
+      post: (url: string, body?: object) => {
+        const r = request(servidor).post(`${BASE}${url}`).set('authorization', `Bearer ${token}`);
+        return body ? r.send(body) : r;
+      },
+      get: (url: string) =>
+        request(servidor).get(`${BASE}${url}`).set('authorization', `Bearer ${token}`),
+    };
+  }
+
+  it('marca la entrega (sin cuerpo), bloquea el pago y la consulta la ve el ADMIN', async () => {
+    const servidor = app();
+    const sistema = como(servidor, 'mock-sistema');
+    const admin = como(servidor, 'mock-admin');
+    await sistema.post('/eventos/orden-confirmada', orden);
+
+    const entrega = await sistema.post('/escrow/marcar-entrega/ORD-1001');
+    expect(entrega.status).toBe(200);
+    expect(entrega.body).toMatchObject({
+      pedidoId: 'ORD-1001',
+      estado: 'RETENIDO',
+      resultado: 'ACTUALIZADO',
+    });
+    const repetida = await sistema.post('/escrow/marcar-entrega/ORD-1001');
+    expect(repetida.body.resultado).toBe('SIN_CAMBIOS');
+
+    const pago = await admin.post('/pagos-vendedor', {
+      vendedorId: 'V-1',
+      valor: '10.00',
+      referencia: 'TRF-ESC',
+    });
+    expect(pago.status).toBe(422);
+    expect(pago.body.code).toBe('SALDO_RETENIDO_ESCROW');
+
+    expect((await admin.get('/escrow/ORD-1001')).body.estado).toBe('RETENIDO');
+    expect((await admin.get('/escrow/ORD-404')).status).toBe(404);
+  });
+
+  it('un módulo bloquea y el ADMIN desbloquea con motivo; valida el cuerpo', async () => {
+    const servidor = app();
+    const sistema = como(servidor, 'mock-sistema');
+    const admin = como(servidor, 'mock-admin');
+    const b = await sistema.post('/escrow/bloquear/ORD-7', { motivo: 'PQR-1' });
+    expect(b.body).toMatchObject({ estado: 'BLOQUEADO', motivoBloqueo: 'PQR-1' });
+
+    // El desbloqueo es manual del ADMIN y exige motivo.
+    expect((await sistema.post('/escrow/desbloquear/ORD-7', { motivo: 'x' })).status).toBe(403);
+    expect((await admin.post('/escrow/desbloquear/ORD-7')).status).toBe(400);
+    expect((await admin.post('/escrow/desbloquear/ORD-7', { motivo: ' ' })).status).toBe(400);
+    expect((await admin.post('/escrow/desbloquear/ORD-404', { motivo: 'x' })).status).toBe(404);
+    const d = await admin.post('/escrow/desbloquear/ORD-7', { motivo: 'resuelta' });
+    expect(d.body).toMatchObject({ estado: 'SIN_ENTREGA', bloqueado: false });
+
+    expect((await sistema.post('/escrow/bloquear/ORD-7', { otro: 1 })).status).toBe(400);
+    const textoNoFecha = await sistema.post('/escrow/marcar-entrega/ORD-7', {
+      fechaEntrega: 'ayer',
+    });
+    expect(textoNoFecha.status).toBe(400);
+    const futura = await sistema.post('/escrow/marcar-entrega/ORD-7', {
+      fechaEntrega: '2099-01-01T00:00:00Z',
+    });
+    expect(futura.status).toBe(400);
+  });
+
+  it('las operaciones son de los módulos (servicio): usuarios 403, sin credenciales 401', async () => {
+    const servidor = app();
+    for (const token of ['mock-admin', 'mock-vendedor', 'mock-comprador']) {
+      expect((await como(servidor, token).post('/escrow/bloquear/ORD-1')).status).toBe(403);
+    }
+    for (const token of ['mock-vendedor', 'mock-comprador']) {
+      const r = await como(servidor, token).post('/escrow/desbloquear/ORD-1', { motivo: 'x' });
+      expect(r.status).toBe(403);
+    }
+    expect((await request(servidor).post(`${BASE}/escrow/bloquear/ORD-1`)).status).toBe(401);
+    // La clave de servicio también sirve.
+    const conClave = await request(servidor)
+      .post(`${BASE}/escrow/marcar-entrega/ORD-1`)
+      .set('x-api-key', CLAVE_ORDENES);
+    expect(conClave.status).toBe(200);
+    expect((await como(servidor, 'mock-vendedor').get('/escrow/ORD-1')).status).toBe(403);
   });
 });

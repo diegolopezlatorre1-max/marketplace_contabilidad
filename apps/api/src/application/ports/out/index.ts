@@ -9,6 +9,7 @@ export type * from './ConciliacionRepository';
 export type * from './ConfiguracionComisionRepository';
 export type * from './CuentaPorPagarRepository';
 export type * from './DatabaseHealth';
+export type * from './EscrowRepository';
 export type * from './EstadoVendedorRepository';
 export type * from './ExportacionRepository';
 export type * from './EventPublisher';

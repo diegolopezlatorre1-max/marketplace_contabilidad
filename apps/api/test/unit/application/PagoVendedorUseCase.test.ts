@@ -8,7 +8,7 @@ import {
 import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarPagosVendedorQuery } from '../../../src/application/queries/ListarPagosVendedorQuery';
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
-import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
+import { comisionGlobal, crearBaseEnMemoria, liberarEscrow } from './enMemoria';
 
 const sistema: Actor = {
   id: 'sistema-marketplace',
@@ -46,6 +46,8 @@ async function entorno() {
       { actor: sistema },
     );
   }
+  // Escrow: los pedidos ya se entregaron hace más de 72 h (LIBERADOS).
+  liberarEscrow(base.db);
   let p = 0;
   const registrar = new RegistrarPagoVendedorUseCase(base.uow, reloj, () => `pago-${++p}`);
   return {
@@ -160,6 +162,7 @@ describe('RegistrarPagoVendedorUseCase (HU-CON-10)', () => {
       },
       { actor: sistema },
     );
+    liberarEscrow(e.db, ['ORD-3']);
     const pago = await e.pagar({ referencia: 'TRF-3', valor: '45000.00' });
     expect(pago.saldoAFavorAplicado).toBe('90000.00');
     expect(pago.aplicaciones.map((a) => [a.periodo, a.valorAplicado, a.estado])).toEqual([

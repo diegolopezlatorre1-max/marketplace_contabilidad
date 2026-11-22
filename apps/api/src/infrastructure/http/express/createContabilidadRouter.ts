@@ -2,6 +2,7 @@ import express, { Router } from 'express';
 import type { Logger } from 'pino';
 import swaggerUi from 'swagger-ui-express';
 import type { HealthResponse } from '@contabilidad/contracts';
+import type { ActualizarEscrowUseCase } from '../../../application/commands/ActualizarEscrowUseCase';
 import type { ConciliarPagoUseCase } from '../../../application/commands/ConciliarPagoUseCase';
 import type { ConfigurarComisionUseCase } from '../../../application/commands/ConfigurarComisionUseCase';
 import type { ImportarPagosRecibidosUseCase } from '../../../application/commands/ImportarPagosRecibidosUseCase';
@@ -24,6 +25,7 @@ import type { ListarCuentasPorPagarQuery } from '../../../application/queries/Li
 import type { ListarPeriodosQuery } from '../../../application/queries/ListarPeriodosQuery';
 import type { ListarVentasQuery } from '../../../application/queries/ListarVentasQuery';
 import type { ObtenerComisionVigenteQuery } from '../../../application/queries/ObtenerComisionVigenteQuery';
+import type { ObtenerEscrowQuery } from '../../../application/queries/ObtenerEscrowQuery';
 import type { ObtenerEstadoModulo } from '../../../application/queries/ObtenerEstadoModulo';
 import type { ObtenerVentaQuery } from '../../../application/queries/ObtenerVentaQuery';
 import type { ReporteIngresosQuery } from '../../../application/queries/ReporteIngresosQuery';
@@ -37,6 +39,7 @@ import { ajustesRoutes } from '../routes/ajustesRoutes';
 import { comisionesRoutes } from '../routes/comisionesRoutes';
 import { conciliacionesRoutes } from '../routes/conciliacionesRoutes';
 import { cuentasPorPagarRoutes } from '../routes/cuentasPorPagarRoutes';
+import { escrowRoutes } from '../routes/escrowRoutes';
 import { pagosVendedorRoutes } from '../routes/pagosVendedorRoutes';
 import { estadoVendedorRoutes } from '../routes/estadoVendedorRoutes';
 import { auditoriaRoutes } from '../routes/auditoriaRoutes';
@@ -69,6 +72,7 @@ export interface RouterDeps {
     estadoVendedor: EstadoVendedorQuery;
     consultarAuditoria: ConsultarAuditoriaQuery;
     exportarExcel: ExportarExcelUseCase;
+    obtenerEscrow: ObtenerEscrowQuery;
   };
   commands: {
     configurarComision: ConfigurarComisionUseCase;
@@ -79,6 +83,7 @@ export interface RouterDeps {
     registrarAjuste: RegistrarAjusteUseCase;
     procesarAjusteOrden: ProcesarAjusteOrdenUseCase;
     registrarPagoVendedor: RegistrarPagoVendedorUseCase;
+    actualizarEscrow: ActualizarEscrowUseCase;
   };
 }
 
@@ -155,6 +160,12 @@ export function createContabilidadRouter(deps: RouterDeps): Router {
   router.use(estadoVendedorRoutes({ estadoVendedor: deps.queries.estadoVendedor }));
   router.use(auditoriaRoutes({ consultarAuditoria: deps.queries.consultarAuditoria }));
   router.use(exportacionesRoutes({ exportarExcel: deps.queries.exportarExcel }));
+  router.use(
+    escrowRoutes({
+      actualizarEscrow: deps.commands.actualizarEscrow,
+      obtenerEscrow: deps.queries.obtenerEscrow,
+    }),
+  );
 
   router.use(notFound);
   router.use(errorHandler(deps.logger));

@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createContabilidadModule } from '../../src/bootstrap/container';
 import { createHttpApp } from '../../src/infrastructure/http/express/createHttpApp';
 import { MockOrdersGateway } from '../../src/infrastructure/integration/orders/MockOrdersGateway';
-import { limpiarTablas, testPool } from './db';
+import { liberarEscrow, limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
 const BASE = '/api/contabilidad';
@@ -50,6 +50,8 @@ async function venta(numeroOrden: string, vendedorId: string, valor: string, fec
       fecha: new Date(fecha),
     }),
   );
+  // Escrow: el pedido ya se entregó hace más de 72 h, así que se puede pagar.
+  await liberarEscrow([numeroOrden]);
 }
 
 beforeEach(async () => {
