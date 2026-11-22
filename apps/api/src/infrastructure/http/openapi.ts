@@ -51,6 +51,16 @@ export function buildOpenApi(version: string) {
     tags: [
       { name: 'Sistema', description: 'Estado del módulo y usuario autenticado.' },
       {
+        name: 'Escrow',
+        description:
+          'Custodia del dinero de cada pedido (GUIA_EQUIPO_6): el módulo de Órdenes marca la entrega y ' +
+          'empieza una retención de 72 h, que se libera sola al cumplirse (no hace falta ' +
+          'ninguna llamada); un módulo bloquea el pago ante una PQR y el ADMIN lo desbloquea ' +
+          'manualmente. Solo se paga al vendedor el neto de pedidos LIBERADOS; mientras un ' +
+          'pedido no se haya entregado (aunque no tenga registro), esté ' +
+          'RETENIDO o BLOQUEADO, su neto no se puede pagar al vendedor (SALDO_RETENIDO_ESCROW).',
+      },
+      {
         name: 'Comisiones',
         description: 'Porcentaje de comisión del marketplace con fechas de vigencia (HU-CON-09).',
       },
@@ -756,6 +766,39 @@ export function buildOpenApi(version: string) {
             total: { type: 'integer' },
           },
         },
+        EscrowPedido: {
+          type: 'object',
+          properties: {
+            pedidoId: { type: 'string', example: 'ORD-1001' },
+            estado: { type: 'string', enum: ['SIN_ENTREGA', 'RETENIDO', 'LIBERADO', 'BLOQUEADO'] },
+            entregadoEn: { type: 'string', format: 'date-time', nullable: true },
+            liberableDesde: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description: 'entregadoEn + 72 h',
+            },
+            bloqueado: { type: 'boolean' },
+            bloqueadoEn: { type: 'string', format: 'date-time', nullable: true },
+            motivoBloqueo: { type: 'string', nullable: true },
+            actualizadoEn: { type: 'string', format: 'date-time' },
+          },
+        },
+        ResultadoEscrow: {
+          allOf: [
+            { $ref: '#/components/schemas/EscrowPedido' },
+            {
+              type: 'object',
+              properties: {
+                resultado: {
+                  type: 'string',
+                  enum: ['ACTUALIZADO', 'SIN_CAMBIOS'],
+                  description: 'SIN_CAMBIOS: la operación ya estaba aplicada (reintento)',
+                },
+              },
+            },
+          ],
+        },
         UsuarioActual: {
           type: 'object',
           properties: {
@@ -1316,7 +1359,10 @@ export function buildOpenApi(version: string) {
             '401': problema('No autenticado'),
             '403': problema('Requiere rol ADMIN'),
             '409': problema('REFERENCIA_DUPLICADA: ya hay un pago al vendedor con esa referencia'),
-            '422': problema('PAGO_EXCEDE_SALDO: supera lo que se le debe al vendedor'),
+            '422': problema(
+              'PAGO_EXCEDE_SALDO: supera lo que se le debe al vendedor. SALDO_RETENIDO_ESCROW: ' +
+                'parte del saldo es de pedidos en escrow (sin entrega, menos de 72 h desde la entrega o con PQR)',
+            ),
           },
         },
       },
@@ -1613,6 +1659,158 @@ export function buildOpenApi(version: string) {
             '401': problema('No autenticado'),
             '403': problema('Requiere rol ADMIN'),
             '404': problema('No existe la conciliación'),
+          },
+        },
+      },
+      '/escrow/marcar-entrega/{pedidoId}': {
+        post: {
+          tags: ['Escrow'],
+          summary: 'El módulo de Órdenes confirma la entrega: inicia la retención de 72 h',
+          description:
+            'Idempotente: una segunda entrega no reinicia el plazo. Sin cuerpo, la entrega es ahora.',
+          security: [{ apiKey: [] }, { bearer: [] }],
+          parameters: [
+            {
+              name: 'pedidoId',
+              in: 'path',
+              required: true,
+              description: 'Número de orden (el mismo de orden.confirmada)',
+              schema: { type: 'string', maxLength: 64 },
+            },
+          ],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: { fechaEntrega: { type: 'string', format: 'date-time' } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Estado del pedido; resultado ACTUALIZADO o SIN_CAMBIOS',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ResultadoEscrow' } },
+              },
+            },
+            '400': problema('Datos inválidos'),
+            '401': problema('Credenciales ausentes o inválidas'),
+            '403': problema('Solo para módulos autenticados como servicio'),
+          },
+        },
+      },
+      '/escrow/bloquear/{pedidoId}': {
+        post: {
+          tags: ['Escrow'],
+          summary: 'Se abre una PQR: el pago del pedido queda bloqueado',
+          description: 'Bloquea aunque ya hayan pasado las 72 h. Idempotente.',
+          security: [{ apiKey: [] }, { bearer: [] }],
+          parameters: [
+            {
+              name: 'pedidoId',
+              in: 'path',
+              required: true,
+              description: 'Número de orden (el mismo de orden.confirmada)',
+              schema: { type: 'string', maxLength: 64 },
+            },
+          ],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: { motivo: { type: 'string', maxLength: 500, example: 'PQR-15' } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Estado del pedido; resultado ACTUALIZADO o SIN_CAMBIOS',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ResultadoEscrow' } },
+              },
+            },
+            '400': problema('Datos inválidos'),
+            '401': problema('Credenciales ausentes o inválidas'),
+            '403': problema('Solo para módulos autenticados como servicio'),
+          },
+        },
+      },
+      '/escrow/desbloquear/{pedidoId}': {
+        post: {
+          tags: ['Escrow'],
+          summary: 'El ADMIN levanta manualmente el bloqueo por PQR',
+          description:
+            'Vuelve a la retención original: si ya pasaron las 72 h desde la entrega, queda ' +
+            'LIBERADO. El motivo es obligatorio y queda en la auditoría. Idempotente.',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'pedidoId',
+              in: 'path',
+              required: true,
+              description: 'Número de orden (el mismo de orden.confirmada)',
+              schema: { type: 'string', maxLength: 64 },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['motivo'],
+                  properties: { motivo: { type: 'string', minLength: 1, maxLength: 500 } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Estado del pedido; resultado ACTUALIZADO o SIN_CAMBIOS',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ResultadoEscrow' } },
+              },
+            },
+            '400': problema('Datos inválidos'),
+            '401': problema('Credenciales ausentes o inválidas'),
+            '403': problema('Requiere rol ADMIN'),
+            '404': problema('El pedido no tiene registro de escrow'),
+          },
+        },
+      },
+      '/escrow/{pedidoId}': {
+        get: {
+          tags: ['Escrow'],
+          summary: 'Estado del escrow de un pedido',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'pedidoId',
+              in: 'path',
+              required: true,
+              description: 'Número de orden (el mismo de orden.confirmada)',
+              schema: { type: 'string', maxLength: 64 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Estado actual',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EscrowPedido' } },
+              },
+            },
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol ADMIN'),
+            '404': problema('El pedido no tiene registro de escrow'),
           },
         },
       },

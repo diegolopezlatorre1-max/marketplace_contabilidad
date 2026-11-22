@@ -14,6 +14,18 @@ export class PagoExcedeSaldoError extends DomainError {
   }
 }
 
+/**
+ * El pago cabe en lo que se le debe al vendedor, pero no en lo que se le puede pagar hoy:
+ * parte del saldo está retenida por escrow (pedidos sin entrega, entregados hace menos de 72 h o
+ * con PQR).
+ */
+export class SaldoRetenidoEscrowError extends DomainError {
+  constructor(message: string) {
+    super('SALDO_RETENIDO_ESCROW', message);
+    this.name = 'SaldoRetenidoEscrowError';
+  }
+}
+
 /** Parte del pago aplicada a una cuenta (quincena) del vendedor. */
 export interface AplicacionPago {
   periodo: Periodo;
@@ -38,6 +50,12 @@ export interface RegistrarPagoVendedorDatos {
   cuentas: readonly CuentaPorPagar[];
   /** Saldo a favor del marketplace que aún no se ha descontado (ajustes sobre cuentas pagadas). */
   saldoAFavorDisponible: Money;
+  /**
+   * Escrow: neto que todavía no se puede pagar por quincena (código de periodo → valor), por
+   * pedidos aún no LIBERADOS (sin entrega, menos de 72 h desde la entrega o con PQR). Sin dato,
+   * nada se retiene.
+   */
+  retenidoPorPeriodo?: ReadonlyMap<string, Money>;
   registradoPor: string;
   /** Instante actual: el pago no puede ser futuro. */
   ahora: Date;
@@ -91,13 +109,32 @@ export class PagoVendedor {
       throw new InvalidValueError('Todas las cuentas deben ser del vendedor del pago');
     }
 
+    // Escrow: de cada cuenta solo se puede pagar lo que no está retenido.
+    const disponibleDe = (c: CuentaPorPagar): Money => {
+      const retenido = d.retenidoPorPeriodo?.get(c.periodo.codigo) ?? Money.CERO;
+      const libre = c.saldoPendiente.subtract(retenido);
+      return libre.isPositive() ? libre : Money.CERO;
+    };
+
     // FIFO: de la quincena más antigua a la más reciente.
     const pendientes = [...d.cuentas]
       .filter((c) => c.saldoPendiente.isPositive())
       .sort((a, b) => a.periodo.codigo.localeCompare(b.periodo.codigo));
-    const deuda = Money.sum(pendientes.map((c) => c.saldoPendiente));
+    const deudaTotal = Money.sum(pendientes.map((c) => c.saldoPendiente));
+    const deuda = Money.sum(pendientes.map(disponibleDe));
     const descuento = menor(d.saldoAFavorDisponible, deuda);
     const porPagar = deuda.subtract(descuento);
+    const retenido = deudaTotal.subtract(deuda);
+    if (d.valor.greaterThan(porPagar) && retenido.isPositive()) {
+      const sinRetencion = deudaTotal.subtract(menor(d.saldoAFavorDisponible, deudaTotal));
+      if (!d.valor.greaterThan(sinRetencion)) {
+        throw new SaldoRetenidoEscrowError(
+          `El vendedor ${d.vendedorId} tiene ${retenido.toString()} retenido por escrow ` +
+            `(pedidos sin entrega, entregados hace menos de 72 h o con PQR abierta); hoy se le pueden pagar ` +
+            `${porPagar.toString()}`,
+        );
+      }
+    }
     if (d.valor.greaterThan(porPagar)) {
       throw new PagoExcedeSaldoError(
         `El pago de ${d.valor.toString()} supera lo que se le debe al vendedor ${d.vendedorId}: ` +
@@ -113,7 +150,9 @@ export class PagoVendedor {
     for (const cuenta of pendientes) {
       if (!restante.isPositive()) break;
       const saldoAnterior = cuenta.saldoPendiente;
-      const valorAplicado = menor(restante, saldoAnterior);
+      const disponible = disponibleDe(cuenta);
+      if (!disponible.isPositive()) continue;
+      const valorAplicado = menor(restante, disponible);
       cuenta.registrarPago(valorAplicado);
       restante = restante.subtract(valorAplicado);
       aplicaciones.push({

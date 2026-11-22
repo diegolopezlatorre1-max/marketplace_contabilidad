@@ -2,7 +2,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Actor } from '../../../application/security';
 
 /**
- * Autenticación de los módulos del marketplace que envían eventos (Órdenes, Pagos, PQR).
+ * Autenticación de los módulos del marketplace que envían eventos (Órdenes, Pagos).
  * Cada módulo recibe su propia clave y la envía en la cabecera `x-api-key`.
  * Configuración: SERVICE_API_KEYS="ordenes:clave1,pagos:clave2".
  */

@@ -6,7 +6,7 @@ import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/comman
 import { EstadoVendedorQuery } from '../../../src/application/queries/EstadoVendedorQuery';
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
 import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
-import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
+import { comisionGlobal, crearBaseEnMemoria, liberarEscrow } from './enMemoria';
 
 const sistema: Actor = {
   id: 'sistema-marketplace',
@@ -47,6 +47,8 @@ async function entorno() {
       { actor: sistema },
     );
   }
+  // Escrow: los pedidos ya se entregaron hace más de 72 h (LIBERADOS).
+  liberarEscrow(base.db);
   const ventaId = (orden: string) =>
     base.db.datos.ventas.find(({ venta }) => venta.numeroOrden === orden)!.venta.id;
   return {
