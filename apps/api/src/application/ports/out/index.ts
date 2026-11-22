@@ -14,6 +14,7 @@ export type * from './EstadoVendedorRepository';
 export type * from './ExportacionRepository';
 export type * from './EventPublisher';
 export type * from './InboxRepository';
+export type * from './OutboxMonitor';
 export type * from './ReporteIngresosRepository';
 export type * from './SellersGateway';
 export type * from './SpreadsheetExporter';

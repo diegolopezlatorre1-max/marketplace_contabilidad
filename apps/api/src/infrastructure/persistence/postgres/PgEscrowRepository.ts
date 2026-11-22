@@ -63,6 +63,21 @@ export class PgEscrowRepository implements EscrowRepository {
     );
   }
 
+  async pedidosRetenidos(vendedorId: string, ahora: Date): Promise<Set<string>> {
+    const { rows } = await this.db.query<{ numero_orden: string }>(
+      `SELECT DISTINCT v.numero_orden
+         FROM contabilidad.venta_contable v
+         LEFT JOIN contabilidad.escrow_pedido e ON e.pedido_id = v.numero_orden
+        WHERE v.vendedor_id = $1
+          AND NOT (e.pedido_id IS NOT NULL
+                   AND NOT e.bloqueado
+                   AND e.liberable_desde IS NOT NULL
+                   AND e.liberable_desde <= $2)`,
+      [vendedorId, ahora],
+    );
+    return new Set(rows.map((r) => r.numero_orden));
+  }
+
   async netoRetenidoPorPeriodo(vendedorId: string, ahora: Date): Promise<Map<string, Money>> {
     const { rows } = await this.db.query<{ periodo: string; retenido: string }>(
       `SELECT v.periodo,

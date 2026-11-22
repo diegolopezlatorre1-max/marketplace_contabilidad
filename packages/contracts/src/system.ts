@@ -8,6 +8,8 @@ export interface HealthResponse {
   checks: {
     baseDeDatos: 'ok' | 'error';
   };
+  /** Eventos salientes: pendientes de entregar y en dead-letter (requieren revisión). */
+  outbox?: { pendientes: number; deadLetter: number };
   fecha: string;
 }
 

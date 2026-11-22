@@ -226,6 +226,34 @@ describe('Pago a vendedor con escrow (HU-CON-10 + escrow)', () => {
     expect((await e.pagar('45000.00')).valor).toBe('45000.00');
   });
 
+  it('el evento del pago no incluye como asociadas las órdenes retenidas por escrow', async () => {
+    const e = await entorno();
+    // ORD-3 en la misma quincena que ORD-1 (2026-10-Q1), pero sin entrega.
+    await new RegistrarVentaConfirmadaUseCase(e.uow, e.reloj, () => 'venta-3').execute(
+      {
+        eventId: 'evt-ORD-3',
+        tipo: 'orden.confirmada',
+        numeroOrden: 'ORD-3',
+        fecha: '2026-10-06T09:00:00-05:00',
+        estado: 'CONFIRMADA',
+        lineas: [{ vendedorId: 'V-1', valorBruto: '10000.00' }],
+      },
+      { actor: ordenes },
+    );
+    liberarEscrow(e.db, ['ORD-1', 'ORD-2']);
+    await e.pagar('135000.00');
+    const evento = e.db.datos.outbox.find(
+      (x) => x.tipo === 'contabilidad.pago-vendedor.registrado',
+    );
+    expect(evento?.payload).toMatchObject({
+      ordenes: ['ORD-1', 'ORD-2'],
+      cuentas: [
+        { periodo: '2026-10-Q1', ordenes: ['ORD-1'] },
+        { periodo: '2026-10-Q2', ordenes: ['ORD-2'] },
+      ],
+    });
+  });
+
   it('lo retenido descuenta los ajustes ya registrados sobre la venta', async () => {
     const e = await entorno();
     liberarEscrow(e.db, ['ORD-2']);

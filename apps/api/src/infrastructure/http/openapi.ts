@@ -143,6 +143,16 @@ export function buildOpenApi(version: string) {
               type: 'object',
               properties: { baseDeDatos: { type: 'string', enum: ['ok', 'error'] } },
             },
+            outbox: {
+              type: 'object',
+              description:
+                'Eventos salientes: pendientes de entregar y en dead-letter (requieren revisión). ' +
+                'Los dead-letter no degradan el estado del servicio.',
+              properties: {
+                pendientes: { type: 'integer' },
+                deadLetter: { type: 'integer' },
+              },
+            },
             fecha: { type: 'string', format: 'date-time' },
           },
         },

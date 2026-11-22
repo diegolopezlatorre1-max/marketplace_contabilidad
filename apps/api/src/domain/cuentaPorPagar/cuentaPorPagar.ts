@@ -44,6 +44,11 @@ export class CuentaPorPagar {
     return this.totalNeto;
   }
 
+  /** Números de orden cuyas ventas suman a la cuenta. */
+  get numerosOrden(): readonly string[] {
+    return [...this.ordenes];
+  }
+
   get valorPagado(): Money {
     return this.pagado;
   }

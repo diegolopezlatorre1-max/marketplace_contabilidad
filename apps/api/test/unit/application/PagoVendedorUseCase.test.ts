@@ -201,6 +201,36 @@ describe('RegistrarPagoVendedorUseCase (HU-CON-10)', () => {
       valor: '90000.00',
       referencia: 'TRF-1',
     });
+    expect(evento?.correlationId).toBe('corr-pago');
+  });
+
+  it('HU-NOT-05: el evento v2 identifica vendedor, monto y órdenes asociadas por quincena', async () => {
+    const e = await entorno();
+    await e.pagar({ valor: '135000.00' });
+    const evento = e.db.datos.outbox.find((x) => x.tipo === EVENTO_PAGO_VENDEDOR_REGISTRADO);
+    expect(evento?.payload).toEqual({
+      version: 2,
+      pagoId: 'pago-1',
+      vendedorId: 'V-1',
+      fecha: '2026-11-10T15:00:00.000Z',
+      valor: '135000.00',
+      moneda: 'COP',
+      saldoAFavorAplicado: '0.00',
+      referencia: 'TRF-1',
+      ordenes: ['ORD-1', 'ORD-2'],
+      cuentas: [
+        expect.objectContaining({
+          periodo: '2026-10-Q1',
+          valorAplicado: '90000.00',
+          ordenes: ['ORD-1'],
+        }),
+        expect.objectContaining({
+          periodo: '2026-10-Q2',
+          valorAplicado: '45000.00',
+          ordenes: ['ORD-2'],
+        }),
+      ],
+    });
   });
 
   it('solo el ADMIN registra pagos', async () => {

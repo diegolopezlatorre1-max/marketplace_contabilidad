@@ -119,13 +119,63 @@ Pendiente de confirmar: qué módulo llamará `bloquear`.
 
 ## Contabilidad → Marketplace (eventos publicados, vía outbox)
 
+Cada evento se guarda en el outbox en la misma transacción del cambio y el **relay** lo entrega por
+`HTTP POST` a la URL configurada para su tipo (`OUTBOX_DESTINOS`). Entrega **al menos una vez**:
+el consumidor debe deduplicar por `eventId` y responder `2xx`. Ante otro estado, un error de red o
+un timeout se reintenta con espera exponencial (5 s, 10 s, 20 s... hasta 1 h); tras
+`OUTBOX_MAX_INTENTOS` (8) fallos el evento pasa a `DEAD_LETTER` y se informa en `GET /health`.
+
+Sobre (cuerpo JSON):
+
+```json
+{
+  "eventId": "6f1c…",
+  "tipo": "contabilidad.pago-vendedor.registrado",
+  "modulo": "contabilidad",
+  "ocurridoEn": "2026-11-10T15:00:00.000Z",
+  "correlationId": "corr-123",
+  "payload": { … }
+}
+```
+
+Cabeceras: `x-event-id`, `x-event-type`, `x-correlation-id` (si existe) y `x-api-key` si se
+configuró `OUTBOX_API_KEY`.
+
 | Evento | Cuándo |
 |--------|--------|
 | `contabilidad.venta.registrada` | Venta, comisión y cuenta por pagar creadas |
 | `contabilidad.ajuste.registrado` | Ajuste por devolución o cancelación |
-| `contabilidad.pago-vendedor.registrado` | Pago a vendedor registrado |
+| `contabilidad.pago-vendedor.registrado` | **Pago acreditado** al vendedor (HU-NOT-05, para Notificaciones) |
 | `contabilidad.conciliacion.cerrada` | Conciliación marcada como conciliada |
 | `contabilidad.escrow.actualizado` | Cambio de estado del escrow de un pedido (entrega, bloqueo, desbloqueo) |
+
+### `contabilidad.pago-vendedor.registrado` v2 (pago acreditado, HU-NOT-05)
+
+Identifica al vendedor, el monto y las órdenes asociadas. Como el pago se aplica por quincena (FIFO),
+las órdenes asociadas son las de las quincenas que cubrió el pago, sin las que el escrow retenía en
+ese momento.
+
+```json
+{
+  "version": 2,
+  "pagoId": "8a2e…",
+  "vendedorId": "V-1",
+  "fecha": "2026-11-10T15:00:00.000Z",
+  "valor": "135000.00",
+  "moneda": "COP",
+  "saldoAFavorAplicado": "0.00",
+  "referencia": "TRF-1",
+  "ordenes": ["ORD-1", "ORD-2"],
+  "cuentas": [
+    { "periodo": "2026-10-Q1", "valorAplicado": "90000.00", "saldoAnterior": "90000.00",
+      "saldoNuevo": "0.00", "estado": "PAGADO", "ordenes": ["ORD-1"] }
+  ]
+}
+```
+
+v2 agrega `version`, `moneda`, `ordenes` y `cuentas[].ordenes`; los campos de v1 no cambian.
+Pendiente de confirmar con Notificaciones (Equipo 3): la URL que recibirá el evento, si exige
+`x-api-key` y si esperan otro nombre de evento.
 
 ## Autenticación (Administración)
 

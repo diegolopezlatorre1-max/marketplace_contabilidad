@@ -12,4 +12,6 @@ export interface EscrowRepository {
    * la entrega, o BLOQUEADOS por PQR), descontando sus ajustes.
    */
   netoRetenidoPorPeriodo(vendedorId: string, ahora: Date): Promise<Map<string, Money>>;
+  /** Números de orden del vendedor que hoy retienen el pago (no LIBERADOS). */
+  pedidosRetenidos(vendedorId: string, ahora: Date): Promise<Set<string>>;
 }

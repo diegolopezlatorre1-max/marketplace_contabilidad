@@ -74,6 +74,15 @@ npm run dev:web                          # http://localhost:5173
   `app_metadata.role` (`admin`, `vendedor`, `comprador`). Los módulos que envían eventos usan la
   cabecera `x-api-key` con su clave de `SERVICE_API_KEYS`.
 
+### Eventos salientes (outbox)
+
+Los eventos (venta registrada, ajuste, pago acreditado al vendedor, conciliación, escrow) se guardan
+en `contabilidad.outbox` en la misma transacción del cambio. El relay los entrega por HTTP POST a las
+URL de `OUTBOX_DESTINOS`, con reintentos (espera exponencial) y `DEAD_LETTER` tras
+`OUTBOX_MAX_INTENTOS` fallos. `GET /health` informa cuántos hay pendientes y en dead-letter. Sin
+destinos configurados, los eventos quedan pendientes hasta que se configure uno. Contrato en
+`docs/fase0/contratos-integracion.md`.
+
 ### Base de datos en Supabase
 
 El módulo usa su propio esquema `contabilidad` dentro del proyecto Supabase compartido; no toca
