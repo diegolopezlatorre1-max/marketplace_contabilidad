@@ -38,6 +38,7 @@ import { ResumenSaldoVendedorQuery } from '../application/queries/ResumenSaldoVe
 import type { AppConfig } from '../infrastructure/config/env';
 import { createContabilidadRouter } from '../infrastructure/http/express/createContabilidadRouter';
 import { ApiKeyServiceAuth } from '../infrastructure/integration/auth/ApiKeyServiceAuth';
+import { JwksAuthContext } from '../infrastructure/integration/auth/JwksAuthContext';
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
 import {
   crearClienteSupabase,
@@ -186,8 +187,15 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   return { router, unitOfWork };
 }
 
-/** AUTH_MODE=supabase valida el access token con Supabase Auth; mock usa tokens de desarrollo. */
+/**
+ * AUTH_MODE=supabase valida el access token con Supabase Auth (getClaims); jwks verifica la firma
+ * con las claves públicas del proyecto (solo SUPABASE_URL); mock usa tokens de desarrollo.
+ */
 function crearAuthContext(config: ContabilidadModuleOptions['config']): AuthContext {
+  if (config.AUTH_MODE === 'jwks') {
+    if (!config.SUPABASE_URL) throw new Error('AUTH_MODE=jwks requiere SUPABASE_URL');
+    return new JwksAuthContext({ supabaseUrl: config.SUPABASE_URL });
+  }
   if (config.AUTH_MODE !== 'supabase') return new MockAuthContext();
   if (!config.SUPABASE_URL || !config.SUPABASE_PUBLISHABLE_KEY) {
     throw new Error('AUTH_MODE=supabase requiere SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY');

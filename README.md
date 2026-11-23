@@ -83,9 +83,14 @@ npm run dev:web                          # demo congelada (opcional): http://loc
 - Autenticación de desarrollo (`AUTH_MODE=mock`): `Authorization: Bearer mock-admin` (ADMIN),
   `mock-vendedor` (VENDEDOR, vendedor V-1), `mock-comprador` (COMPRADOR) o `mock-sistema`
   (servicio: módulos que envían eventos). El frontend ofrece un login de prueba.
-- Autenticación real (`AUTH_MODE=supabase`): el access token de Supabase Auth se valida con
-  `getClaims` (`SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`) y el rol se lee de
-  `app_metadata.role` (`admin`, `vendedor`, `comprador`). Los módulos que envían eventos usan la
+- Autenticación real, dos variantes con el access token de Supabase Auth:
+  - `AUTH_MODE=jwks` (la que se despliega): verifica firma (ES256/RS256), expiración, emisor
+    `<SUPABASE_URL>/auth/v1` y audiencia `authenticated` con las claves públicas de
+    `<SUPABASE_URL>/auth/v1/.well-known/jwks.json`. Solo requiere `SUPABASE_URL`.
+  - `AUTH_MODE=supabase`: valida con `getClaims` de supabase-js (`SUPABASE_URL` y
+    `SUPABASE_PUBLISHABLE_KEY`); además acepta tokens HS256 consultando a Supabase.
+
+  En ambas el rol se lee de `app_metadata.role` (`admin`, `vendedor`, `comprador`). Los módulos que envían eventos usan la
   cabecera `x-api-key` con su clave de `SERVICE_API_KEYS`.
 
 ### Eventos salientes (outbox)
@@ -120,8 +125,8 @@ falla si alguna queda sin él.
 `render.yaml` define el servicio (Docker con `apps/api/Dockerfile`, health check en `/health`).
 
 1. Render → _New_ → _Blueprint_ → este repositorio (rama `main`).
-2. Completar los secretos que pide Render: `DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`,
-   `SUPABASE_PUBLISHABLE_KEY`, `SERVICE_API_KEYS` y, cuando Notificaciones entregue su URL,
+2. Completar los secretos que pide Render: `DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`
+   (`https://<ref>.supabase.co`), `SERVICE_API_KEYS` y, cuando Notificaciones entregue su URL,
    `OUTBOX_DESTINOS`. Ningún secreto va en Git.
 3. Cada despliegue ejecuta `node dist/migrate.js` (migraciones pendientes) y luego la API. Con
    `NODE_ENV=production` el arranque falla si falta `SERVICE_API_KEYS` o si `AUTH_MODE=mock`.

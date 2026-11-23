@@ -20,8 +20,9 @@ const envSchema = z
     DATABASE_SSL: z.enum(MODOS_SSL).default('disable'),
     DATABASE_SSL_CA: opcional,
     INTEGRATION_MODE: z.enum(['mock', 'http', 'events']).default('mock'),
-    // mock: tokens fijos de desarrollo | supabase: access token validado con Supabase Auth.
-    AUTH_MODE: z.enum(['mock', 'supabase']).default('mock'),
+    // mock: tokens fijos de desarrollo | supabase: access token validado con Supabase Auth
+    // (getClaims, requiere publishable key) | jwks: firma verificada con el JWKS del proyecto.
+    AUTH_MODE: z.enum(['mock', 'supabase', 'jwks']).default('mock'),
     SUPABASE_URL: opcional.pipe(z.string().url().optional()),
     // Publishable key (sb_publishable_...) o anon key del proyecto. Es pública.
     SUPABASE_PUBLISHABLE_KEY: opcional,
@@ -82,6 +83,13 @@ const envSchema = z
           });
         }
       }
+    }
+    if (cfg.AUTH_MODE === 'jwks' && !cfg.SUPABASE_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SUPABASE_URL'],
+        message: 'Obligatorio con AUTH_MODE=jwks',
+      });
     }
     if (cfg.NODE_ENV === 'production' && Object.keys(cfg.SERVICE_API_KEYS).length === 0) {
       ctx.addIssue({
