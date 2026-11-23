@@ -1,0 +1,173 @@
+===============================================================================
+ MARKETPLACE - MÓDULO DE CONTABILIDAD
+ REQUERIMIENTOS FUNCIONALES Y NO FUNCIONALES
+===============================================================================
+
+ Propósito del módulo: registrar contablemente lo que ocurre en el marketplace:
+ ventas confirmadas, comisiones, cuentas por pagar a vendedores, conciliación de
+ pagos recibidos, ajustes por devoluciones o cancelaciones, y pagos a vendedores.
+
+ Roles del módulo (GUIA_EQUIPO_6; CONTADOR y ADMIN_FINANCIERO se consolidan en ADMIN):
+   ADMIN ............... opera la contabilidad, configura comisiones y consulta
+                         la auditoría
+   VENDEDOR ............ consulta solo su estado financiero, cuentas y pagos
+   COMPRADOR ........... sin acceso a datos contables internos
+ Los módulos que envían eventos (Órdenes, Pagos) no son un rol de usuario: se
+ identifican con su clave de servicio (cabecera x-api-key).
+
+
+===============================================================================
+ 1. REQUERIMIENTOS FUNCIONALES
+===============================================================================
+
+ RF-01  Registrar automáticamente una venta confirmada  (HU-CON-01)
+        - Solo registra órdenes en estado confirmada.
+        - Guarda fecha, valor y número de orden.
+        - No duplica una misma orden.
+        - Una orden con varios vendedores genera un registro por vendedor.
+
+ RF-02  Calcular la comisión del marketplace por cada venta  (HU-CON-02)
+        - Usa el porcentaje de comisión configurado y vigente en la fecha.
+        - Muestra valor bruto, comisión y valor neto.
+        - El cálculo queda asociado a la orden.
+
+ RF-03  Registrar los valores pendientes de pago a vendedores  (HU-CON-03)
+        - Identifica vendedor y periodo. El periodo es quincenal: días 1-15 y
+          16-fin de mes, en hora de Colombia.
+        - Calcula el valor pendiente después de la comisión.
+        - Permite consultar el estado pendiente/pagado.
+
+ RF-04  Conciliar pagos recibidos contra las órdenes  (HU-CON-04)
+        - Permite relacionar un pago con una o varias órdenes.
+        - Identifica diferencias de valor.
+        - Marca la conciliación como conciliada o pendiente.
+        - Recibe los pagos por evento o por importación de archivo CSV.
+
+ RF-05  Generar reporte de ingresos y comisiones por periodo  (HU-CON-05)
+        - Permite seleccionar un rango de fechas.
+        - Muestra ventas, comisiones y valores netos.
+        - El total coincide con las transacciones registradas.
+
+ RF-06  Registrar ajustes por devoluciones o cancelaciones  (HU-CON-06)
+        - Solo permite ajustes sobre órdenes existentes.
+        - Guarda motivo, fecha y valor.
+        - Actualiza el saldo correspondiente.
+        - Revierte la comisión y el neto con el porcentaje original. Permite
+          devoluciones parciales hasta el valor no ajustado.
+        - Si la cuenta ya estaba pagada, genera un saldo a favor del marketplace.
+
+ RF-07  Consultar el estado financiero de los vendedores  (HU-CON-07)
+        - Permite consultar por vendedor.
+        - Muestra total vendido, comisión, pagado y pendiente.
+        - Los valores se pueden filtrar por periodo.
+
+ RF-08  Exportar información contable a Excel  (HU-CON-08)
+        - Permite seleccionar periodo.
+        - Exporta las columnas definidas: fecha, número de orden, vendedor,
+          valor bruto, % comisión, comisión, valor neto, estado de pago, estado
+          de conciliación y ajustes.
+        - Los valores exportados coinciden con el sistema.
+
+ RF-09  Configurar el porcentaje de comisión con vigencia  (HU-CON-09)
+        - Solo el ADMIN puede cambiar el porcentaje.
+        - Cada porcentaje tiene fecha de inicio y las vigencias no se solapan.
+        - Un cambio no altera comisiones ya calculadas y queda en auditoría.
+
+ RF-10  Registrar el pago realizado a un vendedor  (HU-CON-10)
+        - Registra fecha, valor, referencia y soporte del pago.
+        - Descuenta primero el saldo a favor del marketplace.
+        - Aplica el pago a las cuentas pendientes más antiguas (FIFO por periodo).
+        - Cambia el estado a pagada o parcial y actualiza el saldo.
+        - No permite pagar más de lo que se le debe al vendedor.
+
+ RF-11  Consultar la auditoría de movimientos contables  (HU-CON-11)
+        - Permite filtrar por entidad, usuario y rango de fechas.
+        - Muestra los valores antes y después del cambio.
+        - Solo es accesible para el ADMIN.
+
+ RF-12  Retener los pagos a vendedores mientras el pedido está en escrow
+        - Órdenes avisa la entrega (POST /escrow/marcar-entrega/{pedido_id}) y
+          empieza una retención de 72 horas que se libera sola.
+        - Un módulo autorizado puede bloquear el pedido ante una PQR
+          (POST /escrow/bloquear/{pedido_id}); solo el ADMIN lo desbloquea, con
+          motivo obligatorio.
+        - Solo se paga a vendedores lo LIBERADO; un pedido sin entrega retiene.
+
+ RF-13  Avisar a Notificaciones cuando se acredita un pago a un vendedor
+        - Evento contabilidad.pago-vendedor.registrado (v2) con vendedor, monto
+          y órdenes asociadas (HU-NOT-05), entregado por el relay del outbox.
+
+ Fuera del alcance: facturación electrónica DIAN, IVA y retenciones, nómina y
+ contabilidad general.
+
+
+===============================================================================
+ 2. REQUERIMIENTOS NO FUNCIONALES
+===============================================================================
+
+ Estado: [OK] implementado   [PENDIENTE] planeado, aún sin implementar o medir
+
+ EXACTITUD DE LOS DATOS
+ RNF-01 [OK] El dinero se maneja con precisión decimal, nunca con punto
+        flotante: NUMERIC(18,2) en base de datos y decimal.js en el código.
+ RNF-02 [OK] Moneda única COP. Redondeo HALF_UP a 2 decimales.
+ RNF-03 [OK] Siempre se cumple bruto = comisión + neto, también validado por
+        restricciones de la base de datos.
+ RNF-04 [OK] Regla de control por vendedor, al centavo:
+        vendido - comisión - ajustes = pagado + pendiente.
+
+ CONFIABILIDAD
+ RNF-05 [OK] Idempotencia: reenviar un mismo evento no duplica registros.
+ RNF-06 [OK] Cada operación es transaccional: se guarda completa o no se guarda.
+ RNF-07 [OK] Concurrencia: operaciones simultáneas no duplican registros ni
+        superan los saldos.
+ RNF-08 [OK] Endpoint de estado GET /health y cierre ordenado del servicio.
+ RNF-09 [OK] Relay del outbox: entrega los eventos por HTTP a las URL de
+        OUTBOX_DESTINOS. [PENDIENTE] Configurar la URL de Notificaciones
+        (Equipo 3); mientras falte, los eventos quedan pendientes en el outbox.
+ RNF-10 [OK] Reintentos con espera exponencial y DEAD_LETTER tras
+        OUTBOX_MAX_INTENTOS fallos; GET /health informa pendientes y dead-letter.
+
+ SEGURIDAD
+ RNF-11 [OK] Control de acceso por rol en cada endpoint.
+ RNF-12 [OK] Todas las entradas se validan con esquemas Zod.
+ RNF-13 [OK] Cabeceras de seguridad (helmet) y CORS configurable.
+ RNF-14 [OK] El modo de autenticación de prueba no arranca en producción.
+ RNF-15 [OK] Autenticación con Supabase Auth (AUTH_MODE=supabase): el token se
+        valida contra Supabase, nunca solo decodificado; 401 si es inválido o
+        expiró. Los módulos se autentican con x-api-key (SERVICE_API_KEYS).
+        [PENDIENTE] URL y publishable key del proyecto Supabase compartido.
+ RNF-16 [OK] Límite de peticiones por IP (429), TLS hacia PostgreSQL de
+        Supabase y RLS habilitado en todas las tablas del esquema. HTTPS lo
+        provee Render en el despliegue.
+
+ AUDITORÍA Y TRAZABILIDAD
+ RNF-17 [OK] Todo comando queda registrado con usuario, fecha y valores antes
+        y después del cambio.
+ RNF-18 [OK] Logs estructurados en JSON con identificador de correlación
+        (x-correlation-id).
+
+ RENDIMIENTO
+ RNF-19 [OK] Los listados principales son paginados.
+ RNF-20 [PENDIENTE] Meta: reporte y exportación mensual en menos de 5 segundos
+        con unas 200.000 ventas. Aún no se ha medido.
+
+ MANTENIBILIDAD Y CALIDAD
+ RNF-21 [OK] Arquitectura hexagonal: las reglas contables no dependen de
+        Express ni de PostgreSQL. ESLint valida las capas.
+ RNF-22 [OK] Pruebas automáticas: 358 unitarias (287 API, 65 web, 6 contratos)
+        y 87 de integración, todas pasando (corridas el 2026-11-23).
+ RNF-23 [OK] Integración continua: formato, lint, tipos, pruebas y compilación.
+ RNF-24 [OK] Migraciones SQL versionadas.
+ RNF-25 [OK] API documentada con OpenAPI/Swagger.
+ RNF-26 [PENDIENTE] Pruebas E2E del frontend y pruebas de contrato con los
+        demás módulos.
+
+ COMPATIBILIDAD Y DESPLIEGUE
+ RNF-27 [OK] Tecnología: Node.js 20+, Express 5, TypeScript y PostgreSQL 16 de
+        Supabase con esquema propio "contabilidad". El alcance es el backend;
+        apps/web (React 19 y Vite) queda congelado.
+ RNF-28 [OK] Se puede desplegar en contenedores Docker; render.yaml define el
+        servicio en Render. [PENDIENTE] Despliegue real (faltan credenciales).
+ RNF-29 [OK] Fechas y periodos en hora de Colombia (America/Bogota).
+
