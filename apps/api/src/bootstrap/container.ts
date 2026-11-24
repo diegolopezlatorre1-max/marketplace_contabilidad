@@ -44,6 +44,8 @@ import {
   crearClienteSupabase,
   SupabaseAuthContext,
 } from '../infrastructure/integration/auth/SupabaseAuthContext';
+import type { SellersGateway } from '../application/ports/out/SellersGateway';
+import { HttpSellersGateway } from '../infrastructure/integration/sellers/HttpSellersGateway';
 import { MockSellersGateway } from '../infrastructure/integration/sellers/MockSellersGateway';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
 import { PgAjusteContableRepository } from '../infrastructure/persistence/postgres/PgAjusteContableRepository';
@@ -65,11 +67,21 @@ export const VERSION_MODULO = '0.1.0';
 
 export interface ContabilidadModuleOptions {
   config: Pick<AppConfig, 'INTEGRATION_MODE' | 'AUTH_MODE'> &
-    Partial<Pick<AppConfig, 'SUPABASE_URL' | 'SUPABASE_PUBLISHABLE_KEY' | 'SERVICE_API_KEYS'>>;
+    Partial<
+      Pick<
+        AppConfig,
+        | 'SUPABASE_URL'
+        | 'SUPABASE_PUBLISHABLE_KEY'
+        | 'SERVICE_API_KEYS'
+        | 'VENDEDORES_URL'
+        | 'VENDEDORES_API_KEY'
+        | 'VENDEDORES_TIMEOUT_MS'
+      >
+    >;
   pool: pg.Pool;
   logger: Logger;
   /** Permite inyectar adaptadores alternativos (p. ej. en pruebas o desde el marketplace). */
-  overrides?: Partial<{ auth: AuthContext; clock: Clock }>;
+  overrides?: Partial<{ auth: AuthContext; clock: Clock; vendedores: SellersGateway }>;
 }
 
 export interface ContabilidadModule {
@@ -92,9 +104,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const unitOfWork = new PgUnitOfWork(pool);
   const dbHealth = new PgDatabaseHealth(pool);
   const configuracionComision = new PgConfiguracionComisionRepository(pool);
-  // INTEGRATION_MODE elegirá los adaptadores HTTP/eventos cuando los otros módulos los expongan;
-  // por ahora Vendedores solo tiene mock.
-  const vendedores = new MockSellersGateway();
+  const vendedores = overrides?.vendedores ?? crearSellersGateway(config, logger);
 
   // Casos de uso / consultas
   const obtenerEstado = new ObtenerEstadoModulo(dbHealth, clock, new PgOutboxMonitor(pool));
@@ -205,5 +215,27 @@ function crearAuthContext(config: ContabilidadModuleOptions['config']): AuthCont
       url: config.SUPABASE_URL,
       publishableKey: config.SUPABASE_PUBLISHABLE_KEY,
     }),
+  );
+}
+
+/**
+ * Vendedores es el único módulo que Contabilidad consulta (Órdenes y Pagos le envían eventos).
+ * INTEGRATION_MODE=mock usa el catálogo simulado; http y events consultan su API por HTTP.
+ */
+export function crearSellersGateway(
+  config: ContabilidadModuleOptions['config'],
+  logger: Logger,
+): SellersGateway {
+  if (config.INTEGRATION_MODE === 'mock') return new MockSellersGateway();
+  if (!config.VENDEDORES_URL) {
+    throw new Error(`INTEGRATION_MODE=${config.INTEGRATION_MODE} requiere VENDEDORES_URL`);
+  }
+  return new HttpSellersGateway(
+    {
+      url: config.VENDEDORES_URL,
+      apiKey: config.VENDEDORES_API_KEY,
+      timeoutMs: config.VENDEDORES_TIMEOUT_MS ?? 3_000,
+    },
+    logger.child({ adaptador: 'vendedores' }),
   );
 }
