@@ -1,0 +1,143 @@
+===============================================================================
+  MÓDULO DE CONTABILIDAD — PRESENTACIÓN DE AVANCES DEL SPRINT 3
+  Consulta, exportación y control
+===============================================================================
+
+Equipo:   Carlos Larrahondo · Diego López
+Periodo:  planeado del 2026-11-09 al 2026-11-20; desarrollo cerrado el 2026-11-06
+Carga:    12 puntos (4 historias de usuario)
+
+
+-------------------------------------------------------------------------------
+1. OBJETIVO DEL SPRINT
+-------------------------------------------------------------------------------
+
+Cerrar el ciclo de las cuentas por pagar con el pago al vendedor, consultar el
+estado financiero de cada vendedor, exportar la información contable a Excel y
+consultar la auditoría de movimientos.
+
+Resultado: OBJETIVO CUMPLIDO.
+
+
+-------------------------------------------------------------------------------
+2. RESUMEN EN CIFRAS
+-------------------------------------------------------------------------------
+
+  - Velocidad:            12 / 12 puntos (100 %)
+  - Historias entregadas: 4 de 4
+  - Tareas cerradas:      24 de 24 (T-52 a T-75)
+  - Pull requests:        #14, #15, #16, #17 (funcionalidad) · #18, #19 (documentación)
+  - Validación:           criterios del F01 aprobados por el Contador y el
+                          Administrador financiero el 2026-11-06
+
+  Histórico de velocidad:  Sprint 1: 18/18 · Sprint 2: 18/18 · Sprint 3: 12/12
+
+
+-------------------------------------------------------------------------------
+3. HISTORIAS ENTREGADAS
+-------------------------------------------------------------------------------
+
+HU-CON-10 — Registrar el pago realizado a un vendedor        (3 pts · Carlos · PR #14)
+  Qué hace:
+    - El contador registra el pago con fecha, valor, referencia y soporte.
+    - Primero descuenta el saldo a favor del marketplace (por devoluciones) y
+      después aplica el pago a las cuentas pendientes, de la más antigua a la
+      más reciente (FIFO por periodo, decisión D-06).
+    - Las cuentas quedan en estado PAGADO o PARCIAL.
+    - No permite pagar más del saldo, ni siquiera con pagos simultáneos.
+  Dónde se ve: pantalla "Pagos a vendedores" (registro e historial).
+
+HU-CON-07 — Estado financiero por vendedor                   (3 pts · Carlos · PR #15)
+  Qué hace:
+    - Muestra por quincena el total vendido, la comisión, los ajustes, lo pagado
+      y lo pendiente de cada vendedor.
+    - Verifica la regla de control al centavo:
+          vendido − comisión − ajustes = pagado + pendiente
+    - El rol VENDEDOR (que vea solo su propio estado) quedó preparado, pero
+      todavía no está expuesto.
+  Dónde se ve: pantalla "Estado por vendedor".
+
+HU-CON-08 — Exportar la información contable a Excel         (3 pts · Diego · PR #17)
+  Qué hace:
+    - Genera un .xlsx con las hojas Ventas, Ajustes, Resumen y Metadatos.
+    - Usa las columnas acordadas con el Administrador financiero (D-09).
+    - Los valores son números con formato de moneda (no texto) y los totales
+      son fórmulas SUM.
+    - Los totales coinciden con el reporte de ingresos que se ve en pantalla.
+  Dónde se ve: botón "Exportar a Excel" en el reporte de ingresos.
+
+HU-CON-11 — Consultar la auditoría de movimientos            (3 pts · Diego · PR #16)
+  Qué hace:
+    - Consulta los movimientos filtrando por entidad, usuario y fecha (hora de
+      Colombia), con paginación.
+    - Muestra los valores antes y después de cada cambio.
+    - Solo la puede usar el Administrador financiero; cualquier otro rol
+      recibe 403.
+  Dónde se ve: pantalla "Auditoría".
+
+
+-------------------------------------------------------------------------------
+4. CALIDAD
+-------------------------------------------------------------------------------
+
+  - Pruebas unitarias:        227 (API) · 65 (web) · 6 (contracts)
+  - Pruebas de integración:   71 contra PostgreSQL
+  - Postman:                  70 peticiones · 142 aserciones · 0 fallas
+  - CI:                       en verde en la rama dev
+  - Revisión cruzada:         cada PR lo aprobó el otro integrante
+
+  Prueba de cuadre global (T-73):
+    - Reporte de ingresos:   valor bruto = comisión + neto
+    - Estado por vendedor:   vendido − comisión − ajustes = pagado + pendiente
+    - Excel:                 coincide con el reporte de ingresos
+
+
+-------------------------------------------------------------------------------
+5. DECISIONES CERRADAS EN EL SPRINT
+-------------------------------------------------------------------------------
+
+  - D-06: el pago al vendedor descuenta primero el saldo a favor y se aplica
+          FIFO por periodo.                           → CONFIRMADA (Contador)
+  - D-09: columnas del Excel: fecha, número de orden, vendedor, valor bruto,
+          % comisión, comisión, valor neto, estado de pago, estado de
+          conciliación y ajustes.          → CONFIRMADA (Admin. financiero)
+
+
+-------------------------------------------------------------------------------
+6. GUION SUGERIDO PARA LA DEMO
+-------------------------------------------------------------------------------
+
+  1. Cuentas por pagar: mostrar un vendedor con saldo pendiente.
+  2. Pagos a vendedores: registrar un pago parcial → la cuenta pasa a PARCIAL.
+     Intentar pagar más del saldo → el sistema lo rechaza.
+  3. Estado por vendedor: ver totales y movimientos de la quincena y comprobar
+     que la regla de control cuadra.
+  4. Reporte de ingresos: exportar a Excel y abrir el archivo; comparar los
+     totales con la pantalla.
+  5. Auditoría: buscar el pago del paso 2 y mostrar los valores antes y después.
+
+
+-------------------------------------------------------------------------------
+7. PENDIENTES Y RIESGOS
+-------------------------------------------------------------------------------
+
+  - Integración con el Módulo de Pagos: falta que confirmen si el valor de
+    "pago.recibido" llega neto de los costos de la pasarela, además del token
+    de servicio, las URL de los ambientes y el manejo de reembolsos.
+    Detalle en docs/integracion/Integracion_Contabilidad_Pagos.docx.
+  - Exponer el rol VENDEDOR cuando el marketplace lo requiera (la consulta ya
+    lo soporta).
+  - Los eventos que publica Contabilidad se guardan en la outbox, pero todavía
+    no hay relay que los entregue.
+
+
+-------------------------------------------------------------------------------
+8. SIGUIENTE PASO — SPRINT 4 (Fase 5, endurecimiento: 2026-11-23 a 2026-12-04)
+-------------------------------------------------------------------------------
+
+  - Ejecutar el plan de la Fase 5 (Plan_Desarrollo_Modulo_Contabilidad.txt).
+  - Agregar pruebas de extremo a extremo de la interfaz.
+  - Fusionar cada PR apenas pase la revisión.
+  - Avanzar en la integración con el Módulo de Pagos.
+
+===============================================================================

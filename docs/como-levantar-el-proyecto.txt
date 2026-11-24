@@ -1,0 +1,105 @@
+===============================================================================
+ CÓMO LEVANTAR LA API Y EL FRONTEND EN DESARROLLO (para probar)
+===============================================================================
+
+Para probar necesitas 3 cosas prendidas:
+
+  1. Base de datos (PostgreSQL) .... la necesita la API
+  2. API ........................... http://localhost:3000/api/v1/contabilidad
+  3. Frontend ...................... http://localhost:5173
+
+Los cambios que hagas en el código se ven solos (recarga en caliente),
+no hay que reiniciar nada.
+
+Todos los comandos se corren desde la raíz del proyecto:
+
+  cd C:\proyectos\marketplace_contabilidad
+
+
+-------------------------------------------------------------------------------
+ PRIMERA VEZ (solo una vez)
+-------------------------------------------------------------------------------
+
+  npm install
+  docker compose up -d postgres
+  npm run db:create
+  npm run db:migrate
+  npm run db:seed
+
+  - "docker compose up -d postgres" prende SOLO la base de datos (usuario
+    postgres, contraseña postgres). Necesita Docker Desktop abierto.
+  - Revisa que apps\api\.env tenga esa contraseña en DATABASE_URL:
+      DATABASE_URL=postgres://postgres:postgres@localhost:5432/marketplace_contabilidad
+
+
+-------------------------------------------------------------------------------
+ CADA VEZ QUE VAYAS A PROBAR
+-------------------------------------------------------------------------------
+
+  Paso 1. Prender la base de datos (si no está prendida):
+
+    docker compose up -d postgres
+
+  Paso 2. Terminal 1 — levantar la API:
+
+    npm run dev:api
+
+    Queda en .... http://localhost:3000/api/v1/contabilidad
+    Swagger ..... http://localhost:3000/api/v1/contabilidad/docs
+
+  Paso 3. Terminal 2 — levantar el frontend:
+
+    npm run dev:web
+
+    Abre ........ http://localhost:5173
+    Entra con el login de prueba: Contador o Administrador financiero.
+
+  Para apagar: Ctrl + C en cada terminal.
+
+
+-------------------------------------------------------------------------------
+ ¿SOLO QUIERO PROBAR UNA DE LAS DOS?
+-------------------------------------------------------------------------------
+
+  Solo la API (con Postman o Swagger):
+    docker compose up -d postgres
+    npm run dev:api
+
+    En Postman manda el encabezado:
+      Authorization: Bearer mock-contador    (Contador)
+      Authorization: Bearer mock-admin       (Administrador financiero)
+    Colección: docs\postman\contabilidad.postman_collection.json
+
+  Solo el frontend:
+    Igual necesitas la API prendida, porque el frontend le pide los datos a
+    ella. Levanta los tres pasos.
+
+
+-------------------------------------------------------------------------------
+ METER DATOS PARA PROBAR (con la API prendida, en una tercera terminal)
+-------------------------------------------------------------------------------
+
+  npm run simular:orden -- --cantidad 5                         5 ventas nuevas
+  npm run simular:orden -- --vendedores V-1,V-2                 venta con 2 vendedores
+  npm run simular:pago -- --valor 150000 --ordenes ORD-1,ORD-2  pago recibido
+
+  Para volver a cargar los datos de ejemplo:  npm run db:seed
+
+
+-------------------------------------------------------------------------------
+ DESPUÉS DE UN "git pull"
+-------------------------------------------------------------------------------
+
+  npm install          (por si hay dependencias nuevas)
+  npm run db:migrate   (por si hay migraciones nuevas)
+
+
+-------------------------------------------------------------------------------
+ SI ALGO FALLA
+-------------------------------------------------------------------------------
+
+  "ECONNREFUSED ... 5432"          -> la BD está apagada: docker compose up -d postgres
+  "password authentication failed" -> revisa la contraseña en apps\api\.env
+  "relation ... does not exist"    -> npm run db:migrate
+  "port 3000 already in use"       -> ya hay una API corriendo en otra terminal
+  El frontend no muestra datos     -> la API no está prendida (Terminal 1)

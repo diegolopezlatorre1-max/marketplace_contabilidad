@@ -115,6 +115,25 @@ Auth, usuarios ni las tablas de otros equipos.
 Toda tabla nueva debe habilitar RLS en su migración: la prueba `test/integration/rls.test.ts`
 falla si alguna queda sin él.
 
+### Despliegue en Render
+
+`render.yaml` define el servicio (Docker con `apps/api/Dockerfile`, health check en `/health`).
+
+1. Render → _New_ → _Blueprint_ → este repositorio (rama `main`).
+2. Completar los secretos que pide Render: `DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`,
+   `SUPABASE_PUBLISHABLE_KEY`, `SERVICE_API_KEYS` y, cuando Notificaciones entregue su URL,
+   `OUTBOX_DESTINOS`. Ningún secreto va en Git.
+3. Cada despliegue ejecuta `node dist/migrate.js` (migraciones pendientes) y luego la API. Con
+   `NODE_ENV=production` el arranque falla si falta `SERVICE_API_KEYS` o si `AUTH_MODE=mock`.
+4. Verificar antes de entregar las URL a otros equipos:
+   - `GET https://<servicio>.onrender.com/health` → `200`
+   - `https://<servicio>.onrender.com/docs` → Swagger
+   - `POST /api/contabilidad/escrow/marcar-entrega/{pedido_id}` y `.../bloquear/{pedido_id}`
+     aparecen en Swagger.
+
+URL a entregar: `https://<servicio>.onrender.com/api` (base) y `https://<servicio>.onrender.com/docs`.
+El plan gratuito se suspende tras 15 min sin tráfico: la primera petición puede tardar ~1 min.
+
 ## Calidad
 
 ```bash
