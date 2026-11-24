@@ -1,0 +1,44 @@
+SOLICITUDES PENDIENTES PARA FINALIZAR LA INTEGRACIÓN (GUIA_EQUIPO_6)
+Módulo de Contabilidad (Equipo 6) - 2026-11-23
+
+1. AL ADMINISTRADOR DEL PROYECTO SUPABASE
+   a) DATABASE_URL (Session pooler, botón "Connect") y el certificado SSL
+      (Database Settings -> SSL).
+      Por qué: la guía (sección 4) exige que el esquema contable viva en
+      Supabase. Solo tenemos la URL de JWKS, que valida usuarios pero no da
+      acceso a la base de datos.
+   b) Dónde se guarda el rol del usuario (esperamos app_metadata.role: admin,
+      vendedor o comprador) y, para vendedores, su id (app_metadata.vendedor_id).
+      Si es posible, también un usuario de prueba de cada rol.
+      Por qué: la guía (sección 4) pide aplicar los roles Admin, Comprador y
+      Vendedor. Si el rol viene en otro lugar, todos reciben 403.
+
+2. AL EQUIPO DE ÓRDENES
+   a) Confirmar los supuestos del evento orden.confirmada:
+      - S-01: valorBruto es el valor de los productos, sin envío ni impuestos.
+      - S-02: envían el estado exactamente como "CONFIRMADA".
+      - S-03: el eventId no cambia entre reintentos.
+   b) Confirmar que ellos llamarán a POST /escrow/marcar-entrega/{pedido_id}
+      cuando se entregue un pedido.
+   Por qué: la guía (sección 6) dice que estos supuestos deben confirmarse con
+   los equipos productores. Si alguno es falso, las comisiones salen mal o se
+   duplican ventas.
+
+3. AL EQUIPO DE PAGOS
+   a) Si el valor de pago.recibido llega neto o bruto de los costos de la
+      pasarela, y si envían esos costos por separado.
+   b) Confirmar que en "ordenes" usarán el mismo número de orden que envía
+      Órdenes.
+   Por qué: la guía (sección 6) pide cerrar el contrato pago.recibido con
+   ellos. Sin esto, la conciliación muestra diferencias falsas.
+
+4. AL EQUIPO DE NOTIFICACIONES (EQUIPO 3)
+   La URL a la que debemos enviar el evento de pago acreditado (HU-NOT-05) y,
+   si la exigen, la clave para autenticarnos.
+   Por qué: la guía (sección 6) exige emitir este evento. Ya se genera, pero
+   sin esa URL queda pendiente y no se entrega.
+
+5. AL PROFESOR O COORDINADOR DEL PROYECTO
+   Qué módulo llamará a POST /escrow/bloquear/{pedido_id} ante una PQR.
+   Por qué: la guía (sección 6) documenta esa ruta, pero no existe un módulo
+   de PQR que la use.
