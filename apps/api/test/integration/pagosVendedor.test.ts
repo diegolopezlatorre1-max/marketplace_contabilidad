@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createContabilidadModule } from '../../src/bootstrap/container';
 import { createHttpApp } from '../../src/infrastructure/http/express/createHttpApp';
 import { MockOrdersGateway } from '../../src/infrastructure/integration/orders/MockOrdersGateway';
-import { limpiarTablas, testPool } from './db';
+import { liberarEscrow, limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const BASE = '/api/v1/contabilidad';
+const BASE = '/api/contabilidad';
 const reloj = { now: () => new Date('2026-11-10T15:00:00Z') };
 const ordenes = new MockOrdersGateway(reloj.now);
 
@@ -26,7 +26,7 @@ const app = () => (appCache ??= crearApp());
 const comoSistema = (url: string, body: object) =>
   request(app()).post(`${BASE}${url}`).set('authorization', 'Bearer mock-sistema').send(body);
 const comoContador = (url: string, body: object) =>
-  request(app()).post(`${BASE}${url}`).set('authorization', 'Bearer mock-contador').send(body);
+  request(app()).post(`${BASE}${url}`).set('authorization', 'Bearer mock-admin').send(body);
 const pagar = (body: object) =>
   comoContador('/pagos-vendedor', { vendedorId: 'V-1', referencia: 'TRF-1', ...body });
 
@@ -42,6 +42,8 @@ async function venta(numeroOrden: string, valor: string, fecha: string) {
     }),
   );
   expect(res.status).toBe(201);
+  // Escrow: el pedido ya se entregó hace más de 72 h, así que se puede pagar.
+  await liberarEscrow([numeroOrden]);
 }
 
 async function cuentas() {
@@ -88,7 +90,7 @@ describe('HU-CON-10 - criterios de aceptación del F01', () => {
         valor: '90000.00',
         referencia: 'TRF-1',
         soporte: 'Comprobante 0001',
-        registrado_por: 'u-contador',
+        registrado_por: 'u-admin',
       },
     ]);
     const auditoria = await testPool().query(
@@ -130,7 +132,7 @@ describe('HU-CON-10 - criterios de aceptación del F01', () => {
     ]);
     const resumen = await request(app())
       .get(`${BASE}/cuentas-por-pagar/resumen`)
-      .set('authorization', 'Bearer mock-contador');
+      .set('authorization', 'Bearer mock-admin');
     expect(resumen.body[0]).toMatchObject({ vendedorId: 'V-1', saldoPendiente: '45000.00' });
   });
 });

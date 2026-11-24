@@ -24,7 +24,8 @@ export const periodoSchema = z
 
 export const monedaSchema = z.literal('COP');
 
-export const ROLES = ['CONTADOR', 'ADMIN_FINANCIERO', 'SISTEMA'] as const;
+/** Roles de aplicación del marketplace (GUIA_EQUIPO_6). */
+export const ROLES = ['ADMIN', 'COMPRADOR', 'VENDEDOR'] as const;
 export const rolSchema = z.enum(ROLES);
 export type Rol = z.infer<typeof rolSchema>;
 

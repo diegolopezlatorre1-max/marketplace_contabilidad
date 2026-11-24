@@ -4,10 +4,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createContabilidadModule } from '../../src/bootstrap/container';
 import { createHttpApp } from '../../src/infrastructure/http/express/createHttpApp';
 import { MockOrdersGateway } from '../../src/infrastructure/integration/orders/MockOrdersGateway';
-import { limpiarTablas, testPool } from './db';
+import { liberarEscrow, limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const BASE = '/api/v1/contabilidad';
+const BASE = '/api/contabilidad';
 const reloj = { now: () => new Date('2026-11-25T15:00:00Z') };
 const ordenes = new MockOrdersGateway(reloj.now);
 
@@ -28,7 +28,7 @@ const post = (url: string, token: string, body: object) =>
 const estado = (query = '') =>
   request(app())
     .get(`${BASE}/vendedores/V-1/estado${query}`)
-    .set('authorization', 'Bearer mock-contador');
+    .set('authorization', 'Bearer mock-admin');
 
 async function venta(numeroOrden: string, valor: string, fecha: string) {
   const res = await post(
@@ -42,6 +42,8 @@ async function venta(numeroOrden: string, valor: string, fecha: string) {
     }),
   );
   expect(res.status).toBe(201);
+  // Escrow: el pedido ya se entregó hace más de 72 h, así que se puede pagar.
+  await liberarEscrow([numeroOrden]);
 }
 
 async function ventaId(numeroOrden: string): Promise<string> {
@@ -67,7 +69,7 @@ beforeEach(async () => {
 
 describe('HU-CON-07 - criterios de aceptación del F01', () => {
   it('1 y 2. consulta por vendedor: total vendido, comisión, pagado y pendiente', async () => {
-    await post('/pagos-vendedor', 'mock-contador', {
+    await post('/pagos-vendedor', 'mock-admin', {
       vendedorId: 'V-1',
       valor: '100000.00',
       referencia: 'TRF-1',
@@ -99,18 +101,18 @@ describe('HU-CON-07 - criterios de aceptación del F01', () => {
   });
 
   it('regla de control: vendido − comisión − ajustes = pagado + pendiente, con saldo a favor', async () => {
-    await post('/ajustes', 'mock-contador', {
+    await post('/ajustes', 'mock-admin', {
       ventaId: await ventaId('ORD-2'),
       tipo: 'DEVOLUCION',
       motivo: 'Devolución',
       valor: '20000.00',
     });
-    await post('/pagos-vendedor', 'mock-contador', {
+    await post('/pagos-vendedor', 'mock-admin', {
       vendedorId: 'V-1',
       valor: '90000.00',
       referencia: 'TRF-1',
     });
-    await post('/ajustes', 'mock-contador', {
+    await post('/ajustes', 'mock-admin', {
       ventaId: await ventaId('ORD-1'),
       tipo: 'CANCELACION',
       motivo: 'Cancelada tras el pago',

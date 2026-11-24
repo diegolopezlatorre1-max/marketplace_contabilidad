@@ -5,6 +5,7 @@ import type { ContextoEjecucion, UseCase } from '../ports/in/UseCase';
 import type { Clock } from '../ports/out/Clock';
 import type { PagoVendedorRegistrado } from '../ports/out/PagoVendedorRepository';
 import type { UnitOfWork } from '../ports/out/UnitOfWork';
+import type { PagoVendedorRegistradoV2 } from '@contabilidad/contracts';
 import { exigirRol } from '../security';
 
 export const EVENTO_PAGO_VENDEDOR_REGISTRADO = 'contabilidad.pago-vendedor.registrado';
@@ -32,8 +33,9 @@ export class ReferenciaPagoDuplicadaError extends DomainError {
 }
 
 /**
- * HU-CON-10: el contador registra el pago hecho a un vendedor. En una sola transacción descuenta
- * el saldo a favor del marketplace, aplica el pago FIFO a sus cuentas (D-06), guarda el pago con
+ * HU-CON-10: el ADMIN registra el pago hecho a un vendedor. En una sola transacción descuenta
+ * el saldo a favor del marketplace, aplica el pago FIFO a sus cuentas (D-06) sin tocar el neto
+ * retenido por escrow (pedidos sin entrega, entregados hace menos de 72 h o con PQR), guarda el pago con
  * su detalle, deja auditoría y publica contabilidad.pago-vendedor.registrado.
  */
 export class RegistrarPagoVendedorUseCase implements UseCase<
@@ -50,7 +52,7 @@ export class RegistrarPagoVendedorUseCase implements UseCase<
     entrada: RegistrarPagoVendedorEntrada,
     ctx: ContextoEjecucion,
   ): Promise<PagoVendedorRegistrado> {
-    exigirRol(ctx.actor, ['CONTADOR']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const ahora = this.clock.now();
     // Un día contable se registra al mediodía de Colombia para no cambiar de día por la zona.
     const fecha = entrada.fecha
@@ -68,6 +70,8 @@ export class RegistrarPagoVendedorUseCase implements UseCase<
       }
       const cuentas = await repos.cuentasPorPagar.pendientesParaActualizar(vendedorId);
       const saldoAFavor = await repos.pagosVendedor.saldoAFavorDisponible(vendedorId);
+      // Escrow: solo se paga el neto de pedidos LIBERADOS (entregados hace 72 h o más, sin PQR).
+      const retenidoPorPeriodo = await repos.escrow.netoRetenidoPorPeriodo(vendedorId, ahora);
       const antes = cuentas.map((c) => ({
         periodo: c.periodo.codigo,
         valorPagado: c.valorPagado.toString(),
@@ -84,6 +88,7 @@ export class RegistrarPagoVendedorUseCase implements UseCase<
         soporte: entrada.soporte,
         cuentas,
         saldoAFavorDisponible: saldoAFavor,
+        retenidoPorPeriodo,
         registradoPor: ctx.actor.id,
         ahora,
       });
@@ -107,17 +112,30 @@ export class RegistrarPagoVendedorUseCase implements UseCase<
         valoresNuevos: { pago: json },
         ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
       });
+      // HU-NOT-05: el evento identifica al vendedor, el monto y las órdenes asociadas: las de las
+      // quincenas a las que se aplicó el pago, sin las que el escrow aún retiene.
+      const retenidos = await repos.escrow.pedidosRetenidos(vendedorId, ahora);
+      const ordenesDe = (periodo: string): string[] =>
+        (cuentas.find((c) => c.periodo.codigo === periodo)?.numerosOrden ?? [])
+          .filter((o) => !retenidos.has(o))
+          .sort();
+      const cuentasEvento = json.aplicaciones.map((a) => ({ ...a, ordenes: ordenesDe(a.periodo) }));
+      const evento: PagoVendedorRegistradoV2 = {
+        version: 2,
+        pagoId: pago.id,
+        vendedorId: pago.vendedorId,
+        fecha: json.fecha,
+        valor: json.valor,
+        moneda: 'COP',
+        saldoAFavorAplicado: json.saldoAFavorAplicado,
+        referencia: pago.referencia,
+        ordenes: [...new Set(cuentasEvento.flatMap((c) => c.ordenes))].sort(),
+        cuentas: cuentasEvento,
+      };
       await repos.outbox.publicar({
         tipo: EVENTO_PAGO_VENDEDOR_REGISTRADO,
-        payload: {
-          pagoId: pago.id,
-          vendedorId: pago.vendedorId,
-          fecha: json.fecha,
-          valor: json.valor,
-          saldoAFavorAplicado: json.saldoAFavorAplicado,
-          referencia: pago.referencia,
-          cuentas: json.aplicaciones,
-        },
+        ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
+        payload: { ...evento },
       });
 
       return aPagoVendedorRegistrado(pago, ahora);

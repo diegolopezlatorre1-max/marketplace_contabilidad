@@ -1,0 +1,52 @@
+# Blueprint de Render para la API de Contabilidad (GUIA_EQUIPO_6, sección 9).
+# Render -> New -> Blueprint -> este repositorio. Las variables con "sync: false" son secretos:
+# Render las pide al crear el servicio y nunca se guardan en Git.
+#
+# URL resultantes:
+#   API Base URL: https://<servicio>.onrender.com/api
+#   Swagger URL:  https://<servicio>.onrender.com/docs
+services:
+  - type: web
+    name: marketplace-contabilidad-api
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    autoDeploy: true
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    # Aplica las migraciones pendientes (son idempotentes) y arranca la API.
+    # Si falla una migración, el servicio no arranca y el despliegue anterior sigue activo.
+    dockerCommand: sh -c "node dist/migrate.js && node dist/main.js"
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: info
+      # Verifica el token con el JWKS del proyecto; solo requiere SUPABASE_URL.
+      - key: AUTH_MODE
+        value: jwks
+      - key: INTEGRATION_MODE
+        value: mock
+      - key: DATABASE_SSL
+        value: verify
+      # Session pooler de Supabase (botón Connect). Secreto.
+      - key: DATABASE_URL
+        sync: false
+      # Certificado PEM de Supabase (Database Settings -> SSL).
+      - key: DATABASE_SSL_CA
+        sync: false
+      # https://<ref>.supabase.co (sin /auth/v1).
+      - key: SUPABASE_URL
+        sync: false
+      # "ordenes:<clave>,pagos:<clave>" (x-api-key de los módulos que envían eventos). Secreto.
+      - key: SERVICE_API_KEYS
+        sync: false
+      # "contabilidad.pago-vendedor.registrado=https://<notificaciones>/eventos". Vacío: eventos pendientes.
+      - key: OUTBOX_DESTINOS
+        sync: false
+      - key: OUTBOX_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

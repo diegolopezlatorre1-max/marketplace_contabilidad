@@ -12,17 +12,17 @@ interface ItemMenu {
 }
 
 const MENU: ItemMenu[] = [
-  { to: '.', label: 'Inicio', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
-  { to: 'ventas', label: 'Ventas', roles: ['CONTADOR'] },
-  { to: 'configuracion/comision', label: 'Comisión', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
-  { to: 'cuentas-por-pagar', label: 'Cuentas por pagar', roles: ['CONTADOR'] },
-  { to: 'pagos-vendedor', label: 'Pagos a vendedores', roles: ['CONTADOR'] },
-  { to: 'vendedores', label: 'Estado por vendedor', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
-  { to: 'conciliaciones', label: 'Conciliación', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
-  { to: 'ajustes', label: 'Ajustes', roles: ['CONTADOR'] },
-  { to: 'reportes/ingresos', label: 'Reportes', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
-  { to: 'auditoria', label: 'Auditoría', roles: ['ADMIN_FINANCIERO'] },
-  { to: 'documentacion-api', label: 'Documentación API', roles: ['CONTADOR', 'ADMIN_FINANCIERO'] },
+  { to: '.', label: 'Inicio', roles: ['ADMIN'] },
+  { to: 'ventas', label: 'Ventas', roles: ['ADMIN'] },
+  { to: 'configuracion/comision', label: 'Comisión', roles: ['ADMIN'] },
+  { to: 'cuentas-por-pagar', label: 'Cuentas por pagar', roles: ['ADMIN'] },
+  { to: 'pagos-vendedor', label: 'Pagos a vendedores', roles: ['ADMIN'] },
+  { to: 'vendedores', label: 'Estado por vendedor', roles: ['ADMIN'] },
+  { to: 'conciliaciones', label: 'Conciliación', roles: ['ADMIN'] },
+  { to: 'ajustes', label: 'Ajustes', roles: ['ADMIN'] },
+  { to: 'reportes/ingresos', label: 'Reportes', roles: ['ADMIN'] },
+  { to: 'auditoria', label: 'Auditoría', roles: ['ADMIN'] },
+  { to: 'documentacion-api', label: 'Documentación API', roles: ['ADMIN'] },
 ];
 
 export function Layout() {

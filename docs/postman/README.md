@@ -21,10 +21,11 @@ Variables de la colección (pestaña *Variables*):
 
 | Variable | Valor | Uso |
 |----------|-------|-----|
-| `baseUrl` | `http://localhost:3000/api/v1/contabilidad` | URL base |
-| `tokenContador` | `mock-contador` | Consultas (rol CONTADOR) |
-| `tokenAdmin` | `mock-admin` | Configurar comisión (rol ADMIN_FINANCIERO) |
-| `tokenSistema` | `mock-sistema` | Eventos de Órdenes (rol SISTEMA) |
+| `baseUrl` | `http://localhost:3000/api/contabilidad` | URL base |
+| `tokenAdmin` | `mock-admin` | Operaciones contables, comisiones y auditoría (rol ADMIN) |
+| `tokenVendedor` | `mock-vendedor` | Consulta de su propio estado y pagos (rol VENDEDOR, vendedor V-1) |
+| `tokenComprador` | `mock-comprador` | Sin acceso a funciones contables (rol COMPRADOR) |
+| `tokenSistema` | `mock-sistema` | Eventos de Órdenes y Pagos (servicio) |
 
 ## Opción 2: terminal (Newman)
 
@@ -39,16 +40,20 @@ npx newman run docs/postman/contabilidad.postman_collection.json
 | Carpeta | Casos |
 |---------|-------|
 | 1. Sistema | `/health` sin token; `/me` con cada rol; sin token → 401 |
-| 2. HU-CON-09 Comisión | consulta del % vigente; contador → 403; % inválido → 400; vigencia solapada → 409; administrador → 200 (la anterior se cierra el día previo) |
-| 3. HU-CON-01 Registrar venta | orden multi-vendedor → 201 PROCESADO; reenvío → YA_PROCESADO; misma orden con otro eventId → 409 ORDEN_DUPLICADA; orden PENDIENTE → IGNORADO; evento inválido → 400; contador → 403 |
+| 2. HU-CON-09 Comisión | consulta del % vigente; vendedor → 403; % inválido → 400; vigencia solapada → 409; administrador → 200 (la anterior se cierra el día previo) |
+| 3. HU-CON-01 Registrar venta | orden multi-vendedor → 201 PROCESADO; reenvío → YA_PROCESADO; misma orden con otro eventId → 409 ORDEN_DUPLICADA; orden PENDIENTE → IGNORADO; evento inválido → 400; administrador → 403 |
 | 4. Consultas | `/ventas` (una sola venta por vendedor, comisión con el % vigente, bruto = comisión + neto); `/periodos`; `/cuentas-por-pagar` (saldo = neto); filtro inválido → 400 |
 | 5. HU-CON-04 Conciliación | pago exacto con su orden → CONCILIADO automático; reenvío → YA_PROCESADO; misma referencia → 409; pago de 95.000 sin órdenes → bandeja SIN_CONCILIAR; conciliar contra una orden de 100.000 → PENDIENTE (−5.000); conciliar dos veces → 409; pago inexistente → 404; detalle y lista de pendientes; importar CSV (1 importado, 1 duplicado) |
 | 6. HU-CON-06 Ajustes | devolución parcial de 30.000 → 201 (reverso con el % original); exceso → 422 AJUSTE_EXCEDE_SALDO; cancelación del resto → 201; venta inexistente → 404; historial suma el bruto; evento `orden.cancelada` → 201 y reenvío → YA_PROCESADO; saldo del vendedor 2 en 0 |
 | 7. HU-CON-05 Reporte | reporte de hoy (hora de Colombia) del vendedor 1: ventas 100.000 − ajustes 100.000 = 0 y control cuadra; rango invertido → 400; rango mayor a 366 días → 400 |
-| 8. HU-CON-10 Pagos a vendedores | orden nueva de 100.000; pago parcial de 40.000 → 201 PARCIAL; misma referencia → 409 REFERENCIA_DUPLICADA; pago mayor al saldo → 422 PAGO_EXCEDE_SALDO; administrador → 403; pago del resto → 201 PAGADO; historial con 2 pagos; la cuenta queda PAGADO con saldo 0 |
-| 9. HU-CON-07 Estado por vendedor | orden nueva de 100.000 y pago de 40.000; estado: vendido, comisión con el % vigente, pagado 40.000, pendiente = neto − pagado, regla de control cuadra y quincena PARCIAL; quincena inválida → 400; sistema → 403 |
-| 10. HU-CON-11 Auditoría | el pago de la carpeta 9 aparece auditado por el contador con los valores antes (cuenta PENDIENTE) y después (PARCIAL); filtro por usuario y día de hoy; contador → 403; entidad inválida → 400 |
-| 11. HU-CON-08 Exportar a Excel | mes en curso → 200 con tipo .xlsx, nombre `contabilidad_<desde>_<hasta>.xlsx` y contenido ZIP; contador con filtro de vendedor → 200; rango invertido → 400; sistema → 403 |
+| 8. HU-CON-10 Pagos a vendedores | orden nueva de 100.000; pago sin entrega → 422 SALDO_RETENIDO_ESCROW; Órdenes marca la entrega (hace 4 días) → LIBERADO; pago parcial de 40.000 → 201 PARCIAL; misma referencia → 409 REFERENCIA_DUPLICADA; pago mayor al saldo → 422 PAGO_EXCEDE_SALDO; vendedor → 403; pago del resto → 201 PAGADO; historial con 2 pagos; la cuenta queda PAGADO con saldo 0 |
+| 9. HU-CON-07 Estado por vendedor | orden nueva de 100.000, entrega marcada hace 4 días y pago de 40.000; estado: vendido, comisión con el % vigente, pagado 40.000, pendiente = neto − pagado, regla de control cuadra y quincena PARCIAL; quincena inválida → 400; sistema → 403 |
+| 10. HU-CON-11 Auditoría | el pago de la carpeta 9 aparece auditado por el administrador con los valores antes (cuenta PENDIENTE) y después (PARCIAL); filtro por usuario y día de hoy; comprador → 403; entidad inválida → 400 |
+| 11. HU-CON-08 Exportar a Excel | mes en curso → 200 con tipo .xlsx, nombre `contabilidad_<desde>_<hasta>.xlsx` y contenido ZIP; administrador con filtro de vendedor → 200; rango invertido → 400; sistema → 403 |
+| 12. Escrow | orden nueva; sin registro → 404; Órdenes marca la entrega → RETENIDO 72 h; repetir → SIN_CAMBIOS; pago durante la retención → 422 SALDO_RETENIDO_ESCROW; bloquear por PQR → BLOQUEADO; desbloquear como sistema → 403; sin motivo → 400; el administrador desbloquea → vuelve a RETENIDO |
+
+La retención de 72 h se libera sola; para poder pagar, las carpetas 8 y 9 registran la entrega 4 días
+atrás.
 
 Cada ejecución crea una orden nueva, con vendedores `V-PM-<marca de tiempo>`, así que se
 puede repetir las veces que haga falta.
@@ -62,10 +67,10 @@ edite el cuerpo de ese request.
 ## Alternativa: colección generada del contrato
 
 Postman también puede generar una colección a partir del contrato OpenAPI que publica
-la API: *Import* → *Link* → `http://localhost:3000/api/v1/contabilidad/openapi.json`.
+la API: *Import* → *Link* → `http://localhost:3000/openapi.json`.
 Trae todos los endpoints y ejemplos, pero sin tokens por rol ni verificaciones. Cambie
-`baseUrl` a `http://localhost:3000/api/v1/contabilidad`.
+`baseUrl` a `http://localhost:3000/api/contabilidad`.
 
 La documentación interactiva (Swagger) está en
-`http://localhost:3000/api/v1/contabilidad/docs`, y en la interfaz web, en el menú
+`http://localhost:3000/docs`, y en la interfaz web, en el menú
 "Documentación API".

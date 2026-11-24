@@ -31,7 +31,7 @@ const propiedadesVenta = {
 };
 
 /**
- * Contrato OpenAPI publicado en /api/v1/contabilidad/docs.
+ * Contrato OpenAPI publicado en /docs (y /api/contabilidad/docs); JSON en /openapi.json.
  * Cada sprint agrega aquí los endpoints de sus historias.
  */
 export function buildOpenApi(version: string) {
@@ -41,13 +41,25 @@ export function buildOpenApi(version: string) {
       title: 'API Módulo de Contabilidad - Marketplace',
       version,
       description:
-        'API REST del módulo de contabilidad. Autenticación: `Authorization: Bearer <token>`. ' +
-        'En desarrollo (AUTH_MODE=mock) use `mock-contador`, `mock-admin` o `mock-sistema`. ' +
+        'API REST del módulo de contabilidad. Usuarios: `Authorization: Bearer <access token de Supabase>` ' +
+        '(roles ADMIN, VENDEDOR, COMPRADOR en app_metadata.role). Módulos que envían eventos: ' +
+        'cabecera `x-api-key: <clave de servicio>`. ' +
+        'En desarrollo (AUTH_MODE=mock) use `mock-admin`, `mock-vendedor`, `mock-comprador` o `mock-sistema` (servicio). ' +
         'Los montos viajan como string decimal con 2 decimales.',
     },
-    servers: [{ url: '/api/v1/contabilidad' }],
+    servers: [{ url: '/api/contabilidad' }],
     tags: [
       { name: 'Sistema', description: 'Estado del módulo y usuario autenticado.' },
+      {
+        name: 'Escrow',
+        description:
+          'Custodia del dinero de cada pedido (GUIA_EQUIPO_6): el módulo de Órdenes marca la entrega y ' +
+          'empieza una retención de 72 h, que se libera sola al cumplirse (no hace falta ' +
+          'ninguna llamada); un módulo bloquea el pago ante una PQR y el ADMIN lo desbloquea ' +
+          'manualmente. Solo se paga al vendedor el neto de pedidos LIBERADOS; mientras un ' +
+          'pedido no se haya entregado (aunque no tenga registro), esté ' +
+          'RETENIDO o BLOQUEADO, su neto no se puede pagar al vendedor (SALDO_RETENIDO_ESCROW).',
+      },
       {
         name: 'Comisiones',
         description: 'Porcentaje de comisión del marketplace con fechas de vigencia (HU-CON-09).',
@@ -96,7 +108,10 @@ export function buildOpenApi(version: string) {
       },
     ],
     components: {
-      securitySchemes: { bearer: { type: 'http', scheme: 'bearer' } },
+      securitySchemes: {
+        bearer: { type: 'http', scheme: 'bearer' },
+        apiKey: { type: 'apiKey', in: 'header', name: 'x-api-key' },
+      },
       schemas: {
         Problem: {
           type: 'object',
@@ -127,6 +142,16 @@ export function buildOpenApi(version: string) {
             checks: {
               type: 'object',
               properties: { baseDeDatos: { type: 'string', enum: ['ok', 'error'] } },
+            },
+            outbox: {
+              type: 'object',
+              description:
+                'Eventos salientes: pendientes de entregar y en dead-letter (requieren revisión). ' +
+                'Los dead-letter no degradan el estado del servicio.',
+              properties: {
+                pendientes: { type: 'integer' },
+                deadLetter: { type: 'integer' },
+              },
             },
             fecha: { type: 'string', format: 'date-time' },
           },
@@ -454,7 +479,7 @@ export function buildOpenApi(version: string) {
             entidad: { type: 'string', example: 'pago_vendedor' },
             entidadId: { type: 'string' },
             accion: { type: 'string', example: 'REGISTRAR' },
-            usuario: { type: 'string', example: 'u-contador' },
+            usuario: { type: 'string', example: 'u-admin' },
             fecha: { type: 'string', format: 'date-time' },
             valoresAnteriores: { type: 'object', nullable: true, additionalProperties: true },
             valoresNuevos: { type: 'object', nullable: true, additionalProperties: true },
@@ -751,6 +776,39 @@ export function buildOpenApi(version: string) {
             total: { type: 'integer' },
           },
         },
+        EscrowPedido: {
+          type: 'object',
+          properties: {
+            pedidoId: { type: 'string', example: 'ORD-1001' },
+            estado: { type: 'string', enum: ['SIN_ENTREGA', 'RETENIDO', 'LIBERADO', 'BLOQUEADO'] },
+            entregadoEn: { type: 'string', format: 'date-time', nullable: true },
+            liberableDesde: {
+              type: 'string',
+              format: 'date-time',
+              nullable: true,
+              description: 'entregadoEn + 72 h',
+            },
+            bloqueado: { type: 'boolean' },
+            bloqueadoEn: { type: 'string', format: 'date-time', nullable: true },
+            motivoBloqueo: { type: 'string', nullable: true },
+            actualizadoEn: { type: 'string', format: 'date-time' },
+          },
+        },
+        ResultadoEscrow: {
+          allOf: [
+            { $ref: '#/components/schemas/EscrowPedido' },
+            {
+              type: 'object',
+              properties: {
+                resultado: {
+                  type: 'string',
+                  enum: ['ACTUALIZADO', 'SIN_CAMBIOS'],
+                  description: 'SIN_CAMBIOS: la operación ya estaba aplicada (reintento)',
+                },
+              },
+            },
+          ],
+        },
         UsuarioActual: {
           type: 'object',
           properties: {
@@ -758,7 +816,11 @@ export function buildOpenApi(version: string) {
             nombre: { type: 'string' },
             roles: {
               type: 'array',
-              items: { type: 'string', enum: ['CONTADOR', 'ADMIN_FINANCIERO', 'SISTEMA'] },
+              items: { type: 'string', enum: ['ADMIN', 'COMPRADOR', 'VENDEDOR'] },
+            },
+            vendedorId: {
+              type: 'string',
+              description: 'Vendedor que representa el usuario (solo con el rol VENDEDOR)',
             },
           },
         },
@@ -820,7 +882,7 @@ export function buildOpenApi(version: string) {
             '200': estadoComision,
             '400': problema('Fecha inválida'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
         put: {
@@ -838,7 +900,7 @@ export function buildOpenApi(version: string) {
             '200': estadoComision,
             '400': problema('Datos inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
             '409': problema('La nueva vigencia se solaparía con la actual'),
           },
         },
@@ -849,9 +911,9 @@ export function buildOpenApi(version: string) {
           summary:
             'Registra una orden confirmada: venta, comisión y cuenta por pagar por vendedor (HU-CON-01)',
           description:
-            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId: un reenvío ' +
+            'Webhook del módulo de Órdenes (servicio). Idempotente por eventId: un reenvío ' +
             'responde YA_PROCESADO sin duplicar registros.',
-          security: [{ bearer: [] }],
+          security: [{ apiKey: [] }, { bearer: [] }],
           requestBody: {
             required: true,
             content: {
@@ -873,7 +935,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('El evento no cumple el contrato v1'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol SISTEMA'),
+            '403': problema('Requiere autenticarse como servicio (módulo del marketplace)'),
             '409': problema('ORDEN_DUPLICADA: la orden ya se registró con otro eventId'),
             '422': problema('COMISION_NO_CONFIGURADA: no hay porcentaje vigente en la fecha'),
           },
@@ -920,7 +982,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -941,7 +1003,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Identificador inválido'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
             '404': problema('La venta no existe'),
           },
         },
@@ -969,7 +1031,7 @@ export function buildOpenApi(version: string) {
               },
             },
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1003,7 +1065,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN, o VENDEDOR para sus propias cuentas'),
           },
         },
       },
@@ -1040,7 +1102,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Rango inválido (falta una fecha, desde > hasta o más de 366 días)'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1080,7 +1142,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
         post: {
@@ -1103,7 +1165,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Datos inválidos (p. ej. fecha anterior a la venta o futura)'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR'),
+            '403': problema('Requiere rol ADMIN'),
             '404': problema('ORDEN_INEXISTENTE: la venta no existe'),
             '422': problema('AJUSTE_EXCEDE_SALDO: supera lo que queda por ajustar'),
           },
@@ -1146,7 +1208,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Rango inválido, invertido o mayor a 366 días'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1201,7 +1263,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1237,7 +1299,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Quincenas inválidas o rango invertido'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN, o VENDEDOR para su propio estado'),
           },
         },
       },
@@ -1278,7 +1340,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN, o VENDEDOR para sus propios pagos'),
           },
         },
         post: {
@@ -1305,9 +1367,12 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Datos inválidos (p. ej. fecha futura)'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR'),
+            '403': problema('Requiere rol ADMIN'),
             '409': problema('REFERENCIA_DUPLICADA: ya hay un pago al vendedor con esa referencia'),
-            '422': problema('PAGO_EXCEDE_SALDO: supera lo que se le debe al vendedor'),
+            '422': problema(
+              'PAGO_EXCEDE_SALDO: supera lo que se le debe al vendedor. SALDO_RETENIDO_ESCROW: ' +
+                'parte del saldo es de pedidos en escrow (sin entrega, menos de 72 h desde la entrega o con PQR)',
+            ),
           },
         },
       },
@@ -1317,9 +1382,9 @@ export function buildOpenApi(version: string) {
           summary:
             'Cancelación de una orden: revierte todo lo no ajustado de cada línea (HU-CON-06)',
           description:
-            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId. Una orden que ' +
+            'Webhook del módulo de Órdenes (servicio). Idempotente por eventId. Una orden que ' +
             'nunca se registró (p. ej. cancelada antes de confirmarse) responde IGNORADO.',
-          security: [{ bearer: [] }],
+          security: [{ apiKey: [] }, { bearer: [] }],
           requestBody: {
             required: true,
             content: {
@@ -1341,7 +1406,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('El evento no cumple el contrato v1'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol SISTEMA'),
+            '403': problema('Requiere autenticarse como servicio (módulo del marketplace)'),
           },
         },
       },
@@ -1350,9 +1415,9 @@ export function buildOpenApi(version: string) {
           tags: ['Ajustes'],
           summary: 'Devolución total o parcial de una orden (HU-CON-06)',
           description:
-            'Webhook del módulo de Órdenes (rol SISTEMA). Idempotente por eventId. Si una línea ' +
+            'Webhook del módulo de Órdenes (servicio). Idempotente por eventId. Si una línea ' +
             'supera lo que queda por ajustar, responde 422 y no registra nada del evento.',
-          security: [{ bearer: [] }],
+          security: [{ apiKey: [] }, { bearer: [] }],
           requestBody: {
             required: true,
             content: {
@@ -1374,7 +1439,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('El evento no cumple el contrato v1'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol SISTEMA'),
+            '403': problema('Requiere autenticarse como servicio (módulo del marketplace)'),
             '422': problema('AJUSTE_EXCEDE_SALDO: una línea supera lo que queda por ajustar'),
           },
         },
@@ -1406,7 +1471,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Periodo inválido'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1415,9 +1480,9 @@ export function buildOpenApi(version: string) {
           tags: ['Conciliación'],
           summary: 'Registra un pago recibido de la pasarela (HU-CON-04)',
           description:
-            'Webhook del módulo de Pagos (rol SISTEMA). Idempotente por eventId; la misma ' +
+            'Webhook del módulo de Pagos (servicio). Idempotente por eventId; la misma ' +
             'referencia con otro eventId responde 409. Si trae órdenes, se concilia automáticamente.',
-          security: [{ bearer: [] }],
+          security: [{ apiKey: [] }, { bearer: [] }],
           requestBody: {
             required: true,
             content: {
@@ -1443,7 +1508,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('El evento no cumple el contrato v1'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol SISTEMA'),
+            '403': problema('Requiere autenticarse como servicio (módulo del marketplace)'),
             '409': problema('REFERENCIA_DUPLICADA: ya existe un pago con esa referencia'),
           },
         },
@@ -1475,7 +1540,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('CSV inválido (encabezado o archivo vacío)'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1514,7 +1579,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1541,7 +1606,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Datos inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR'),
+            '403': problema('Requiere rol ADMIN'),
             '404': problema('PAGO_INEXISTENTE u ORDEN_INEXISTENTE'),
             '409': problema('CONCILIACION_DUPLICADA: el pago ya está conciliado'),
             '422': problema('APLICADO_EXCEDE_SALDO: se aplica más que el saldo de la orden'),
@@ -1581,7 +1646,7 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Filtros inválidos'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
           },
         },
       },
@@ -1602,8 +1667,160 @@ export function buildOpenApi(version: string) {
             },
             '400': problema('Identificador inválido'),
             '401': problema('No autenticado'),
-            '403': problema('Requiere rol CONTADOR o ADMIN_FINANCIERO'),
+            '403': problema('Requiere rol ADMIN'),
             '404': problema('No existe la conciliación'),
+          },
+        },
+      },
+      '/escrow/marcar-entrega/{pedidoId}': {
+        post: {
+          tags: ['Escrow'],
+          summary: 'El módulo de Órdenes confirma la entrega: inicia la retención de 72 h',
+          description:
+            'Idempotente: una segunda entrega no reinicia el plazo. Sin cuerpo, la entrega es ahora.',
+          security: [{ apiKey: [] }, { bearer: [] }],
+          parameters: [
+            {
+              name: 'pedidoId',
+              in: 'path',
+              required: true,
+              description: 'Número de orden (el mismo de orden.confirmada)',
+              schema: { type: 'string', maxLength: 64 },
+            },
+          ],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: { fechaEntrega: { type: 'string', format: 'date-time' } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Estado del pedido; resultado ACTUALIZADO o SIN_CAMBIOS',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ResultadoEscrow' } },
+              },
+            },
+            '400': problema('Datos inválidos'),
+            '401': problema('Credenciales ausentes o inválidas'),
+            '403': problema('Solo para módulos autenticados como servicio'),
+          },
+        },
+      },
+      '/escrow/bloquear/{pedidoId}': {
+        post: {
+          tags: ['Escrow'],
+          summary: 'Se abre una PQR: el pago del pedido queda bloqueado',
+          description: 'Bloquea aunque ya hayan pasado las 72 h. Idempotente.',
+          security: [{ apiKey: [] }, { bearer: [] }],
+          parameters: [
+            {
+              name: 'pedidoId',
+              in: 'path',
+              required: true,
+              description: 'Número de orden (el mismo de orden.confirmada)',
+              schema: { type: 'string', maxLength: 64 },
+            },
+          ],
+          requestBody: {
+            required: false,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  properties: { motivo: { type: 'string', maxLength: 500, example: 'PQR-15' } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Estado del pedido; resultado ACTUALIZADO o SIN_CAMBIOS',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ResultadoEscrow' } },
+              },
+            },
+            '400': problema('Datos inválidos'),
+            '401': problema('Credenciales ausentes o inválidas'),
+            '403': problema('Solo para módulos autenticados como servicio'),
+          },
+        },
+      },
+      '/escrow/desbloquear/{pedidoId}': {
+        post: {
+          tags: ['Escrow'],
+          summary: 'El ADMIN levanta manualmente el bloqueo por PQR',
+          description:
+            'Vuelve a la retención original: si ya pasaron las 72 h desde la entrega, queda ' +
+            'LIBERADO. El motivo es obligatorio y queda en la auditoría. Idempotente.',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'pedidoId',
+              in: 'path',
+              required: true,
+              description: 'Número de orden (el mismo de orden.confirmada)',
+              schema: { type: 'string', maxLength: 64 },
+            },
+          ],
+          requestBody: {
+            required: true,
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  additionalProperties: false,
+                  required: ['motivo'],
+                  properties: { motivo: { type: 'string', minLength: 1, maxLength: 500 } },
+                },
+              },
+            },
+          },
+          responses: {
+            '200': {
+              description: 'Estado del pedido; resultado ACTUALIZADO o SIN_CAMBIOS',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/ResultadoEscrow' } },
+              },
+            },
+            '400': problema('Datos inválidos'),
+            '401': problema('Credenciales ausentes o inválidas'),
+            '403': problema('Requiere rol ADMIN'),
+            '404': problema('El pedido no tiene registro de escrow'),
+          },
+        },
+      },
+      '/escrow/{pedidoId}': {
+        get: {
+          tags: ['Escrow'],
+          summary: 'Estado del escrow de un pedido',
+          security: [{ bearer: [] }],
+          parameters: [
+            {
+              name: 'pedidoId',
+              in: 'path',
+              required: true,
+              description: 'Número de orden (el mismo de orden.confirmada)',
+              schema: { type: 'string', maxLength: 64 },
+            },
+          ],
+          responses: {
+            '200': {
+              description: 'Estado actual',
+              content: {
+                'application/json': { schema: { $ref: '#/components/schemas/EscrowPedido' } },
+              },
+            },
+            '401': problema('No autenticado'),
+            '403': problema('Requiere rol ADMIN'),
+            '404': problema('El pedido no tiene registro de escrow'),
           },
         },
       },

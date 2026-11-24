@@ -9,7 +9,7 @@ import {
 import type { ContextoEjecucion, UseCase } from '../ports/in/UseCase';
 import type { Clock } from '../ports/out/Clock';
 import type { TransactionalRepositories, UnitOfWork } from '../ports/out/UnitOfWork';
-import { exigirRol } from '../security';
+import { exigirServicio } from '../security';
 
 /** Evento orden.confirmada v1 (docs/fase0/contratos-integracion.md), ya validado. */
 export interface OrdenConfirmadaEntrada {
@@ -48,7 +48,7 @@ export class RegistrarVentaConfirmadaUseCase implements UseCase<
   ) {}
 
   async execute(orden: OrdenConfirmadaEntrada, ctx: ContextoEjecucion): Promise<ResultadoEvento> {
-    exigirRol(ctx.actor, ['SISTEMA']);
+    exigirServicio(ctx.actor);
     const fecha = new Date(orden.fecha);
     if (Number.isNaN(fecha.getTime()))
       throw new InvalidValueError(`Fecha inválida: ${orden.fecha}`);
@@ -144,6 +144,7 @@ export class RegistrarVentaConfirmadaUseCase implements UseCase<
     });
     await repos.outbox.publicar({
       tipo: EVENTO_VENTA_REGISTRADA,
+      ...(ctx.correlationId ? { correlationId: ctx.correlationId } : {}),
       payload: {
         ventaId: venta.id,
         numeroOrden: venta.numeroOrden,

@@ -10,8 +10,13 @@ import { NoAutorizadoError, type Actor } from '../../../src/application/security
 import { Money } from '../../../src/domain/shared';
 import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Órdenes', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
+const sistema: Actor = {
+  id: 'sistema-marketplace',
+  nombre: 'Órdenes',
+  roles: [],
+  servicio: 'marketplace',
+};
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
 const comoContador = { actor: contador, correlationId: 'corr-aj' };
 const comoSistema = { actor: sistema, correlationId: 'corr-evt' };
 const reloj = { now: () => new Date('2026-10-16T15:00:00Z') };

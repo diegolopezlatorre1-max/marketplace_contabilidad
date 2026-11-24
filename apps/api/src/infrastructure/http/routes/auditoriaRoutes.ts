@@ -9,7 +9,7 @@ import { requireRole } from '../middlewares/auth';
 import { parse } from '../middlewares/validate';
 import { contexto } from '../requestContext';
 
-/** HU-CON-11: GET /auditoria (solo ADMIN_FINANCIERO). */
+/** HU-CON-11: GET /auditoria (solo ADMIN). */
 export function auditoriaRoutes({
   consultarAuditoria,
 }: {
@@ -17,7 +17,7 @@ export function auditoriaRoutes({
 }): Router {
   const router = Router();
 
-  router.get('/auditoria', requireRole('ADMIN_FINANCIERO'), async (req, res) => {
+  router.get('/auditoria', requireRole('ADMIN'), async (req, res) => {
     const filtro = parse(req, 'query', listarAuditoriaQuerySchema);
     const body: Pagina<RegistroAuditoriaDto> = await consultarAuditoria.execute(
       filtro,

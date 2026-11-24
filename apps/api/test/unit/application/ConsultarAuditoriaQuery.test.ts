@@ -3,11 +3,16 @@ import { RegistrarPagoVendedorUseCase } from '../../../src/application/commands/
 import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import { ConsultarAuditoriaQuery } from '../../../src/application/queries/ConsultarAuditoriaQuery';
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
-import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
+import { comisionGlobal, crearBaseEnMemoria, liberarEscrow } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Órdenes', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
-const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN_FINANCIERO'] };
+const sistema: Actor = {
+  id: 'sistema-marketplace',
+  nombre: 'Órdenes',
+  roles: [],
+  servicio: 'marketplace',
+};
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
+const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN'] };
 const reloj = { now: () => new Date('2026-11-10T15:00:00Z') };
 const pagina = { page: 1, size: 50 };
 
@@ -26,6 +31,8 @@ async function entorno() {
     },
     { actor: sistema },
   );
+  // Escrow: los pedidos ya se entregaron hace más de 72 h (LIBERADOS).
+  liberarEscrow(base.db);
   await new RegistrarPagoVendedorUseCase(base.uow, reloj, () => 'pago-1').execute(
     { vendedorId: 'V-1', valor: '40000.00', referencia: 'TRF-1' },
     { actor: contador, correlationId: 'corr-1' },
@@ -69,9 +76,10 @@ describe('ConsultarAuditoriaQuery (HU-CON-11)', () => {
     expect(await por({ hasta: '2026-10-31' })).toEqual(['venta_contable']);
   });
 
-  it('solo el administrador financiero la consulta y valida el rango', async () => {
+  it('solo el ADMIN la consulta y valida el rango', async () => {
     const e = await entorno();
-    await expect(e.consultar.execute(pagina, { actor: contador })).rejects.toBeInstanceOf(
+    const comprador: Actor = { id: 'u-c', nombre: 'C', roles: ['COMPRADOR'] };
+    await expect(e.consultar.execute(pagina, { actor: comprador })).rejects.toBeInstanceOf(
       NoAutorizadoError,
     );
     await expect(

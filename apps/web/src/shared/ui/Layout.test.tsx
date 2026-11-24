@@ -9,7 +9,7 @@ import { Layout } from './Layout';
 const contador: UsuarioActualResponse = {
   id: 'u-contador',
   nombre: 'Contador',
-  roles: ['CONTADOR', 'ADMIN_FINANCIERO'],
+  roles: ['ADMIN'],
 };
 
 /** Monta el menú como lo hace el host: el módulo bajo una ruta splat (/contabilidad/*). */

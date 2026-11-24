@@ -8,11 +8,16 @@ import { ReporteIngresosQuery } from '../../../src/application/queries/ReporteIn
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
 import { ExcelJsExporter } from '../../../src/infrastructure/integration/spreadsheet/ExcelJsExporter';
 import { MockSellersGateway } from '../../../src/infrastructure/integration/sellers/MockSellersGateway';
-import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
+import { comisionGlobal, crearBaseEnMemoria, liberarEscrow } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Órdenes', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
-const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN_FINANCIERO'] };
+const sistema: Actor = {
+  id: 'sistema-marketplace',
+  nombre: 'Órdenes',
+  roles: [],
+  servicio: 'marketplace',
+};
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
+const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN'] };
 const reloj = { now: () => new Date('2026-11-10T15:00:00Z') };
 
 /** Ventas de V-1 (100.000 y 50.000,25) y V-2 (80.000), un pago y una devolución. */
@@ -39,6 +44,8 @@ async function entorno() {
       { actor: sistema },
     );
   }
+  // Escrow: los pedidos ya se entregaron hace más de 72 h (LIBERADOS).
+  liberarEscrow(base.db);
   await new RegistrarPagoVendedorUseCase(base.uow, reloj, id).execute(
     { vendedorId: 'V-1', valor: '90000.00', referencia: 'TRF-1' },
     { actor: contador },

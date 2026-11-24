@@ -23,28 +23,20 @@ export function cuentasPorPagarRoutes({
 }: Deps): Router {
   const router = Router();
 
-  router.get(
-    '/cuentas-por-pagar',
-    requireRole('CONTADOR', 'ADMIN_FINANCIERO'),
-    async (req, res) => {
-      const filtro = parse(req, 'query', listarCuentasPorPagarQuerySchema);
-      const body: CuentaPorPagarDto[] = await listarCuentasPorPagar.execute(filtro, contexto(res));
-      res.json(body);
-    },
-  );
+  router.get('/cuentas-por-pagar', requireRole('ADMIN', 'VENDEDOR'), async (req, res) => {
+    const filtro = parse(req, 'query', listarCuentasPorPagarQuerySchema);
+    const body: CuentaPorPagarDto[] = await listarCuentasPorPagar.execute(filtro, contexto(res));
+    res.json(body);
+  });
 
-  router.get(
-    '/cuentas-por-pagar/resumen',
-    requireRole('CONTADOR', 'ADMIN_FINANCIERO'),
-    async (req, res) => {
-      const filtro = parse(req, 'query', resumenCuentasPorPagarQuerySchema);
-      const body: ResumenSaldoVendedorDto[] = await resumenSaldoVendedor.execute(
-        filtro,
-        contexto(res),
-      );
-      res.json(body);
-    },
-  );
+  router.get('/cuentas-por-pagar/resumen', requireRole('ADMIN'), async (req, res) => {
+    const filtro = parse(req, 'query', resumenCuentasPorPagarQuerySchema);
+    const body: ResumenSaldoVendedorDto[] = await resumenSaldoVendedor.execute(
+      filtro,
+      contexto(res),
+    );
+    res.json(body);
+  });
 
   return router;
 }

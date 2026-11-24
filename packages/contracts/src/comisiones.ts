@@ -14,7 +14,7 @@ export const porcentajeSchema = z
 export const ALCANCES_COMISION = ['GLOBAL', 'VENDEDOR', 'CATEGORIA'] as const;
 export type AlcanceComision = (typeof ALCANCES_COMISION)[number];
 
-/** PUT /comisiones/configuracion (solo ADMIN_FINANCIERO; en el Sprint 1, alcance GLOBAL). */
+/** PUT /comisiones/configuracion (solo ADMIN; en el Sprint 1, alcance GLOBAL). */
 export const configurarComisionSchema = z.object({
   porcentaje: porcentajeSchema,
   vigenteDesde: fechaContableSchema,

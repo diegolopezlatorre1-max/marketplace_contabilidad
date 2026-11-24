@@ -8,6 +8,8 @@ export interface HealthResponse {
   checks: {
     baseDeDatos: 'ok' | 'error';
   };
+  /** Eventos salientes: pendientes de entregar y en dead-letter (requieren revisión). */
+  outbox?: { pendientes: number; deadLetter: number };
   fecha: string;
 }
 
@@ -15,4 +17,6 @@ export interface UsuarioActualResponse {
   id: string;
   nombre: string;
   roles: Rol[];
+  /** Vendedor que representa el usuario (solo con el rol VENDEDOR). */
+  vendedorId?: string;
 }

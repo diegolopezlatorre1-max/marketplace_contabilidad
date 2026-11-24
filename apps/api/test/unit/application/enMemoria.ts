@@ -42,6 +42,7 @@ import type {
 } from '../../../src/application/ports/out/PagoRecibidoRepository';
 import type { Conciliacion } from '../../../src/domain/conciliacion/Conciliacion';
 import type { PagoRecibido } from '../../../src/domain/conciliacion/PagoRecibido';
+import { EscrowPedido, type EscrowPedidoDatos } from '../../../src/domain/escrow/EscrowPedido';
 
 /** Estado de una "base de datos" en memoria para probar casos de uso sin PostgreSQL. */
 export interface DatosEnMemoria {
@@ -59,6 +60,8 @@ export interface DatosEnMemoria {
   conciliaciones: Conciliacion[];
   ajustes: Array<{ ajuste: AjusteContable; registradoEn: Date }>;
   pagosVendedor: Array<{ pago: PagoVendedor; registradoEn: Date }>;
+  /** Copias inmutables del estado de cada pedido en escrow. */
+  escrow: EscrowPedidoDatos[];
 }
 
 function vacio(): DatosEnMemoria {
@@ -76,6 +79,7 @@ function vacio(): DatosEnMemoria {
     conciliaciones: [],
     ajustes: [],
     pagosVendedor: [],
+    escrow: [],
   };
 }
 
@@ -324,6 +328,47 @@ function repositorios(db: { datos: DatosEnMemoria }): TransactionalRepositories 
     ventas,
     ajustes,
     pagosVendedor,
+    escrow: {
+      obtener: async (pedidoId) => {
+        const d = db.datos.escrow.find((e) => e.pedidoId === pedidoId);
+        return d ? EscrowPedido.reconstituir(d) : null;
+      },
+      guardar: async (e) => {
+        const copia = { ...e.datos };
+        db.datos.escrow = [...db.datos.escrow.filter((x) => x.pedidoId !== copia.pedidoId), copia];
+      },
+      pedidosRetenidos: async (vendedorId, ahora) => {
+        const retenidos = new Set<string>();
+        for (const { venta } of db.datos.ventas) {
+          if (venta.vendedorId !== vendedorId) continue;
+          const d = db.datos.escrow.find((e) => e.pedidoId === venta.numeroOrden);
+          if (!d || EscrowPedido.reconstituir(d).retieneElPago(ahora))
+            retenidos.add(venta.numeroOrden);
+        }
+        return retenidos;
+      },
+      netoRetenidoPorPeriodo: async (vendedorId, ahora) => {
+        const retenido = new Map<string, Money>();
+        for (const { venta } of db.datos.ventas) {
+          if (venta.vendedorId !== vendedorId) continue;
+          const d = db.datos.escrow.find((e) => e.pedidoId === venta.numeroOrden);
+          // Sin registro = sin entrega: retiene. Solo lo LIBERADO se puede pagar.
+          if (d && !EscrowPedido.reconstituir(d).retieneElPago(ahora)) continue;
+          const neto = db.datos.comisiones.find((c) => c.ventaId === venta.id)?.comision.valorNeto;
+          if (!neto) continue;
+          const revertido = Money.sum(
+            db.datos.ajustes
+              .filter(({ ajuste }) => ajuste.ventaId === venta.id)
+              .map(({ ajuste }) => ajuste.netoRevertido),
+          );
+          const valor = neto.subtract(revertido);
+          if (!valor.isPositive()) continue;
+          const p = venta.periodo.codigo;
+          retenido.set(p, (retenido.get(p) ?? Money.CERO).add(valor));
+        }
+        return retenido;
+      },
+    },
     comisiones: {
       guardar: async (ventaId, comision) => void db.datos.comisiones.push({ ventaId, comision }),
     },
@@ -583,4 +628,25 @@ export function comisionGlobal(porcentaje = '10', vigenteDesde = '2026-01-01') {
     vigenteDesde,
     creadoPor: 'seed',
   });
+}
+
+/**
+ * Escrow: marca como entregados hace tiempo (LIBERADOS) los pedidos indicados, o todos los que
+ * tienen ventas. Sin esto, un pedido sin entrega retiene el pago al vendedor.
+ */
+export function liberarEscrow(db: { datos: DatosEnMemoria }, pedidos?: readonly string[]): void {
+  const ids = pedidos ?? [...new Set(db.datos.ventas.map(({ venta }) => venta.numeroOrden))];
+  const entregadoEn = new Date('2026-01-01T00:00:00Z');
+  for (const pedidoId of ids) {
+    db.datos.escrow = db.datos.escrow.filter((e) => e.pedidoId !== pedidoId);
+    db.datos.escrow.push({
+      pedidoId,
+      entregadoEn,
+      liberableDesde: new Date(entregadoEn.getTime() + 72 * 3_600_000),
+      bloqueado: false,
+      bloqueadoEn: null,
+      motivoBloqueo: null,
+      actualizadoEn: entregadoEn,
+    });
+  }
 }

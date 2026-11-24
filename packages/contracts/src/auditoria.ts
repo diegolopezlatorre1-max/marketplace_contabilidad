@@ -15,7 +15,7 @@ export type EntidadAuditada = (typeof ENTIDADES_AUDITADAS)[number];
 
 /**
  * GET /auditoria?entidad=&entidadId=&usuario=&desde=&hasta=&page=&size= (HU-CON-11, solo
- * ADMIN_FINANCIERO). desde / hasta son días en hora de Colombia, inclusive.
+ * ADMIN). desde / hasta son días en hora de Colombia, inclusive.
  */
 export const listarAuditoriaQuerySchema = paginacionQuerySchema.extend({
   entidad: z.enum(ENTIDADES_AUDITADAS).optional(),

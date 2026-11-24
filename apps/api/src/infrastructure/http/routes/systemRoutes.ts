@@ -20,6 +20,7 @@ export function healthRoutes({ obtenerEstado, version, integrationMode }: Deps):
       version,
       integrationMode,
       checks: estado.checks,
+      ...(estado.outbox ? { outbox: estado.outbox } : {}),
       fecha: estado.fecha.toISOString(),
     };
     res.status(estado.status === 'ok' ? 200 : 503).json(body);
@@ -35,8 +36,8 @@ export function meRoutes(): Router {
     const body: UsuarioActualResponse = {
       id: actor.id,
       nombre: actor.nombre,
-      // VENDEDOR (HU-CON-07) está preparado pero aún no forma parte del contrato.
-      roles: actor.roles.filter((r) => r !== 'VENDEDOR'),
+      roles: [...actor.roles],
+      ...(actor.vendedorId ? { vendedorId: actor.vendedorId } : {}),
     };
     res.json(body);
   });

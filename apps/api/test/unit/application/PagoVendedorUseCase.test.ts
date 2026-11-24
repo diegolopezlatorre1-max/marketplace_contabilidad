@@ -8,11 +8,16 @@ import {
 import { RegistrarVentaConfirmadaUseCase } from '../../../src/application/commands/RegistrarVentaConfirmadaUseCase';
 import { ListarPagosVendedorQuery } from '../../../src/application/queries/ListarPagosVendedorQuery';
 import { NoAutorizadoError, type Actor } from '../../../src/application/security';
-import { comisionGlobal, crearBaseEnMemoria } from './enMemoria';
+import { comisionGlobal, crearBaseEnMemoria, liberarEscrow } from './enMemoria';
 
-const sistema: Actor = { id: 'sistema-marketplace', nombre: 'Órdenes', roles: ['SISTEMA'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
-const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN_FINANCIERO'] };
+const sistema: Actor = {
+  id: 'sistema-marketplace',
+  nombre: 'Órdenes',
+  roles: [],
+  servicio: 'marketplace',
+};
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
+const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN'] };
 const comoContador = { actor: contador, correlationId: 'corr-pago' };
 const reloj = { now: () => new Date('2026-11-10T15:00:00Z') };
 
@@ -41,6 +46,8 @@ async function entorno() {
       { actor: sistema },
     );
   }
+  // Escrow: los pedidos ya se entregaron hace más de 72 h (LIBERADOS).
+  liberarEscrow(base.db);
   let p = 0;
   const registrar = new RegistrarPagoVendedorUseCase(base.uow, reloj, () => `pago-${++p}`);
   return {
@@ -155,6 +162,7 @@ describe('RegistrarPagoVendedorUseCase (HU-CON-10)', () => {
       },
       { actor: sistema },
     );
+    liberarEscrow(e.db, ['ORD-3']);
     const pago = await e.pagar({ referencia: 'TRF-3', valor: '45000.00' });
     expect(pago.saldoAFavorAplicado).toBe('90000.00');
     expect(pago.aplicaciones.map((a) => [a.periodo, a.valorAplicado, a.estado])).toEqual([
@@ -193,12 +201,46 @@ describe('RegistrarPagoVendedorUseCase (HU-CON-10)', () => {
       valor: '90000.00',
       referencia: 'TRF-1',
     });
+    expect(evento?.correlationId).toBe('corr-pago');
   });
 
-  it('solo el contador registra pagos', async () => {
+  it('HU-NOT-05: el evento v2 identifica vendedor, monto y órdenes asociadas por quincena', async () => {
     const e = await entorno();
+    await e.pagar({ valor: '135000.00' });
+    const evento = e.db.datos.outbox.find((x) => x.tipo === EVENTO_PAGO_VENDEDOR_REGISTRADO);
+    expect(evento?.payload).toEqual({
+      version: 2,
+      pagoId: 'pago-1',
+      vendedorId: 'V-1',
+      fecha: '2026-11-10T15:00:00.000Z',
+      valor: '135000.00',
+      moneda: 'COP',
+      saldoAFavorAplicado: '0.00',
+      referencia: 'TRF-1',
+      ordenes: ['ORD-1', 'ORD-2'],
+      cuentas: [
+        expect.objectContaining({
+          periodo: '2026-10-Q1',
+          valorAplicado: '90000.00',
+          ordenes: ['ORD-1'],
+        }),
+        expect.objectContaining({
+          periodo: '2026-10-Q2',
+          valorAplicado: '45000.00',
+          ordenes: ['ORD-2'],
+        }),
+      ],
+    });
+  });
+
+  it('solo el ADMIN registra pagos', async () => {
+    const e = await entorno();
+    const vendedor: Actor = { id: 'u-v', nombre: 'V', roles: ['VENDEDOR'], vendedorId: 'V-1' };
     await expect(
-      e.registrar.execute({ vendedorId: 'V-1', valor: '1.00', referencia: 'X' }, { actor: admin }),
+      e.registrar.execute(
+        { vendedorId: 'V-1', valor: '1.00', referencia: 'X' },
+        { actor: vendedor },
+      ),
     ).rejects.toBeInstanceOf(NoAutorizadoError);
   });
 

@@ -7,7 +7,7 @@ import { MockOrdersGateway } from '../../src/infrastructure/integration/orders/M
 import { limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const EVENTOS = '/api/v1/contabilidad/eventos/orden-confirmada';
+const EVENTOS = '/api/contabilidad/eventos/orden-confirmada';
 const reloj = { now: () => new Date('2026-10-16T15:00:00Z') };
 const ordenes = new MockOrdersGateway(reloj.now);
 
@@ -107,7 +107,7 @@ describe('HU-CON-01 - registrar una venta confirmada', () => {
       {
         entidad: 'venta_contable',
         accion: 'REGISTRAR',
-        usuario: 'sistema-marketplace',
+        usuario: 'servicio:marketplace',
         correlation_id: 'corr-hu01',
       },
     ]);
@@ -199,7 +199,7 @@ describe('HU-CON-01 - registrar una venta confirmada', () => {
   it('cambiar el porcentaje no altera las ventas ya registradas (HU-CON-02)', async () => {
     await enviar(orden('ORD-7001', ['V-1'], ['100000.00']));
     const put = await request(app())
-      .put('/api/v1/contabilidad/comisiones/configuracion')
+      .put('/api/contabilidad/comisiones/configuracion')
       .set('authorization', 'Bearer mock-admin')
       .send({ porcentaje: '12', vigenteDesde: '2026-10-06' });
     expect(put.status).toBe(200);
@@ -229,9 +229,7 @@ describe('GET /ventas', () => {
     await enviar(orden('ORD-1', ['V-1', 'V-2'], ['100000.00', '50000.00']));
     await enviar(orden('ORD-2', ['V-1'], ['30000.00'], '2026-10-12T15:00:00Z'));
     const listar = (q: string) =>
-      request(app())
-        .get(`/api/v1/contabilidad/ventas${q}`)
-        .set('authorization', 'Bearer mock-contador');
+      request(app()).get(`/api/contabilidad/ventas${q}`).set('authorization', 'Bearer mock-admin');
 
     const todas = await listar('');
     expect(todas.body.total).toBe(3);
@@ -255,7 +253,7 @@ describe('GET /periodos y GET /cuentas-por-pagar', () => {
     await enviar(orden('ORD-1', ['V-1', 'V-2'], ['100000.00', '50000.00']));
     await enviar(orden('ORD-2', ['V-1'], ['20000.00'], '2026-10-16T15:00:00Z'));
     const consultar = (url: string) =>
-      request(app()).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-contador');
+      request(app()).get(`/api/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     expect((await consultar('/periodos')).body).toEqual({ periodos: ['2026-10-Q2', '2026-10-Q1'] });
 
@@ -288,11 +286,11 @@ describe('HU-CON-02 - GET /ventas/:id', () => {
   it('entrega el desglose bruto / % / comisión / neto guardado en la BD', async () => {
     await enviar(orden('ORD-9001', ['V-2'], ['100.05']));
     await request(app())
-      .put('/api/v1/contabilidad/comisiones/configuracion')
+      .put('/api/contabilidad/comisiones/configuracion')
       .set('authorization', 'Bearer mock-admin')
       .send({ porcentaje: '12.5', vigenteDesde: '2026-10-06' });
     const consultar = (url: string) =>
-      request(app()).get(`/api/v1/contabilidad${url}`).set('authorization', 'Bearer mock-contador');
+      request(app()).get(`/api/contabilidad${url}`).set('authorization', 'Bearer mock-admin');
 
     const { id } = (await consultar('/ventas')).body.items[0];
     const detalle = await consultar(`/ventas/${id}`);
@@ -323,8 +321,8 @@ describe('HU-CON-03 - GET /cuentas-por-pagar/resumen', () => {
     await enviar(orden('ORD-3', ['V-1'], ['20000.00'], '2026-10-16T15:00:00Z'));
     const resumen = (q: string) =>
       request(app())
-        .get(`/api/v1/contabilidad/cuentas-por-pagar/resumen${q}`)
-        .set('authorization', 'Bearer mock-contador');
+        .get(`/api/contabilidad/cuentas-por-pagar/resumen${q}`)
+        .set('authorization', 'Bearer mock-admin');
 
     const q1 = await resumen('?periodo=2026-10-Q1');
     expect(q1.status).toBe(200);

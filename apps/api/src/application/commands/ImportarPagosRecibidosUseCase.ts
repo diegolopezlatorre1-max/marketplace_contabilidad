@@ -54,7 +54,7 @@ export class ImportarPagosRecibidosUseCase implements UseCase<
     { filas }: { filas: FilaPagoImportado[] },
     ctx: ContextoEjecucion,
   ): Promise<ResultadoImportacion> {
-    exigirRol(ctx.actor, ['CONTADOR']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const resultados: ResultadoFilaImportada[] = [];
     for (const fila of filas) {
       const referencia = fila.referencia ? { referencia: fila.referencia } : {};

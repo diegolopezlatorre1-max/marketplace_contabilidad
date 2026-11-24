@@ -8,7 +8,7 @@ import { PgUnitOfWork } from '../../src/infrastructure/persistence/postgres/PgUn
 import { limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const URL = '/api/v1/contabilidad/comisiones/configuracion';
+const URL = '/api/contabilidad/comisiones/configuracion';
 // "Hoy" para las pruebas: 2026-10-16 en Bogotá.
 const reloj = { now: () => new Date('2026-10-16T15:00:00Z') };
 
@@ -37,7 +37,7 @@ beforeEach(async () => {
 
 describe('HU-CON-09 - configurar el porcentaje de comisión', () => {
   it('el contador consulta el porcentaje vigente', async () => {
-    const res = await request(crearApp()).get(URL).set('authorization', 'Bearer mock-contador');
+    const res = await request(crearApp()).get(URL).set('authorization', 'Bearer mock-admin');
     expect(res.status).toBe(200);
     expect(res.body.fecha).toBe('2026-10-16');
     expect(res.body.vigente).toMatchObject({
@@ -48,10 +48,10 @@ describe('HU-CON-09 - configurar el porcentaje de comisión', () => {
     });
   });
 
-  it('el contador no puede configurar', async () => {
+  it('ni el vendedor ni el comprador pueden configurar', async () => {
     const res = await request(crearApp())
       .put(URL)
-      .set('authorization', 'Bearer mock-contador')
+      .set('authorization', 'Bearer mock-vendedor')
       .send({ porcentaje: '12', vigenteDesde: '2026-10-16' });
     expect(res.status).toBe(403);
   });
@@ -94,7 +94,7 @@ describe('HU-CON-09 - configurar el porcentaje de comisión', () => {
   it('consulta el porcentaje vigente en cualquier fecha', async () => {
     await comoAdmin({ porcentaje: '12', vigenteDesde: '2026-10-16' });
     const consultar = (fecha: string) =>
-      request(crearApp()).get(`${URL}?fecha=${fecha}`).set('authorization', 'Bearer mock-contador');
+      request(crearApp()).get(`${URL}?fecha=${fecha}`).set('authorization', 'Bearer mock-admin');
 
     expect((await consultar('2026-10-15')).body.vigente.porcentaje).toBe('10.0000');
     expect((await consultar('2026-10-16')).body.vigente.porcentaje).toBe('12.0000');

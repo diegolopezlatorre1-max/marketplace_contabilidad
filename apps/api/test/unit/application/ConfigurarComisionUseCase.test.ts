@@ -6,8 +6,8 @@ import { ConfiguracionComision } from '../../../src/domain/comision/Configuracio
 import { InvalidValueError, Porcentaje } from '../../../src/domain/shared';
 import { crearBaseEnMemoria } from './enMemoria';
 
-const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN_FINANCIERO'] };
-const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['CONTADOR'] };
+const admin: Actor = { id: 'u-admin', nombre: 'Admin', roles: ['ADMIN'] };
+const contador: Actor = { id: 'u-contador', nombre: 'Contador', roles: ['ADMIN'] };
 // 2026-10-16 en Bogotá.
 const reloj = { now: () => new Date('2026-10-16T15:00:00Z') };
 
@@ -31,10 +31,11 @@ function global10(db: ReturnType<typeof crearEntorno>['db']) {
 }
 
 describe('ConfigurarComisionUseCase', () => {
-  it('solo el ADMIN_FINANCIERO puede configurar', async () => {
+  it('solo el ADMIN puede configurar', async () => {
     const { configurar, db } = crearEntorno();
+    const vendedor: Actor = { id: 'u-v', nombre: 'V', roles: ['VENDEDOR'], vendedorId: 'V-1' };
     await expect(
-      configurar.execute({ porcentaje: '12', vigenteDesde: '2026-10-16' }, { actor: contador }),
+      configurar.execute({ porcentaje: '12', vigenteDesde: '2026-10-16' }, { actor: vendedor }),
     ).rejects.toThrow(NoAutorizadoError);
     expect(db.datos.configuraciones).toHaveLength(0);
   });
@@ -137,7 +138,7 @@ describe('ObtenerComisionVigenteQuery', () => {
 
   it('exige rol CONTADOR o ADMIN_FINANCIERO', async () => {
     const query = new ObtenerComisionVigenteQuery(crearEntorno().repo, reloj);
-    const sistema: Actor = { id: 's', nombre: 'S', roles: ['SISTEMA'] };
+    const sistema: Actor = { id: 's', nombre: 'S', roles: [], servicio: 'marketplace' };
     await expect(query.execute({}, { actor: sistema })).rejects.toThrow(NoAutorizadoError);
   });
 });

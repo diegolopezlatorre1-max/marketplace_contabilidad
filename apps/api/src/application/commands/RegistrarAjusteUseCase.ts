@@ -30,7 +30,7 @@ export class RegistrarAjusteUseCase implements UseCase<RegistrarAjusteEntrada, A
     entrada: RegistrarAjusteEntrada,
     ctx: ContextoEjecucion,
   ): Promise<AjusteRegistrado> {
-    exigirRol(ctx.actor, ['CONTADOR']);
+    exigirRol(ctx.actor, ['ADMIN']);
     const ahora = this.clock.now();
     // Un día contable se registra al mediodía de Colombia para no cambiar de día por la zona.
     const fecha = entrada.fecha

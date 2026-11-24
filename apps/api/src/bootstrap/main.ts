@@ -1,17 +1,48 @@
 import 'dotenv/config';
 import { loadConfig } from '../infrastructure/config/env';
 import { createHttpApp, API_PREFIX } from '../infrastructure/http/express/createHttpApp';
+import { OutboxRelay } from '../infrastructure/messaging/OutboxRelay';
 import { createLogger } from '../infrastructure/observability/logger';
 import { createPool } from '../infrastructure/persistence/postgres/pool';
 import { createContabilidadModule } from './container';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL, config.NODE_ENV === 'development');
-const pool = createPool(config.DATABASE_URL);
+const pool = createPool(config.DATABASE_URL, {
+  ssl: config.DATABASE_SSL,
+  ca: config.DATABASE_SSL_CA,
+});
 pool.on('error', (err) => logger.error({ err }, 'Error inesperado en el pool de PostgreSQL'));
 
 const { router } = createContabilidadModule({ config, pool, logger });
-const app = createHttpApp({ router, logger, corsOrigins: config.CORS_ORIGINS });
+const app = createHttpApp({
+  router,
+  logger,
+  corsOrigins: config.CORS_ORIGINS,
+  rateLimit: {
+    windowMs: config.RATE_LIMIT_WINDOW_MS,
+    general: config.RATE_LIMIT_GENERAL,
+    eventos: config.RATE_LIMIT_EVENTOS,
+    exportaciones: config.RATE_LIMIT_EXPORTACIONES,
+  },
+});
+
+// Fase 6: entrega de eventos del outbox a los módulos suscritos (OUTBOX_DESTINOS).
+const relay = new OutboxRelay(
+  pool,
+  {
+    destinos: config.OUTBOX_DESTINOS,
+    apiKey: config.OUTBOX_API_KEY,
+    lote: config.OUTBOX_LOTE,
+    maxIntentos: config.OUTBOX_MAX_INTENTOS,
+    timeoutMs: config.OUTBOX_TIMEOUT_MS,
+    backoffBaseMs: 5_000,
+    backoffMaxMs: 60 * 60_000,
+  },
+  logger,
+);
+if (relay.habilitado) relay.iniciar(config.OUTBOX_INTERVALO_MS);
+else logger.warn('OUTBOX_DESTINOS vacío: los eventos quedan pendientes en el outbox');
 
 const server = app.listen(config.PORT, () => {
   logger.info(
@@ -20,12 +51,15 @@ const server = app.listen(config.PORT, () => {
   );
 });
 
-// Cierre ordenado: deja de aceptar conexiones y libera el pool.
+// Cierre ordenado: deja de aceptar conexiones, termina el lote del relay y libera el pool.
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     logger.info({ signal }, 'Cerrando API de contabilidad');
     server.close(() => {
-      void pool.end().then(() => process.exit(0));
+      void relay
+        .detener()
+        .then(() => pool.end())
+        .then(() => process.exit(0));
     });
   });
 }

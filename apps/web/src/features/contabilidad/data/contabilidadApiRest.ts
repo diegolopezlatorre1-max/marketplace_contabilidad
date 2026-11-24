@@ -75,7 +75,7 @@ function aVigencia(v: VigenciaComisionDto): VigenciaPorcentaje {
 
 /**
  * Implementación del puerto ContabilidadApi sobre la API REST del módulo
- * (/api/v1/contabilidad). Reemplaza al almacén en memoria cuando hay backend.
+ * (/api/contabilidad). Reemplaza al almacén en memoria cuando hay backend.
  */
 export function crearContabilidadApiRest(api: ApiClient): ContabilidadApi {
   return {

@@ -5,10 +5,10 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createContabilidadModule } from '../../src/bootstrap/container';
 import { createHttpApp } from '../../src/infrastructure/http/express/createHttpApp';
 import { MockOrdersGateway } from '../../src/infrastructure/integration/orders/MockOrdersGateway';
-import { limpiarTablas, testPool } from './db';
+import { liberarEscrow, limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const BASE = '/api/v1/contabilidad';
+const BASE = '/api/contabilidad';
 const reloj = { now: () => new Date('2026-11-10T15:00:00Z') };
 const ordenes = new MockOrdersGateway(reloj.now);
 
@@ -50,6 +50,8 @@ async function venta(numeroOrden: string, vendedorId: string, valor: string, fec
       fecha: new Date(fecha),
     }),
   );
+  // Escrow: el pedido ya se entregó hace más de 72 h, así que se puede pagar.
+  await liberarEscrow([numeroOrden]);
 }
 
 beforeEach(async () => {
@@ -75,7 +77,7 @@ beforeEach(async () => {
     origen: 'API',
     ordenes: ['ORD-1'],
   });
-  await post('/pagos-vendedor', 'mock-contador', {
+  await post('/pagos-vendedor', 'mock-admin', {
     vendedorId: 'V-1',
     valor: '90000.00',
     referencia: 'TRF-1',
@@ -83,7 +85,7 @@ beforeEach(async () => {
   const { rows } = await testPool().query<{ id: string }>(
     `SELECT id FROM contabilidad.venta_contable WHERE numero_orden = 'ORD-2'`,
   );
-  await post('/ajustes', 'mock-contador', {
+  await post('/ajustes', 'mock-admin', {
     ventaId: rows[0]!.id,
     tipo: 'DEVOLUCION',
     motivo: 'Defectuoso',
@@ -162,8 +164,8 @@ describe('HU-CON-08 - criterios de aceptación del F01', () => {
     expect((await descargar('?desde=2026-10-01&hasta=2026-10-31', 'mock-sistema')).status).toBe(
       403,
     );
-    expect((await descargar('?desde=2026-10-01&hasta=2026-10-31', 'mock-contador')).status).toBe(
-      200,
+    expect((await descargar('?desde=2026-10-01&hasta=2026-10-31', 'mock-vendedor')).status).toBe(
+      403,
     );
   });
 });

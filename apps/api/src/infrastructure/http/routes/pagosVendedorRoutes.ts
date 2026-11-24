@@ -16,17 +16,17 @@ interface Deps {
   listarPagosVendedor: ListarPagosVendedorQuery;
 }
 
-/** HU-CON-10: POST /pagos-vendedor (contador) y GET /pagos-vendedor. */
+/** HU-CON-10: POST /pagos-vendedor (ADMIN) y GET /pagos-vendedor (ADMIN o el propio VENDEDOR). */
 export function pagosVendedorRoutes({ registrarPagoVendedor, listarPagosVendedor }: Deps): Router {
   const router = Router();
 
-  router.post('/pagos-vendedor', requireRole('CONTADOR'), async (req, res) => {
+  router.post('/pagos-vendedor', requireRole('ADMIN'), async (req, res) => {
     const entrada = parse(req, 'body', registrarPagoVendedorSchema);
     const body: PagoVendedorDto = await registrarPagoVendedor.execute(entrada, contexto(res));
     res.status(201).json(body);
   });
 
-  router.get('/pagos-vendedor', requireRole('CONTADOR', 'ADMIN_FINANCIERO'), async (req, res) => {
+  router.get('/pagos-vendedor', requireRole('ADMIN', 'VENDEDOR'), async (req, res) => {
     const filtro = parse(req, 'query', listarPagosVendedorQuerySchema);
     const body: Pagina<PagoVendedorDto> = await listarPagosVendedor.execute(filtro, contexto(res));
     res.json(body);

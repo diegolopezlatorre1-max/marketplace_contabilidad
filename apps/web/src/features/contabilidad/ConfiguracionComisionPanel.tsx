@@ -20,9 +20,9 @@ function vigenteEn(vigencias: VigenciaPorcentaje[], fecha: string) {
     .find((v) => v.desde <= fecha && (!v.hasta || v.hasta >= fecha));
 }
 
-/** HU-CON-09: porcentaje de comisión vigente, cambio (solo ADMIN_FINANCIERO) e historial. */
+/** HU-CON-09: porcentaje de comisión vigente, cambio (solo ADMIN) e historial. */
 export function ConfiguracionComisionPanel({ api }: { api: ContabilidadApi }) {
-  const puedeConfigurar = useTieneRol('ADMIN_FINANCIERO');
+  const puedeConfigurar = useTieneRol('ADMIN');
   const [vigencias, setVigencias] = useState<VigenciaPorcentaje[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -4,6 +4,7 @@ import type { ComisionRepository } from './ComisionRepository';
 import type { ConciliacionRepository } from './ConciliacionRepository';
 import type { ConfiguracionComisionRepository } from './ConfiguracionComisionRepository';
 import type { CuentaPorPagarRepository } from './CuentaPorPagarRepository';
+import type { EscrowRepository } from './EscrowRepository';
 import type { EventPublisher } from './EventPublisher';
 import type { InboxRepository } from './InboxRepository';
 import type { PagoRecibidoRepository } from './PagoRecibidoRepository';
@@ -26,6 +27,7 @@ export interface TransactionalRepositories {
   conciliaciones: ConciliacionRepository;
   ajustes: AjusteContableRepository;
   pagosVendedor: PagoVendedorRepository;
+  escrow: EscrowRepository;
 }
 
 /** Ejecuta un trabajo de forma atómica: todo se confirma o todo se revierte. */

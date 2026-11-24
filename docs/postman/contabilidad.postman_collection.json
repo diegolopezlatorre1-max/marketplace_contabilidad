@@ -7,15 +7,19 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:3000/api/v1/contabilidad"
-    },
-    {
-      "key": "tokenContador",
-      "value": "mock-contador"
+      "value": "http://localhost:3000/api/contabilidad"
     },
     {
       "key": "tokenAdmin",
       "value": "mock-admin"
+    },
+    {
+      "key": "tokenVendedor",
+      "value": "mock-vendedor"
+    },
+    {
+      "key": "tokenComprador",
+      "value": "mock-comprador"
     },
     {
       "key": "tokenSistema",
@@ -58,7 +62,7 @@
           ]
         },
         {
-          "name": "Me - contador",
+          "name": "Me - vendedor",
           "request": {
             "method": "GET",
             "header": [],
@@ -76,7 +80,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenVendedor}}",
                   "type": "string"
                 }
               ]
@@ -89,7 +93,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Rol CONTADOR', () => pm.expect(pm.response.json().roles).to.include('CONTADOR'));"
+                  "pm.test('Rol VENDEDOR', () => pm.expect(pm.response.json().roles).to.include('VENDEDOR'));"
                 ]
               }
             }
@@ -127,7 +131,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
-                  "pm.test('Rol ADMIN_FINANCIERO', () => pm.expect(pm.response.json().roles).to.include('ADMIN_FINANCIERO'));"
+                  "pm.test('Rol ADMIN', () => pm.expect(pm.response.json().roles).to.include('ADMIN'));"
                 ]
               }
             }
@@ -170,7 +174,7 @@
       "name": "2. HU-CON-09 Comisión",
       "item": [
         {
-          "name": "Consultar comisión vigente (contador)",
+          "name": "Consultar comisión vigente (administrador)",
           "request": {
             "method": "GET",
             "header": [],
@@ -190,7 +194,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -215,7 +219,7 @@
           ]
         },
         {
-          "name": "Configurar como contador -> 403",
+          "name": "Configurar como vendedor -> 403",
           "request": {
             "method": "PUT",
             "header": [
@@ -239,7 +243,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenVendedor}}",
                   "type": "string"
                 }
               ]
@@ -740,7 +744,7 @@
           ]
         },
         {
-          "name": "Enviar como contador -> 403",
+          "name": "Enviar como administrador -> 403",
           "request": {
             "method": "POST",
             "header": [
@@ -764,7 +768,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -821,7 +825,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -872,7 +876,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -920,7 +924,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -959,7 +963,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1004,7 +1008,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1052,7 +1056,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1104,7 +1108,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1153,7 +1157,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1201,7 +1205,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1614,7 +1618,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1708,7 +1712,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1734,7 +1738,7 @@
                   "pm.test('Diferencia de -5.000 y estado PENDIENTE', () => {",
                   "  pm.expect(c.estado).to.eql('PENDIENTE');",
                   "  pm.expect(c.diferencia).to.eql('-5000.00');",
-                  "  pm.expect(c.usuario).to.eql('u-contador');",
+                  "  pm.expect(c.usuario).to.eql('u-admin');",
                   "});",
                   "pm.collectionVariables.set('conciliacionB', c.id);"
                 ]
@@ -1766,7 +1770,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1818,7 +1822,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1866,7 +1870,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1910,7 +1914,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -1954,7 +1958,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2035,7 +2039,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2086,7 +2090,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2133,7 +2137,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2180,7 +2184,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2224,7 +2228,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2369,7 +2373,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2429,7 +2433,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2495,7 +2499,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2543,7 +2547,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2636,6 +2640,123 @@
           ]
         },
         {
+          "name": "Pago sin entrega -> 422 SALDO_RETENIDO_ESCROW",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedorId\": \"{{vendedorPago}}\",\n  \"valor\": \"40000.00\",\n  \"referencia\": \"{{referenciaPago}}-0\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 422', () => pm.response.to.have.status(422));",
+                  "pm.test('Saldo retenido por escrow', () => pm.expect(pm.response.json().code).to.eql('SALDO_RETENIDO_ESCROW'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Órdenes marca la entrega (hace 4 días) -> 200 LIBERADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/marcar-entrega/{{ordenPago}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "marcar-entrega",
+                "{{ordenPago}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaEntrega\": \"{{entregaPasadaIso}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Escrow: solo se paga el neto de pedidos entregados hace 72 h o más.",
+                  "// Para la demo, la entrega se registra 4 días atrás.",
+                  "pm.collectionVariables.set('entregaPasadaIso', new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Pedido LIBERADO', () => pm.expect(pm.response.json().estado).to.eql('LIBERADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Pago parcial de 40.000 -> 201 PARCIAL",
           "request": {
             "method": "POST",
@@ -2659,7 +2780,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2713,7 +2834,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2765,7 +2886,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2794,7 +2915,7 @@
           ]
         },
         {
-          "name": "Pago como administrador -> 403",
+          "name": "Pago como vendedor -> 403",
           "request": {
             "method": "POST",
             "header": [
@@ -2817,7 +2938,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenAdmin}}",
+                  "value": "{{tokenVendedor}}",
                   "type": "string"
                 }
               ]
@@ -2868,7 +2989,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -2967,7 +3088,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -3058,6 +3179,71 @@
           ]
         },
         {
+          "name": "Órdenes marca la entrega (hace 4 días) -> 200 LIBERADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/marcar-entrega/{{ordenEstado}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "marcar-entrega",
+                "{{ordenEstado}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"fechaEntrega\": \"{{entregaPasadaIso}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Escrow: solo se paga el neto de pedidos entregados hace 72 h o más.",
+                  "// Para la demo, la entrega se registra 4 días atrás.",
+                  "pm.collectionVariables.set('entregaPasadaIso', new Date(Date.now() - 4 * 24 * 3600 * 1000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Pedido LIBERADO', () => pm.expect(pm.response.json().estado).to.eql('LIBERADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Pago parcial de 40.000",
           "request": {
             "method": "POST",
@@ -3081,7 +3267,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -3181,7 +3367,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -3288,7 +3474,7 @@
                   "const r = pm.response.json();",
                   "const v = pm.collectionVariables.get('vendedorEstado');",
                   "const reg = r.items.find((i) => i.valoresNuevos && i.valoresNuevos.pago && i.valoresNuevos.pago.vendedorId === v);",
-                  "pm.test('El pago quedó auditado por el contador', () => { pm.expect(reg).to.be.an('object'); pm.expect(reg.usuario).to.eql('u-contador'); pm.expect(reg.accion).to.eql('REGISTRAR'); });",
+                  "pm.test('El pago quedó auditado por el administrador', () => { pm.expect(reg).to.be.an('object'); pm.expect(reg.usuario).to.eql('u-admin'); pm.expect(reg.accion).to.eql('REGISTRAR'); });",
                   "pm.test('Guarda los valores antes y después', () => { pm.expect(reg.valoresAnteriores.cuentas[0].estado).to.eql('PENDIENTE'); pm.expect(reg.valoresNuevos.pago.aplicaciones[0].estado).to.eql('PARCIAL'); });"
                 ]
               }
@@ -3301,7 +3487,7 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/auditoria?usuario=u-contador&desde={{hoy}}&hasta={{hoy}}",
+              "raw": "{{baseUrl}}/auditoria?usuario=u-admin&desde={{hoy}}&hasta={{hoy}}",
               "host": [
                 "{{baseUrl}}"
               ],
@@ -3311,7 +3497,7 @@
               "query": [
                 {
                   "key": "usuario",
-                  "value": "u-contador"
+                  "value": "u-admin"
                 },
                 {
                   "key": "desde",
@@ -3351,7 +3537,7 @@
                 "exec": [
                   "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
                   "const r = pm.response.json();",
-                  "pm.test('Solo movimientos del contador', () => r.items.forEach((i) => pm.expect(i.usuario).to.eql('u-contador')));",
+                  "pm.test('Solo movimientos del administrador', () => r.items.forEach((i) => pm.expect(i.usuario).to.eql('u-admin')));",
                   "pm.test('Hay movimientos de hoy', () => pm.expect(r.total).to.be.above(0));"
                 ]
               }
@@ -3359,7 +3545,7 @@
           ]
         },
         {
-          "name": "Consultar como contador -> 403",
+          "name": "Consultar como comprador -> 403",
           "request": {
             "method": "GET",
             "header": [],
@@ -3377,7 +3563,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenComprador}}",
                   "type": "string"
                 }
               ]
@@ -3506,7 +3692,7 @@
           ]
         },
         {
-          "name": "Exportar como contador -> 200",
+          "name": "Exportar como administrador -> 200",
           "request": {
             "method": "GET",
             "header": [],
@@ -3539,7 +3725,7 @@
               "bearer": [
                 {
                   "key": "token",
-                  "value": "{{tokenContador}}",
+                  "value": "{{tokenAdmin}}",
                   "type": "string"
                 }
               ]
@@ -3648,6 +3834,501 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "12. Escrow (retención de 72 h y bloqueo por PQR)",
+      "item": [
+        {
+          "name": "Orden de 100.000 (para escrow)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/eventos/orden-confirmada",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "eventos",
+                "orden-confirmada"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"eventId\": \"{{eventoOrdenEscrow}}\",\n  \"version\": 1,\n  \"ocurridoEn\": \"{{ahoraIso}}\",\n  \"tipo\": \"orden.confirmada\",\n  \"numeroOrden\": \"{{ordenEscrow}}\",\n  \"fecha\": \"{{ahoraIso}}\",\n  \"estado\": \"CONFIRMADA\",\n  \"moneda\": \"COP\",\n  \"lineas\": [\n    {\n      \"vendedorId\": \"{{vendedorEscrow}}\",\n      \"valorBruto\": \"100000.00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const s = Date.now();",
+                  "pm.collectionVariables.set('ahoraIso', new Date().toISOString());",
+                  "pm.collectionVariables.set('eventoOrdenEscrow', 'evt-pm-esc-' + s);",
+                  "pm.collectionVariables.set('ordenEscrow', 'ORD-PM-X-' + s);",
+                  "pm.collectionVariables.set('vendedorEscrow', 'V-PM-X-' + s);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sin entrega: el pedido no tiene registro -> 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/{{ordenEscrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "{{ordenEscrow}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Órdenes marca la entrega ahora -> 200 RETENIDO",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/marcar-entrega/{{ordenEscrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "marcar-entrega",
+                "{{ordenEscrow}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test('RETENIDO 72 h', () => {",
+                  "  pm.expect(r.estado).to.eql('RETENIDO');",
+                  "  pm.expect(new Date(r.liberableDesde) - new Date(r.entregadoEn)).to.eql(72 * 3600 * 1000);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar la entrega otra vez -> SIN_CAMBIOS",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/marcar-entrega/{{ordenEscrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "marcar-entrega",
+                "{{ordenEscrow}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('SIN_CAMBIOS', () => pm.expect(pm.response.json().resultado).to.eql('SIN_CAMBIOS'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pago durante la retención -> 422 SALDO_RETENIDO_ESCROW",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/pagos-vendedor",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "pagos-vendedor"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vendedorId\": \"{{vendedorEscrow}}\",\n  \"valor\": \"10.00\",\n  \"referencia\": \"TRF-ESC-{{ordenEscrow}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Retenido', () => pm.expect(pm.response.json().code).to.eql('SALDO_RETENIDO_ESCROW'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Bloquear por PQR -> 200 BLOQUEADO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/bloquear/{{ordenEscrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "bloquear",
+                "{{ordenEscrow}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"PQR-POSTMAN\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('BLOQUEADO', () => pm.expect(pm.response.json().estado).to.eql('BLOQUEADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Consultar estado (administrador) -> BLOQUEADO",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/{{ordenEscrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "{{ordenEscrow}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Estado BLOQUEADO', () => pm.expect(pm.response.json().estado).to.eql('BLOQUEADO'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desbloquear como sistema -> 403",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/desbloquear/{{ordenEscrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "desbloquear",
+                "{{ordenEscrow}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenSistema}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"x\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 403', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desbloquear sin motivo -> 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/desbloquear/{{ordenEscrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "desbloquear",
+                "{{ordenEscrow}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "El administrador desbloquea -> vuelve a RETENIDO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/escrow/desbloquear/{{ordenEscrow}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "escrow",
+                "desbloquear",
+                "{{ordenEscrow}}"
+              ]
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{tokenAdmin}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"motivo\": \"PQR resuelta a favor del vendedor\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+                  "pm.test('RETENIDO (aún no pasan las 72 h)', () => pm.expect(pm.response.json().estado).to.eql('RETENIDO'));"
                 ]
               }
             }

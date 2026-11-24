@@ -63,7 +63,7 @@ export class ExportarExcelUseCase implements UseCase<ReporteIngresosEntrada, Arc
     entrada: ReporteIngresosEntrada,
     ctx: ContextoEjecucion,
   ): Promise<ArchivoExportado> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     // El reporte valida el rango (formato, orden y máximo de días) y da los totales.
     const r = await this.reporte.execute(entrada, ctx);
     const filtro = { desde: r.desde, hasta: r.hasta, vendedorId: entrada.vendedorId };

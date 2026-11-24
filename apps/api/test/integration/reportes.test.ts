@@ -7,7 +7,7 @@ import { MockOrdersGateway } from '../../src/infrastructure/integration/orders/M
 import { limpiarTablas, testPool } from './db';
 
 const logger = pino({ level: 'silent' });
-const BASE = '/api/v1/contabilidad';
+const BASE = '/api/contabilidad';
 const reloj = { now: () => new Date('2026-10-31T20:00:00Z') };
 const ordenes = new MockOrdersGateway(reloj.now);
 
@@ -48,11 +48,11 @@ async function vender(numeroOrden: string, valor: string, instante: string, vend
 const devolver = (ventaId: string, valor: string, fecha: string) =>
   request(app())
     .post(`${BASE}/ajustes`)
-    .set('authorization', 'Bearer mock-contador')
+    .set('authorization', 'Bearer mock-admin')
     .send({ ventaId, tipo: 'DEVOLUCION', motivo: 'Devolución', valor, fecha });
 
 const reporte = (q: string) =>
-  request(app()).get(`${BASE}/reportes/ingresos${q}`).set('authorization', 'Bearer mock-contador');
+  request(app()).get(`${BASE}/reportes/ingresos${q}`).set('authorization', 'Bearer mock-admin');
 
 beforeEach(async () => {
   await limpiarTablas();

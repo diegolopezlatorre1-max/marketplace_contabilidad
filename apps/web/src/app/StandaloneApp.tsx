@@ -4,7 +4,7 @@ import { ContabilidadModule } from '../module';
 import { MockLogin } from './MockLogin';
 
 const CLAVE_TOKEN = 'contabilidad.token';
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/v1/contabilidad';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api/contabilidad';
 
 function leerToken(): string | null {
   try {

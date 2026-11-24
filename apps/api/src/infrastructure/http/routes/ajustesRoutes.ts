@@ -14,7 +14,7 @@ import type {
 } from '../../../application/commands/ProcesarAjusteOrdenUseCase';
 import type { RegistrarAjusteUseCase } from '../../../application/commands/RegistrarAjusteUseCase';
 import type { ListarAjustesQuery } from '../../../application/queries/ListarAjustesQuery';
-import { requireRole } from '../middlewares/auth';
+import { requireRole, requireServicio } from '../middlewares/auth';
 import { parse } from '../middlewares/validate';
 import { contexto } from '../requestContext';
 
@@ -26,7 +26,7 @@ interface Deps {
 
 /**
  * HU-CON-06: POST /ajustes (contador), GET /ajustes y los eventos del módulo de Órdenes
- * POST /eventos/orden-cancelada y POST /eventos/orden-devuelta (rol SISTEMA).
+ * POST /eventos/orden-cancelada y POST /eventos/orden-devuelta (servicio).
  */
 export function ajustesRoutes({
   registrarAjuste,
@@ -35,13 +35,13 @@ export function ajustesRoutes({
 }: Deps): Router {
   const router = Router();
 
-  router.post('/ajustes', requireRole('CONTADOR'), async (req, res) => {
+  router.post('/ajustes', requireRole('ADMIN'), async (req, res) => {
     const entrada = parse(req, 'body', registrarAjusteSchema);
     const body: AjusteDto = await registrarAjuste.execute(entrada, contexto(res));
     res.status(201).json(body);
   });
 
-  router.get('/ajustes', requireRole('CONTADOR', 'ADMIN_FINANCIERO'), async (req, res) => {
+  router.get('/ajustes', requireRole('ADMIN'), async (req, res) => {
     const filtro = parse(req, 'query', listarAjustesQuerySchema);
     const body: Pagina<AjusteDto> = await listarAjustes.execute(filtro, contexto(res));
     res.json(body);
@@ -56,11 +56,11 @@ export function ajustesRoutes({
     res.status(resultado === 'PROCESADO' ? 201 : 200).json(body);
   };
 
-  router.post('/eventos/orden-cancelada', requireRole('SISTEMA'), async (req, res) => {
+  router.post('/eventos/orden-cancelada', requireServicio(), async (req, res) => {
     await procesar(parse(req, 'body', ordenCanceladaSchema), res);
   });
 
-  router.post('/eventos/orden-devuelta', requireRole('SISTEMA'), async (req, res) => {
+  router.post('/eventos/orden-devuelta', requireServicio(), async (req, res) => {
     await procesar(parse(req, 'body', ordenDevueltaSchema), res);
   });
 

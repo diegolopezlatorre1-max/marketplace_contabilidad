@@ -7,7 +7,7 @@ export class ListarPeriodosQuery implements UseCase<void, string[]> {
   constructor(private readonly ventas: VentaContableRepository) {}
 
   async execute(_entrada: void, ctx: ContextoEjecucion): Promise<string[]> {
-    exigirRol(ctx.actor, ['CONTADOR', 'ADMIN_FINANCIERO']);
+    exigirRol(ctx.actor, ['ADMIN']);
     return this.ventas.listarPeriodos();
   }
 }

@@ -11,8 +11,9 @@ Este documento es la versión legible para acordar con los otros equipos.
 
 ## Reglas generales
 
-- Transporte inicial: HTTP POST a `/api/v1/contabilidad/eventos/<tipo>` (webhook),
-  con `Authorization: Bearer <token de servicio>` (rol SISTEMA).
+- Transporte inicial: HTTP POST a `/api/contabilidad/eventos/<tipo>` (webhook),
+  con la cabecera `x-api-key: <clave de servicio>` (cada módulo tiene su clave en
+  `SERVICE_API_KEYS`; se autentica como servicio, no como rol de usuario).
   Con un broker de eventos, el payload es el mismo.
 - `eventId` es único por evento. Reenviar el mismo evento es seguro: la respuesta es
   `YA_PROCESADO` y no se crean registros duplicados.
@@ -83,6 +84,29 @@ Este documento es la versión legible para acordar con los otros equipos.
 **Preguntas para el equipo de Pagos (se cierran antes del Sprint 2):** ¿el valor viene
 neto de costos de la pasarela? ¿Envían los costos por separado?
 
+## Marketplace → Contabilidad: escrow (GUIA_EQUIPO_6)
+
+Custodia del dinero de cada pedido entre la entrega y el pago al vendedor. `pedido_id` es el
+`numeroOrden` del evento `orden.confirmada`. Todas las operaciones son idempotentes: repetirlas
+responde `200` con `resultado: "SIN_CAMBIOS"`.
+
+| Ruta | Quién | Cuerpo (opcional) | Efecto |
+|------|-------|-------------------|--------|
+| `POST /api/contabilidad/escrow/marcar-entrega/{pedido_id}` | **Órdenes** (servicio, `x-api-key`) | `{ "fechaEntrega": "<ISO 8601>" }` (por defecto, ahora) | Retención de 72 h desde la entrega; **se libera sola** al cumplirse, sin otra llamada |
+| `POST /api/contabilidad/escrow/bloquear/{pedido_id}` | Módulo por definir (servicio, `x-api-key`) | `{ "motivo": "PQR-15" }` | Bloquea el pago mientras haya PQR |
+| `POST /api/contabilidad/escrow/desbloquear/{pedido_id}` | ADMIN de Contabilidad | `{ "motivo": "..." }` (**obligatorio**) | Desbloqueo manual; vuelve a la retención original o queda liberado |
+| `GET /api/contabilidad/escrow/{pedido_id}` | ADMIN | — | Consulta el estado |
+
+Estados: `SIN_ENTREGA`, `RETENIDO` (menos de 72 h desde la entrega), `LIBERADO` y `BLOQUEADO`.
+
+Efecto en HU-CON-10: **solo se paga el neto de pedidos `LIBERADO`** (entregados hace 72 h o más y
+sin bloqueo). Un pedido sin entrega registrada (con o sin registro de escrow), `RETENIDO` o
+`BLOQUEADO` no se puede usar en un pago a vendedor; si el pago cabe en la deuda pero no en lo
+disponible responde `422 SALDO_RETENIDO_ESCROW`. **Mientras Órdenes no llame `marcar-entrega`, no
+se le puede pagar ningún pedido al vendedor.**
+
+Pendiente de confirmar: qué módulo llamará `bloquear`.
+
 ## Contabilidad → Módulo de Vendedores (Sprint 1)
 
 `GET /vendedores/{id}` → `{ id, razonSocial, nit, datosPago: { banco, tipoCuenta, numeroCuenta } }`
@@ -95,18 +119,71 @@ neto de costos de la pasarela? ¿Envían los costos por separado?
 
 ## Contabilidad → Marketplace (eventos publicados, vía outbox)
 
+Cada evento se guarda en el outbox en la misma transacción del cambio y el **relay** lo entrega por
+`HTTP POST` a la URL configurada para su tipo (`OUTBOX_DESTINOS`). Entrega **al menos una vez**:
+el consumidor debe deduplicar por `eventId` y responder `2xx`. Ante otro estado, un error de red o
+un timeout se reintenta con espera exponencial (5 s, 10 s, 20 s... hasta 1 h); tras
+`OUTBOX_MAX_INTENTOS` (8) fallos el evento pasa a `DEAD_LETTER` y se informa en `GET /health`.
+
+Sobre (cuerpo JSON):
+
+```json
+{
+  "eventId": "6f1c…",
+  "tipo": "contabilidad.pago-vendedor.registrado",
+  "modulo": "contabilidad",
+  "ocurridoEn": "2026-11-10T15:00:00.000Z",
+  "correlationId": "corr-123",
+  "payload": { … }
+}
+```
+
+Cabeceras: `x-event-id`, `x-event-type`, `x-correlation-id` (si existe) y `x-api-key` si se
+configuró `OUTBOX_API_KEY`.
+
 | Evento | Cuándo |
 |--------|--------|
 | `contabilidad.venta.registrada` | Venta, comisión y cuenta por pagar creadas |
 | `contabilidad.ajuste.registrado` | Ajuste por devolución o cancelación |
-| `contabilidad.pago-vendedor.registrado` | Pago a vendedor registrado |
+| `contabilidad.pago-vendedor.registrado` | **Pago acreditado** al vendedor (HU-NOT-05, para Notificaciones) |
 | `contabilidad.conciliacion.cerrada` | Conciliación marcada como conciliada |
+| `contabilidad.escrow.actualizado` | Cambio de estado del escrow de un pedido (entrega, bloqueo, desbloqueo) |
+
+### `contabilidad.pago-vendedor.registrado` v2 (pago acreditado, HU-NOT-05)
+
+Identifica al vendedor, el monto y las órdenes asociadas. Como el pago se aplica por quincena (FIFO),
+las órdenes asociadas son las de las quincenas que cubrió el pago, sin las que el escrow retenía en
+ese momento.
+
+```json
+{
+  "version": 2,
+  "pagoId": "8a2e…",
+  "vendedorId": "V-1",
+  "fecha": "2026-11-10T15:00:00.000Z",
+  "valor": "135000.00",
+  "moneda": "COP",
+  "saldoAFavorAplicado": "0.00",
+  "referencia": "TRF-1",
+  "ordenes": ["ORD-1", "ORD-2"],
+  "cuentas": [
+    { "periodo": "2026-10-Q1", "valorAplicado": "90000.00", "saldoAnterior": "90000.00",
+      "saldoNuevo": "0.00", "estado": "PAGADO", "ordenes": ["ORD-1"] }
+  ]
+}
+```
+
+v2 agrega `version`, `moneda`, `ordenes` y `cuentas[].ordenes`; los campos de v1 no cambian.
+Pendiente de confirmar con Notificaciones (Equipo 3): la URL que recibirá el evento, si exige
+`x-api-key` y si esperan otro nombre de evento.
 
 ## Autenticación (Administración)
 
-- Usuarios: token JWT emitido por el marketplace; Contabilidad necesita el emisor,
-  las claves públicas (JWKS) y el claim que trae los roles.
-- Mapeo de roles: CONTADOR, ADMIN_FINANCIERO; módulos: SISTEMA.
+- Usuarios: access token de Supabase Auth (proyecto compartido), validado con `getClaims`.
+  Rol en `app_metadata.role`; vendedor = UUID del usuario o `app_metadata.vendedor_id`
+  (pendiente de confirmar con el administrador del proyecto Supabase).
+- Roles de aplicación (GUIA_EQUIPO_6): ADMIN, COMPRADOR, VENDEDOR. Los módulos se autentican
+  como servicio.
 
 **Supuestos v1 (hasta la Fase 6 se usa `AUTH_MODE=mock`):**
 - S-06: JWT firmado con RS256 y validado con el JWKS del marketplace (`iss` y `aud`

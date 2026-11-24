@@ -5,6 +5,7 @@ import type { AuthContext } from '../application/ports/out/AuthContext';
 import type { Clock } from '../application/ports/out/Clock';
 import type { UnitOfWork } from '../application/ports/out/UnitOfWork';
 import { ConciliarPagoUseCase } from '../application/commands/ConciliarPagoUseCase';
+import { ActualizarEscrowUseCase } from '../application/commands/ActualizarEscrowUseCase';
 import { ConfigurarComisionUseCase } from '../application/commands/ConfigurarComisionUseCase';
 import { ImportarPagosRecibidosUseCase } from '../application/commands/ImportarPagosRecibidosUseCase';
 import { RegistrarPagoRecibidoUseCase } from '../application/commands/RegistrarPagoRecibidoUseCase';
@@ -29,14 +30,20 @@ import { ListarCuentasPorPagarQuery } from '../application/queries/ListarCuentas
 import { ListarPeriodosQuery } from '../application/queries/ListarPeriodosQuery';
 import { ListarVentasQuery } from '../application/queries/ListarVentasQuery';
 import { ObtenerComisionVigenteQuery } from '../application/queries/ObtenerComisionVigenteQuery';
+import { ObtenerEscrowQuery } from '../application/queries/ObtenerEscrowQuery';
 import { ObtenerEstadoModulo } from '../application/queries/ObtenerEstadoModulo';
 import { ObtenerVentaQuery } from '../application/queries/ObtenerVentaQuery';
 import { ReporteIngresosQuery } from '../application/queries/ReporteIngresosQuery';
 import { ResumenSaldoVendedorQuery } from '../application/queries/ResumenSaldoVendedorQuery';
 import type { AppConfig } from '../infrastructure/config/env';
 import { createContabilidadRouter } from '../infrastructure/http/express/createContabilidadRouter';
-import { JwtAuthContext } from '../infrastructure/integration/auth/JwtAuthContext';
+import { ApiKeyServiceAuth } from '../infrastructure/integration/auth/ApiKeyServiceAuth';
+import { JwksAuthContext } from '../infrastructure/integration/auth/JwksAuthContext';
 import { MockAuthContext } from '../infrastructure/integration/auth/MockAuthContext';
+import {
+  crearClienteSupabase,
+  SupabaseAuthContext,
+} from '../infrastructure/integration/auth/SupabaseAuthContext';
 import { MockSellersGateway } from '../infrastructure/integration/sellers/MockSellersGateway';
 import { SystemClock } from '../infrastructure/integration/SystemClock';
 import { PgAjusteContableRepository } from '../infrastructure/persistence/postgres/PgAjusteContableRepository';
@@ -47,7 +54,9 @@ import { PgPagoRecibidoRepository } from '../infrastructure/persistence/postgres
 import { PgPagoVendedorRepository } from '../infrastructure/persistence/postgres/PgPagoVendedorRepository';
 import { PgEstadoVendedorRepository } from '../infrastructure/persistence/postgres/PgEstadoVendedorRepository';
 import { PgAuditoriaRepository } from '../infrastructure/persistence/postgres/PgAuditoriaRepository';
+import { PgEscrowRepository } from '../infrastructure/persistence/postgres/PgEscrowRepository';
 import { PgDatabaseHealth } from '../infrastructure/persistence/postgres/PgDatabaseHealth';
+import { PgOutboxMonitor } from '../infrastructure/persistence/postgres/PgOutboxMonitor';
 import { PgReporteIngresosRepository } from '../infrastructure/persistence/postgres/PgReporteIngresosRepository';
 import { PgVentaContableRepository } from '../infrastructure/persistence/postgres/PgVentaContableRepository';
 import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWork';
@@ -55,7 +64,8 @@ import { PgUnitOfWork } from '../infrastructure/persistence/postgres/PgUnitOfWor
 export const VERSION_MODULO = '0.1.0';
 
 export interface ContabilidadModuleOptions {
-  config: Pick<AppConfig, 'INTEGRATION_MODE' | 'AUTH_MODE'>;
+  config: Pick<AppConfig, 'INTEGRATION_MODE' | 'AUTH_MODE'> &
+    Partial<Pick<AppConfig, 'SUPABASE_URL' | 'SUPABASE_PUBLISHABLE_KEY' | 'SERVICE_API_KEYS'>>;
   pool: pg.Pool;
   logger: Logger;
   /** Permite inyectar adaptadores alternativos (p. ej. en pruebas o desde el marketplace). */
@@ -70,15 +80,15 @@ export interface ContabilidadModule {
 /**
  * Composition root: el ÚNICO lugar donde se eligen adaptadores y se cablean
  * con los casos de uso. Integrar el módulo al marketplace = llamar a esta
- * función con su configuración y montar `router` en /api/v1/contabilidad.
+ * función con su configuración y montar `router` en /api/contabilidad.
  */
 export function createContabilidadModule(opts: ContabilidadModuleOptions): ContabilidadModule {
   const { config, pool, logger, overrides } = opts;
 
   // Adaptadores de salida
   const clock = overrides?.clock ?? new SystemClock();
-  const auth =
-    overrides?.auth ?? (config.AUTH_MODE === 'jwt' ? new JwtAuthContext() : new MockAuthContext());
+  const auth = overrides?.auth ?? crearAuthContext(config);
+  const servicios = new ApiKeyServiceAuth(config.SERVICE_API_KEYS ?? {});
   const unitOfWork = new PgUnitOfWork(pool);
   const dbHealth = new PgDatabaseHealth(pool);
   const configuracionComision = new PgConfiguracionComisionRepository(pool);
@@ -87,7 +97,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const vendedores = new MockSellersGateway();
 
   // Casos de uso / consultas
-  const obtenerEstado = new ObtenerEstadoModulo(dbHealth, clock);
+  const obtenerEstado = new ObtenerEstadoModulo(dbHealth, clock, new PgOutboxMonitor(pool));
   const obtenerComision = new ObtenerComisionVigenteQuery(configuracionComision, clock);
   const configurarComision = new ConfigurarComisionUseCase(unitOfWork, clock);
   const registrarVenta = new RegistrarVentaConfirmadaUseCase(unitOfWork, clock);
@@ -106,6 +116,9 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const registrarPagoVendedor = new RegistrarPagoVendedorUseCase(unitOfWork, clock);
   const pagosVendedor = new PgPagoVendedorRepository(pool);
   const listarPagosVendedor = new ListarPagosVendedorQuery(pagosVendedor);
+  // Escrow (GUIA_EQUIPO_6): retención de 72 h tras la entrega y bloqueo por PQR.
+  const actualizarEscrow = new ActualizarEscrowUseCase(unitOfWork, clock);
+  const obtenerEscrow = new ObtenerEscrowQuery(new PgEscrowRepository(pool), clock);
   // HU-CON-08: exportación a Excel; reutiliza la consulta del reporte (mismos números).
   const exportarExcel = new ExportarExcelUseCase(
     reporteIngresos,
@@ -114,7 +127,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
     vendedores,
     clock,
   );
-  // HU-CON-11: consulta de la auditoría (solo ADMIN_FINANCIERO).
+  // HU-CON-11: consulta de la auditoría (solo ADMIN).
   const consultarAuditoria = new ConsultarAuditoriaQuery(new PgAuditoriaRepository(pool));
   // HU-CON-07: estado financiero por vendedor.
   const estadoVendedor = new EstadoVendedorQuery(
@@ -136,6 +149,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
   const router = createContabilidadRouter({
     logger,
     auth,
+    servicios,
     version: VERSION_MODULO,
     integrationMode: config.INTEGRATION_MODE,
     queries: {
@@ -155,6 +169,7 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       estadoVendedor,
       consultarAuditoria,
       exportarExcel,
+      obtenerEscrow,
     },
     commands: {
       configurarComision,
@@ -165,8 +180,30 @@ export function createContabilidadModule(opts: ContabilidadModuleOptions): Conta
       registrarAjuste,
       procesarAjusteOrden,
       registrarPagoVendedor,
+      actualizarEscrow,
     },
   });
 
   return { router, unitOfWork };
+}
+
+/**
+ * AUTH_MODE=supabase valida el access token con Supabase Auth (getClaims); jwks verifica la firma
+ * con las claves públicas del proyecto (solo SUPABASE_URL); mock usa tokens de desarrollo.
+ */
+function crearAuthContext(config: ContabilidadModuleOptions['config']): AuthContext {
+  if (config.AUTH_MODE === 'jwks') {
+    if (!config.SUPABASE_URL) throw new Error('AUTH_MODE=jwks requiere SUPABASE_URL');
+    return new JwksAuthContext({ supabaseUrl: config.SUPABASE_URL });
+  }
+  if (config.AUTH_MODE !== 'supabase') return new MockAuthContext();
+  if (!config.SUPABASE_URL || !config.SUPABASE_PUBLISHABLE_KEY) {
+    throw new Error('AUTH_MODE=supabase requiere SUPABASE_URL y SUPABASE_PUBLISHABLE_KEY');
+  }
+  return new SupabaseAuthContext(
+    crearClienteSupabase({
+      url: config.SUPABASE_URL,
+      publishableKey: config.SUPABASE_PUBLISHABLE_KEY,
+    }),
+  );
 }
