@@ -24,8 +24,9 @@ services:
         value: production
       - key: LOG_LEVEL
         value: info
+      # Verifica el token con el JWKS del proyecto; solo requiere SUPABASE_URL.
       - key: AUTH_MODE
-        value: supabase
+        value: jwks
       - key: INTEGRATION_MODE
         value: mock
       - key: DATABASE_SSL
@@ -36,10 +37,8 @@ services:
       # Certificado PEM de Supabase (Database Settings -> SSL).
       - key: DATABASE_SSL_CA
         sync: false
+      # https://<ref>.supabase.co (sin /auth/v1).
       - key: SUPABASE_URL
-        sync: false
-      # Publishable/anon key (no la service_role).
-      - key: SUPABASE_PUBLISHABLE_KEY
         sync: false
       # "ordenes:<clave>,pagos:<clave>" (x-api-key de los módulos que envían eventos). Secreto.
       - key: SERVICE_API_KEYS

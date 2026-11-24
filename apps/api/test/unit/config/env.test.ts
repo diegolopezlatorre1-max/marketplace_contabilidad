@@ -24,6 +24,13 @@ describe('loadConfig', () => {
     expect(cfg.SUPABASE_URL).toBe('https://abc.supabase.co');
   });
 
+  it('AUTH_MODE=jwks solo exige la URL del proyecto', () => {
+    expect(() => loadConfig({ ...base, AUTH_MODE: 'jwks' })).toThrow(/SUPABASE_URL/);
+    const cfg = loadConfig({ ...base, AUTH_MODE: 'jwks', SUPABASE_URL: 'https://abc.supabase.co' });
+    expect(cfg.AUTH_MODE).toBe('jwks');
+    expect(cfg.SUPABASE_PUBLISHABLE_KEY).toBeUndefined();
+  });
+
   it('en producción no permite mock y exige claves de servicio', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/SERVICE_API_KEYS/);
     expect(() => loadConfig({ ...base, NODE_ENV: 'production', SERVICE_API_KEYS: CLAVES })).toThrow(

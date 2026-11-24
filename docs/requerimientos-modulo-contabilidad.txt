@@ -133,10 +133,13 @@
  RNF-12 [OK] Todas las entradas se validan con esquemas Zod.
  RNF-13 [OK] Cabeceras de seguridad (helmet) y CORS configurable.
  RNF-14 [OK] El modo de autenticación de prueba no arranca en producción.
- RNF-15 [OK] Autenticación con Supabase Auth (AUTH_MODE=supabase): el token se
-        valida contra Supabase, nunca solo decodificado; 401 si es inválido o
-        expiró. Los módulos se autentican con x-api-key (SERVICE_API_KEYS).
-        [PENDIENTE] URL y publishable key del proyecto Supabase compartido.
+ RNF-15 [OK] Autenticación con Supabase Auth (AUTH_MODE=jwks): la firma del
+        token se verifica con el JWKS del proyecto central (ES256), junto con
+        expiración, emisor y audiencia; nunca se confía en un JWT solo
+        decodificado; 401 si es inválido o expiró. Los módulos se autentican
+        con x-api-key (SERVICE_API_KEYS).
+        [PENDIENTE] Confirmar dónde guarda el proyecto central el rol
+        (se lee de app_metadata.role).
  RNF-16 [OK] Límite de peticiones por IP (429), TLS hacia PostgreSQL de
         Supabase y RLS habilitado en todas las tablas del esquema. HTTPS lo
         provee Render en el despliegue.
