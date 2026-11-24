@@ -35,6 +35,38 @@ Sin instalar nada en el repositorio:
 npx newman run docs/postman/contabilidad.postman_collection.json
 ```
 
+## Contra el servicio desplegado (Render)
+
+1. *Import* → `docs/postman/render.postman_environment.json` y selecciónelo como entorno.
+2. Complete sus variables (son secretas: no las guarde en Git):
+
+| Variable | Valor |
+|----------|-------|
+| `baseUrl` | `https://<servicio>.onrender.com/api/contabilidad` |
+| `apiKeyServicio` | Clave de un módulo en `SERVICE_API_KEYS` (p. ej. la de Órdenes) |
+| `tokenAdmin`, `tokenVendedor`, `tokenComprador` | Access tokens de Supabase de cada usuario de prueba (`npm run probar:auth` los muestra) |
+
+Con `apiKeyServicio` definido, las peticiones de los módulos envían `x-api-key` en lugar de
+`Bearer mock-sistema` (script de la colección). En local, la colección sigue funcionando sin ella.
+
+> La colección **crea datos** (órdenes, pagos, ajustes, una vigencia de comisión). Contra
+> producción úsela solo si se acepta dejar esos registros de prueba. Las verificaciones que
+> dependen de los usuarios mock (por ejemplo, el filtro de auditoría `usuario=u-admin` o los
+> nombres que devuelve `/me`) fallarán con usuarios reales; eso no indica un error del servicio.
+
+## Probar la autenticación con Supabase
+
+```bash
+# En apps/api/.env: SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY y
+#   PRUEBA_USUARIOS=admin@...:<clave>,vendedor@...:<clave>,comprador@...:<clave>
+npm run probar:auth
+npm run probar:auth -- --token <access_token>          # sin publishable key
+npm run probar:auth -- --api http://localhost:3000/api/contabilidad   # además llama a GET /me
+```
+
+Inicia sesión con cada usuario, verifica el token con el JWKS del proyecto (como hace
+`AUTH_MODE=jwks`) y muestra el rol detectado. No necesita base de datos.
+
 ## Qué prueba
 
 | Carpeta | Casos |

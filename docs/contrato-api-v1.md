@@ -31,6 +31,14 @@ Versión 1 de la API del módulo de Contabilidad del marketplace. Se basa en las
 
 Sin credenciales válidas la respuesta es `401`. Con credenciales pero sin el rol requerido, `403`.
 
+- **Usuarios:** el `<token>` es el access token del proyecto Supabase central
+  (`https://xmrlazemifmepyahqsrz.supabase.co`). Contabilidad verifica la firma con su JWKS, la
+  expiración, el emisor (`.../auth/v1`) y la audiencia `authenticated`. El rol se lee de
+  `app_metadata.role` (`admin`, `vendedor` o `comprador`); el vendedor, de
+  `app_metadata.vendedor_id` o, si no viene, del `sub` del usuario.
+- **Módulos:** cada módulo recibe su propia clave de Contabilidad por un canal privado. No se
+  comparte entre módulos ni se guarda en el código.
+
 ## 3. Endpoints
 
 ### 3.1 Sistema
@@ -184,6 +192,56 @@ Un VENDEDOR solo ve sus propios datos. En `POST /ajustes`, la `DEVOLUCION` exige
   "valorNeto": "135000.00",
   "estadoOrigen": "CONFIRMADA",
   "registradoEn": "2026-11-20T20:30:01.000Z"
+}
+```
+
+### 3.5 Eventos que publica Contabilidad
+
+Contabilidad los guarda en su outbox y los entrega por `POST` a la URL que configure cada
+consumidor (`OUTBOX_DESTINOS`). Si el destino no responde `2xx`, reintenta con espera exponencial y,
+tras 8 fallos, deja el evento en `DEAD_LETTER`. `GET /health` informa cuántos hay pendientes y en
+dead-letter.
+
+Cabeceras: `content-type: application/json`, `x-event-id`, `x-event-type`, `x-correlation-id`
+(si existe) y `x-api-key` (si el consumidor la exige). El consumidor debe deduplicar por `eventId`.
+
+| `tipo` | Cuándo | Consumidor previsto |
+|---|---|---|
+| `contabilidad.pago-vendedor.registrado` (v2) | Pago acreditado a un vendedor | Notificaciones (HU-NOT-05) |
+| `contabilidad.venta.registrada` | Venta, comisión y cuenta por pagar creadas | |
+| `contabilidad.ajuste.registrado` | Ajuste por devolución o cancelación | |
+| `contabilidad.conciliacion.cerrada` | Conciliación marcada como conciliada | |
+| `contabilidad.escrow.actualizado` | Cambio de estado del escrow de un pedido | |
+
+```json
+// contabilidad.pago-vendedor.registrado (v2)
+{
+  "eventId": "6f0c…",
+  "tipo": "contabilidad.pago-vendedor.registrado",
+  "modulo": "contabilidad",
+  "ocurridoEn": "2026-11-25T15:00:00.000Z",
+  "correlationId": "c0a8…",
+  "payload": {
+    "version": 2,
+    "pagoId": "9d2e…",
+    "vendedorId": "V-001",
+    "fecha": "2026-11-25T15:00:00.000Z",
+    "valor": "135000.00",
+    "moneda": "COP",
+    "saldoAFavorAplicado": "0.00",
+    "referencia": "TRF-0001",
+    "ordenes": ["ORD-1001"],
+    "cuentas": [
+      {
+        "periodo": "2026-11-Q2",
+        "valorAplicado": "135000.00",
+        "saldoAnterior": "135000.00",
+        "saldoNuevo": "0.00",
+        "estado": "PAGADO",
+        "ordenes": ["ORD-1001"]
+      }
+    ]
+  }
 }
 ```
 

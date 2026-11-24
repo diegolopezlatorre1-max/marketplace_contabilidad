@@ -90,7 +90,8 @@ npm run dev:web                          # demo congelada (opcional): http://loc
   - `AUTH_MODE=supabase`: valida con `getClaims` de supabase-js (`SUPABASE_URL` y
     `SUPABASE_PUBLISHABLE_KEY`); además acepta tokens HS256 consultando a Supabase.
 
-  En ambas el rol se lee de `app_metadata.role` (`admin`, `vendedor`, `comprador`). Los módulos que envían eventos usan la
+  En ambas el rol se lee de `app_metadata.role` (`admin`, `vendedor`, `comprador`). Para comprobarlo con
+  usuarios reales: `npm run probar:auth` (ver `docs/postman/README.md`). Los módulos que envían eventos usan la
   cabecera `x-api-key` con su clave de `SERVICE_API_KEYS`.
 
 ### Eventos salientes (outbox)
