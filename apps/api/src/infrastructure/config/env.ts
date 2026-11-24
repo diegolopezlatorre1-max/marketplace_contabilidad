@@ -20,6 +20,11 @@ const envSchema = z
     DATABASE_SSL: z.enum(MODOS_SSL).default('disable'),
     DATABASE_SSL_CA: opcional,
     INTEGRATION_MODE: z.enum(['mock', 'http', 'events']).default('mock'),
+    // API del módulo de Vendedores (obligatoria si INTEGRATION_MODE no es mock).
+    VENDEDORES_URL: opcional.pipe(z.string().url().optional()),
+    // Clave que se envía en x-api-key a Vendedores, si la exige (secreto).
+    VENDEDORES_API_KEY: opcional,
+    VENDEDORES_TIMEOUT_MS: z.coerce.number().int().positive().default(3_000),
     // mock: tokens fijos de desarrollo | supabase: access token validado con Supabase Auth
     // (getClaims, requiere publishable key) | jwks: firma verificada con el JWKS del proyecto.
     AUTH_MODE: z.enum(['mock', 'supabase', 'jwks']).default('mock'),
@@ -89,6 +94,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['SUPABASE_URL'],
         message: 'Obligatorio con AUTH_MODE=jwks',
+      });
+    }
+    if (cfg.INTEGRATION_MODE !== 'mock' && !cfg.VENDEDORES_URL) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['VENDEDORES_URL'],
+        message: `Obligatorio con INTEGRATION_MODE=${cfg.INTEGRATION_MODE}`,
       });
     }
     if (cfg.NODE_ENV === 'production' && Object.keys(cfg.SERVICE_API_KEYS).length === 0) {
