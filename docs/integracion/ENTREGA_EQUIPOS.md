@@ -1,7 +1,6 @@
 # Entrega a los equipos · Módulo de Contabilidad (Equipo 6)
 
-Paquete de integración que pide `GUIA_EQUIPO_6.md` (sección 9). Completar los campos
-`<por completar>` antes de enviarlo; el contrato completo está en
+Paquete de integración que pide `GUIA_EQUIPO_6.md` (sección 9). El contrato completo está en
 [`docs/contrato-api-v1.md`](../contrato-api-v1.md).
 
 ## 1. URL del servicio
@@ -13,7 +12,7 @@ Paquete de integración que pide `GUIA_EQUIPO_6.md` (sección 9). Completar los 
 | Swagger | `https://marketplace-contabilidad-api.onrender.com/docs` |
 | OpenAPI (JSON) | `https://marketplace-contabilidad-api.onrender.com/openapi.json` |
 | Estado | `https://marketplace-contabilidad-api.onrender.com/health` |
-| Verificado el | `<por completar>` (`/health` → 200, Swagger y rutas de escrow publicadas) |
+| Verificado el | 2026-11-27 (`/health` → 200 con BD ok, Swagger publicado, `x-api-key` de Órdenes y Pagos aceptadas) |
 
 El servicio está en el plan gratuito de Render: tras 15 min sin tráfico se suspende y la primera
 petición puede tardar cerca de 1 minuto.
@@ -80,7 +79,7 @@ Los errores usan `application/problem+json` con `code` y `correlationId`.
 
 | Evento | Destino | Estado |
 |---|---|---|
-| `contabilidad.pago-vendedor.registrado` | Notificaciones | `<por completar: activo / pendiente de URL>` |
+| `contabilidad.pago-vendedor.registrado` | Notificaciones | Pendiente de URL de Notificaciones (los eventos quedan en el outbox) |
 | Demás eventos (`venta.registrada`, `ajuste.registrado`, `conciliacion.cerrada`, `escrow.actualizado`) | Sin consumidor definido | Se guardan en el outbox; no se entregan |
 
 ## 6. Para probar
