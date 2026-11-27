@@ -31,6 +31,17 @@ describe('loadConfig', () => {
     expect(cfg.SUPABASE_PUBLISHABLE_KEY).toBeUndefined();
   });
 
+  it('INTEGRATION_MODE distinto de mock exige VENDEDORES_URL', () => {
+    expect(() => loadConfig({ ...base, INTEGRATION_MODE: 'http' })).toThrow(/VENDEDORES_URL/);
+    const cfg = loadConfig({
+      ...base,
+      INTEGRATION_MODE: 'http',
+      VENDEDORES_URL: 'https://vendedores.test',
+    });
+    expect(cfg.VENDEDORES_URL).toBe('https://vendedores.test');
+    expect(cfg.VENDEDORES_TIMEOUT_MS).toBe(3000);
+  });
+
   it('en producción no permite mock y exige claves de servicio', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(/SERVICE_API_KEYS/);
     expect(() => loadConfig({ ...base, NODE_ENV: 'production', SERVICE_API_KEYS: CLAVES })).toThrow(
