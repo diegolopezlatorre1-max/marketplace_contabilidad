@@ -32,7 +32,7 @@ Simular a los productores contra la API local o desplegada:
 ```bash
 npm run simular:orden -- --vendedores V-1,V-2 --valores 100000,50000
 npm run simular:pago
-npm run simular:orden -- --url https://<servicio>.onrender.com --api-key <clave de ordenes>
+npm run simular:orden -- --url https://marketplace-contabilidad-api.onrender.com --api-key <clave de ordenes>
 ```
 
 ## 4. Salida: Vendedores
@@ -94,7 +94,7 @@ x-api-key: <OUTBOX_API_KEY, si el destino la exige>
 ## 6. Checklist para un módulo consumidor
 
 1. Pedir su clave de servicio (`x-api-key`) o, si es un usuario, usar el token de Supabase.
-2. Tomar la URL base `https://<servicio>.onrender.com/api/contabilidad` y verificar `GET /health`.
+2. Tomar la URL base `https://marketplace-contabilidad-api.onrender.com/api/contabilidad` y verificar `GET /health`.
 3. Enviar `x-correlation-id` para poder rastrear la petición en los logs.
 4. Reintentar con el mismo `eventId`; nunca generar uno nuevo para el mismo hecho.
 5. Si recibe eventos, entregar su URL para `OUTBOX_DESTINOS`, responder `2xx` rápido y deduplicar por `eventId`.

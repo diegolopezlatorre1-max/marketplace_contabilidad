@@ -2,11 +2,9 @@ SOLICITUDES PENDIENTES PARA FINALIZAR LA INTEGRACIÓN (GUIA_EQUIPO_6)
 Módulo de Contabilidad (Equipo 6) - 2026-11-23
 
 1. AL ADMINISTRADOR DEL PROYECTO SUPABASE
-   a) DATABASE_URL (Session pooler, botón "Connect") y el certificado SSL
-      (Database Settings -> SSL).
-      Por qué: la guía (sección 4) exige que el esquema contable viva en
-      Supabase. Solo tenemos la URL de JWKS, que valida usuarios pero no da
-      acceso a la base de datos.
+   a) RESUELTO (2026-11-27): cada módulo maneja su propia BD. El esquema
+      contabilidad vive en un proyecto Supabase propio del módulo y la API
+      está desplegada en https://marketplace-contabilidad-api.onrender.com.
    b) Dónde se guarda el rol del usuario (esperamos app_metadata.role: admin,
       vendedor o comprador) y, para vendedores, su id (app_metadata.vendedor_id).
       Si es posible, también un usuario de prueba de cada rol.

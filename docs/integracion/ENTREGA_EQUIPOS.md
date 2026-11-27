@@ -8,11 +8,11 @@ Paquete de integración que pide `GUIA_EQUIPO_6.md` (sección 9). Completar los 
 
 | Elemento | Valor |
 |---|---|
-| API Base URL | `https://<por completar>.onrender.com/api` |
-| Rutas del módulo | `https://<por completar>.onrender.com/api/contabilidad` |
-| Swagger | `https://<por completar>.onrender.com/docs` |
-| OpenAPI (JSON) | `https://<por completar>.onrender.com/openapi.json` |
-| Estado | `https://<por completar>.onrender.com/health` |
+| API Base URL | `https://marketplace-contabilidad-api.onrender.com/api` |
+| Rutas del módulo | `https://marketplace-contabilidad-api.onrender.com/api/contabilidad` |
+| Swagger | `https://marketplace-contabilidad-api.onrender.com/docs` |
+| OpenAPI (JSON) | `https://marketplace-contabilidad-api.onrender.com/openapi.json` |
+| Estado | `https://marketplace-contabilidad-api.onrender.com/health` |
 | Verificado el | `<por completar>` (`/health` → 200, Swagger y rutas de escrow publicadas) |
 
 El servicio está en el plan gratuito de Render: tras 15 min sin tráfico se suspende y la primera

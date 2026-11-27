@@ -6,10 +6,10 @@ La API que implementa el [Contrato API v1](contrato-api-v1.md) se puede consumir
 
 | Elemento | Real (Render) | Mock (local) |
 |---|---|---|
-| Base URL | `https://<servicio>.onrender.com/api/contabilidad` | `http://localhost:3000/api/contabilidad` |
-| Swagger | `https://<servicio>.onrender.com/docs` | `http://localhost:3000/docs` |
-| OpenAPI | `https://<servicio>.onrender.com/openapi.json` | `http://localhost:3000/openapi.json` |
-| Health | `https://<servicio>.onrender.com/health` | `http://localhost:3000/health` |
+| Base URL | `https://marketplace-contabilidad-api.onrender.com/api/contabilidad` | `http://localhost:3000/api/contabilidad` |
+| Swagger | `https://marketplace-contabilidad-api.onrender.com/docs` | `http://localhost:3000/docs` |
+| OpenAPI | `https://marketplace-contabilidad-api.onrender.com/openapi.json` | `http://localhost:3000/openapi.json` |
+| Health | `https://marketplace-contabilidad-api.onrender.com/health` | `http://localhost:3000/health` |
 | Base de datos | PostgreSQL de Supabase (esquema `contabilidad`) | PostgreSQL local o en Docker |
 | Usuarios | Access token de Supabase Auth (`AUTH_MODE=jwks`) | Tokens fijos `mock-*` (`AUTH_MODE=mock`) |
 | Módulos que envían eventos | `x-api-key` con su clave de `SERVICE_API_KEYS` | `Authorization: Bearer mock-sistema` |
@@ -17,9 +17,10 @@ La API que implementa el [Contrato API v1](contrato-api-v1.md) se puede consumir
 
 ## 2. Endpoint real (Render)
 
-Definido en `render.yaml`: servicio web `marketplace-contabilidad-api`, imagen Docker de `apps/api/Dockerfile`, rama `main` con despliegue automático, región Virginia (la misma de la BD en Supabase, us-east-1), plan gratuito.
+Servicio web `marketplace-contabilidad-api` en <https://marketplace-contabilidad-api.onrender.com>: imagen Docker de `apps/api/Dockerfile`, rama `main`, región Virginia (la misma de la BD en Supabase, us-east-1), plan gratuito. La base de datos es un proyecto Supabase propio del módulo; los usuarios se validan con el proyecto Supabase central.
 
-- Cada despliegue aplica las migraciones pendientes (`node dist/migrate.js`) y luego arranca la API. Si una migración falla, sigue activo el despliegue anterior.
+- El servicio se creó como *Public Git Repository* (no con el Blueprint de `render.yaml`): no hay despliegue automático. Después de cada merge a `main` se despliega con *Manual Deploy → Deploy latest commit*.
+- El contenedor arranca con el `CMD` del Dockerfile (`node dist/main.js`) y no aplica migraciones. Antes de desplegar una migración nueva se ejecuta `npm run db:migrate` contra la BD de Supabase.
 - Render vigila `GET /health`.
 - Con `NODE_ENV=production` el arranque falla si `AUTH_MODE=mock` o si falta `SERVICE_API_KEYS`, así que el endpoint real nunca acepta tokens de prueba.
 - Los secretos (`DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`, `SERVICE_API_KEYS`, `OUTBOX_DESTINOS`, `OUTBOX_API_KEY`, `CORS_ORIGINS`) se cargan en Render y no están en Git.
@@ -35,7 +36,7 @@ Definido en `render.yaml`: servicio web `marketplace-contabilidad-api`, imagen D
 **Verificación**
 
 ```bash
-curl https://<servicio>.onrender.com/health
+curl https://marketplace-contabilidad-api.onrender.com/health
 # 200 { "status": "ok", "modulo": "contabilidad", "checks": { "baseDeDatos": "ok" }, ... }
 ```
 

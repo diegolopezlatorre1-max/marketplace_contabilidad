@@ -7,7 +7,7 @@ Versión 1 de la API del módulo de Contabilidad del marketplace. Se basa en las
 | Elemento | Valor |
 |---|---|
 | Base URL local | `http://localhost:3000/api/contabilidad` |
-| Base URL desplegada | `https://<servicio>.onrender.com/api/contabilidad` |
+| Base URL desplegada | `https://marketplace-contabilidad-api.onrender.com/api/contabilidad` |
 | Alias obsoleto | `/api/v1/contabilidad` (responde igual, con cabecera `Deprecation: true`) |
 | Documentación viva | `GET /docs` (Swagger) y `GET /openapi.json` |
 | Formato | `application/json` (errores: `application/problem+json`) |

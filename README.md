@@ -132,13 +132,17 @@ falla si alguna queda sin él.
 3. Cada despliegue ejecuta `node dist/migrate.js` (migraciones pendientes) y luego la API. Con
    `NODE_ENV=production` el arranque falla si falta `SERVICE_API_KEYS` o si `AUTH_MODE=mock`.
 4. Verificar antes de entregar las URL a otros equipos:
-   - `GET https://<servicio>.onrender.com/health` → `200`
-   - `https://<servicio>.onrender.com/docs` → Swagger
+   - `GET https://marketplace-contabilidad-api.onrender.com/health` → `200`
+   - `https://marketplace-contabilidad-api.onrender.com/docs` → Swagger
    - `POST /api/contabilidad/escrow/marcar-entrega/{pedido_id}` y `.../bloquear/{pedido_id}`
      aparecen en Swagger.
 
-URL a entregar: `https://<servicio>.onrender.com/api` (base) y `https://<servicio>.onrender.com/docs`.
+URL a entregar: `https://marketplace-contabilidad-api.onrender.com/api` (base) y `https://marketplace-contabilidad-api.onrender.com/docs`.
 El plan gratuito se suspende tras 15 min sin tráfico: la primera petición puede tardar ~1 min.
+
+> **Servicio actual:** se creó como *Public Git Repository* (rama `main`, región Virginia, Docker
+> Command vacío), no con el Blueprint. No se despliega solo (_Manual Deploy_) y no migra al
+> arrancar: ejecute `npm run db:migrate` contra Supabase antes de desplegar una migración nueva.
 
 ## Calidad
 
