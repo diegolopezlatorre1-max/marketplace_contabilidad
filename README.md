@@ -90,7 +90,8 @@ npm run dev:web                          # demo congelada (opcional): http://loc
   - `AUTH_MODE=supabase`: valida con `getClaims` de supabase-js (`SUPABASE_URL` y
     `SUPABASE_PUBLISHABLE_KEY`); además acepta tokens HS256 consultando a Supabase.
 
-  En ambas el rol se lee de `app_metadata.role` (`admin`, `vendedor`, `comprador`). Los módulos que envían eventos usan la
+  En ambas el rol se lee de `app_metadata.role` (`admin`, `vendedor`, `comprador`). Para comprobarlo con
+  usuarios reales: `npm run probar:auth` (ver `docs/postman/README.md`). Los módulos que envían eventos usan la
   cabecera `x-api-key` con su clave de `SERVICE_API_KEYS`.
 
 ### Eventos salientes (outbox)
@@ -128,16 +129,21 @@ falla si alguna queda sin él.
 2. Completar los secretos que pide Render: `DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`
    (`https://<ref>.supabase.co`), `SERVICE_API_KEYS` y, cuando Notificaciones entregue su URL,
    `OUTBOX_DESTINOS`. Ningún secreto va en Git.
-3. Cada despliegue ejecuta `node dist/migrate.js` (migraciones pendientes) y luego la API. Con
+3. Cada despliegue ejecuta `node dist/migrate.js` (migraciones pendientes) y luego la API: lo
+   hace el `CMD` del Dockerfile, así que el _Docker Command_ de Render debe quedar vacío. Con
    `NODE_ENV=production` el arranque falla si falta `SERVICE_API_KEYS` o si `AUTH_MODE=mock`.
 4. Verificar antes de entregar las URL a otros equipos:
-   - `GET https://<servicio>.onrender.com/health` → `200`
-   - `https://<servicio>.onrender.com/docs` → Swagger
+   - `GET https://marketplace-contabilidad-api.onrender.com/health` → `200`
+   - `https://marketplace-contabilidad-api.onrender.com/docs` → Swagger
    - `POST /api/contabilidad/escrow/marcar-entrega/{pedido_id}` y `.../bloquear/{pedido_id}`
      aparecen en Swagger.
 
-URL a entregar: `https://<servicio>.onrender.com/api` (base) y `https://<servicio>.onrender.com/docs`.
+URL a entregar: `https://marketplace-contabilidad-api.onrender.com/api` (base) y `https://marketplace-contabilidad-api.onrender.com/docs`.
 El plan gratuito se suspende tras 15 min sin tráfico: la primera petición puede tardar ~1 min.
+
+> **Servicio actual:** se creó como _Public Git Repository_ (rama `main`, región Virginia, Docker
+> Command vacío), no con el Blueprint. No se despliega solo: después de cada merge a `main` use
+> _Manual Deploy → Deploy latest commit_. Las migraciones se aplican al arrancar el contenedor.
 
 ## Calidad
 

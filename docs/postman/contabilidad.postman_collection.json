@@ -4,6 +4,26 @@
     "description": "Pruebas de la API del módulo de contabilidad (HU-CON-09, HU-CON-01, consultas, HU-CON-04 conciliación, HU-CON-06 ajustes, HU-CON-05 reporte).\n\nRequisitos: `npm run db:migrate && npm run db:seed` y `npm run dev:api` (AUTH_MODE=mock).\nEjecute la colección completa en orden (Run collection) o con Newman. Ver docs/postman/README.md.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Producción (Render): los módulos se autentican con x-api-key, no con un token de usuario.",
+          "// Si apiKeyServicio tiene valor, las peticiones que usan {{tokenSistema}} envían esa clave.",
+          "const clave = pm.variables.get('apiKeyServicio');",
+          "const auth = pm.request.auth;",
+          "if (clave && auth && auth.type === 'bearer') {",
+          "  const token = auth.bearer.get('token');",
+          "  if (token === '{{tokenSistema}}' || token === pm.variables.get('tokenSistema')) {",
+          "    pm.request.headers.upsert({ key: 'x-api-key', value: clave });",
+          "  }",
+          "}"
+        ]
+      }
+    }
+  ],
   "variable": [
     {
       "key": "baseUrl",
@@ -24,6 +44,10 @@
     {
       "key": "tokenSistema",
       "value": "mock-sistema"
+    },
+    {
+      "key": "apiKeyServicio",
+      "value": ""
     }
   ],
   "item": [

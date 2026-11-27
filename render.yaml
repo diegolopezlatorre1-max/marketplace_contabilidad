@@ -10,14 +10,12 @@ services:
     name: marketplace-contabilidad-api
     runtime: docker
     plan: free
-    region: oregon
+    region: virginia
     branch: main
     autoDeploy: true
     dockerfilePath: ./apps/api/Dockerfile
     dockerContext: .
-    # Aplica las migraciones pendientes (son idempotentes) y arranca la API.
-    # Si falla una migración, el servicio no arranca y el despliegue anterior sigue activo.
-    dockerCommand: sh -c "node dist/migrate.js && node dist/main.js"
+    # Sin dockerCommand: el CMD del Dockerfile aplica las migraciones pendientes y arranca la API.
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV

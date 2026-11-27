@@ -18,7 +18,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "simular:orden": "tsx scripts/simular-orden.ts",
-    "simular:pago": "tsx scripts/simular-pago.ts"
+    "simular:pago": "tsx scripts/simular-pago.ts",
+    "probar:auth": "tsx scripts/probar-auth.ts"
   },
   "dependencies": {
     "@contabilidad/contracts": "*",

@@ -1,4 +1,4 @@
-# Imagen de la API para desarrollo local (docker compose). Contexto: raíz del monorepo.
+# Imagen de la API para Render y para desarrollo local (docker compose). Contexto: raíz del monorepo.
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -23,4 +23,9 @@ COPY --from=build /app/apps/api/seeds apps/api/seeds
 WORKDIR /app/apps/api
 USER node
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+# Aplica las migraciones pendientes (idempotentes) y arranca la API. Si una migración falla, el
+# contenedor termina sin arrancar la API (en Render sigue activo el despliegue anterior).
+# `exec` deja a node como PID 1 para que reciba SIGTERM y cierre de forma ordenada.
+# Va en la imagen y no en el "Docker Command" de Render: ese campo dejaba las comillas de
+# `sh -c "..."` literales y el contenedor fallaba con status 127.
+CMD ["sh", "-c", "node dist/migrate.js && exec node dist/main.js"]
