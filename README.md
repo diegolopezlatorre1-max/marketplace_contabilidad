@@ -129,7 +129,8 @@ falla si alguna queda sin él.
 2. Completar los secretos que pide Render: `DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`
    (`https://<ref>.supabase.co`), `SERVICE_API_KEYS` y, cuando Notificaciones entregue su URL,
    `OUTBOX_DESTINOS`. Ningún secreto va en Git.
-3. Cada despliegue ejecuta `node dist/migrate.js` (migraciones pendientes) y luego la API. Con
+3. Cada despliegue ejecuta `node dist/migrate.js` (migraciones pendientes) y luego la API: lo
+   hace el `CMD` del Dockerfile, así que el _Docker Command_ de Render debe quedar vacío. Con
    `NODE_ENV=production` el arranque falla si falta `SERVICE_API_KEYS` o si `AUTH_MODE=mock`.
 4. Verificar antes de entregar las URL a otros equipos:
    - `GET https://marketplace-contabilidad-api.onrender.com/health` → `200`
@@ -141,8 +142,8 @@ URL a entregar: `https://marketplace-contabilidad-api.onrender.com/api` (base) y
 El plan gratuito se suspende tras 15 min sin tráfico: la primera petición puede tardar ~1 min.
 
 > **Servicio actual:** se creó como *Public Git Repository* (rama `main`, región Virginia, Docker
-> Command vacío), no con el Blueprint. No se despliega solo (_Manual Deploy_) y no migra al
-> arrancar: ejecute `npm run db:migrate` contra Supabase antes de desplegar una migración nueva.
+> Command vacío), no con el Blueprint. No se despliega solo: después de cada merge a `main` use
+> _Manual Deploy → Deploy latest commit_. Las migraciones se aplican al arrancar el contenedor.
 
 ## Calidad
 
