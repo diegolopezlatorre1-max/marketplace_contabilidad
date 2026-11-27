@@ -17,7 +17,7 @@ La API que implementa el [Contrato API v1](contrato-api-v1.md) se puede consumir
 
 ## 2. Endpoint real (Render)
 
-Definido en `render.yaml`: servicio web `marketplace-contabilidad-api`, imagen Docker de `apps/api/Dockerfile`, rama `main` con despliegue automático, región Oregon, plan gratuito.
+Definido en `render.yaml`: servicio web `marketplace-contabilidad-api`, imagen Docker de `apps/api/Dockerfile`, rama `main` con despliegue automático, región Virginia (la misma de la BD en Supabase, us-east-1), plan gratuito.
 
 - Cada despliegue aplica las migraciones pendientes (`node dist/migrate.js`) y luego arranca la API. Si una migración falla, sigue activo el despliegue anterior.
 - Render vigila `GET /health`.
