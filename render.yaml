@@ -10,7 +10,7 @@ services:
     name: marketplace-contabilidad-api
     runtime: docker
     plan: free
-    region: oregon
+    region: virginia
     branch: main
     autoDeploy: true
     dockerfilePath: ./apps/api/Dockerfile
