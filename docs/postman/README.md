@@ -42,7 +42,7 @@ npx newman run docs/postman/contabilidad.postman_collection.json
 
 | Variable | Valor |
 |----------|-------|
-| `baseUrl` | `https://<servicio>.onrender.com/api/contabilidad` |
+| `baseUrl` | `https://marketplace-contabilidad-api.onrender.com/api/contabilidad` |
 | `apiKeyServicio` | Clave de un módulo en `SERVICE_API_KEYS` (p. ej. la de Órdenes) |
 | `tokenAdmin`, `tokenVendedor`, `tokenComprador` | Access tokens de Supabase de cada usuario de prueba (`npm run probar:auth` los muestra) |
 

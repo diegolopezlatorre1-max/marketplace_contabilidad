@@ -6,7 +6,7 @@ Ejemplos de peticiones y respuestas de la API, tomados de las rutas de `apps/api
 
 | Elemento | Valor |
 |---|---|
-| Base URL | Real: `https://<servicio>.onrender.com/api/contabilidad` · Mock: `http://localhost:3000/api/contabilidad` |
+| Base URL | Real: `https://marketplace-contabilidad-api.onrender.com/api/contabilidad` · Mock: `http://localhost:3000/api/contabilidad` |
 | Cuerpo de la petición | `Content-Type: application/json` (máx. 1 MB). Solo la importación de pagos usa `text/csv`. |
 | Respuesta correcta | `Content-Type: application/json` |
 | Respuesta de error | `Content-Type: application/problem+json` (RFC 7807) |
