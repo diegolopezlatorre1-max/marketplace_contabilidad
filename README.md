@@ -141,7 +141,7 @@ falla si alguna queda sin él.
 URL a entregar: `https://marketplace-contabilidad-api.onrender.com/api` (base) y `https://marketplace-contabilidad-api.onrender.com/docs`.
 El plan gratuito se suspende tras 15 min sin tráfico: la primera petición puede tardar ~1 min.
 
-> **Servicio actual:** se creó como *Public Git Repository* (rama `main`, región Virginia, Docker
+> **Servicio actual:** se creó como _Public Git Repository_ (rama `main`, región Virginia, Docker
 > Command vacío), no con el Blueprint. No se despliega solo: después de cada merge a `main` use
 > _Manual Deploy → Deploy latest commit_. Las migraciones se aplican al arrancar el contenedor.
 
