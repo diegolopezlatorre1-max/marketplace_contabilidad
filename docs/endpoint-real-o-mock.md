@@ -20,7 +20,7 @@ La API que implementa el [Contrato API v1](contrato-api-v1.md) se puede consumir
 Servicio web `marketplace-contabilidad-api` en <https://marketplace-contabilidad-api.onrender.com>: imagen Docker de `apps/api/Dockerfile`, rama `main`, región Virginia (la misma de la BD en Supabase, us-east-1), plan gratuito. La base de datos es un proyecto Supabase propio del módulo; los usuarios se validan con el proyecto Supabase central.
 
 - El servicio se creó como *Public Git Repository* (no con el Blueprint de `render.yaml`): no hay despliegue automático. Después de cada merge a `main` se despliega con *Manual Deploy → Deploy latest commit*.
-- El contenedor arranca con el `CMD` del Dockerfile (`node dist/main.js`) y no aplica migraciones. Antes de desplegar una migración nueva se ejecuta `npm run db:migrate` contra la BD de Supabase.
+- El contenedor arranca con el `CMD` del Dockerfile: aplica las migraciones pendientes (`node dist/migrate.js`) y luego arranca la API. Si una migración falla, la API no arranca y sigue activo el despliegue anterior. El campo *Docker Command* de Render debe quedar vacío.
 - Render vigila `GET /health`.
 - Con `NODE_ENV=production` el arranque falla si `AUTH_MODE=mock` o si falta `SERVICE_API_KEYS`, así que el endpoint real nunca acepta tokens de prueba.
 - Los secretos (`DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`, `SERVICE_API_KEYS`, `OUTBOX_DESTINOS`, `OUTBOX_API_KEY`, `CORS_ORIGINS`) se cargan en Render y no están en Git.
