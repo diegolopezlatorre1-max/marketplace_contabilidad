@@ -127,7 +127,7 @@ Todos los eventos llevan `eventId` (clave de idempotencia), `version: 1`, `tipo`
 | Método | Ruta | Acceso | Body |
 |---|---|---|---|
 | POST | `/escrow/marcar-entrega/{pedidoId}` | Servicio (Órdenes) | `{ "fechaEntrega"? }` (opcional) |
-| POST | `/escrow/bloquear/{pedidoId}` | Servicio | `{ "motivo"? }` (opcional) |
+| POST | `/escrow/bloquear/{pedidoId}` | Servicio (Órdenes, ante una PQR) | `{ "motivo"? }` (opcional) |
 | POST | `/escrow/desbloquear/{pedidoId}` | ADMIN | `{ "motivo" }` (obligatorio) |
 | GET | `/escrow/{pedidoId}` | ADMIN | |
 
