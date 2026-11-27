@@ -25,7 +25,7 @@ Los mocks generan datos que cumplen el contrato v1 (fechas `-05:00`, montos como
 
 - **Autenticación:** `x-api-key` con la clave de cada módulo (`SERVICE_API_KEYS="ordenes:...,pagos:..."`). En el mock, `Authorization: Bearer mock-sistema`.
 - **Idempotencia:** se deduplica por `eventId` (tabla `inbox`, `docs/adr/0003`). Un reintento con el mismo `eventId` responde `200 { "resultado": "YA_PROCESADO" }`.
-- **Escrow:** Órdenes llama a `POST /escrow/marcar-entrega/{pedidoId}` al entregar un pedido; `POST /escrow/bloquear/{pedidoId}` queda para el módulo que gestione las PQR.
+- **Escrow:** Órdenes llama a `POST /escrow/marcar-entrega/{pedidoId}` al entregar un pedido; también llama a `POST /escrow/bloquear/{pedidoId}` ante una PQR.
 
 Simular a los productores contra la API local o desplegada:
 

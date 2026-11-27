@@ -17,7 +17,8 @@ Módulo de Contabilidad (Equipo 6) - 2026-11-23
       - S-02: envían el estado exactamente como "CONFIRMADA".
       - S-03: el eventId no cambia entre reintentos.
    b) Confirmar que ellos llamarán a POST /escrow/marcar-entrega/{pedido_id}
-      cuando se entregue un pedido.
+      cuando se entregue un pedido y a POST /escrow/bloquear/{pedido_id}
+      ante una PQR (decidido el 2026-11-27: el bloqueo lo llama Órdenes).
    Por qué: la guía (sección 6) dice que estos supuestos deben confirmarse con
    los equipos productores. Si alguno es falso, las comisiones salen mal o se
    duplican ventas.
@@ -30,13 +31,10 @@ Módulo de Contabilidad (Equipo 6) - 2026-11-23
    Por qué: la guía (sección 6) pide cerrar el contrato pago.recibido con
    ellos. Sin esto, la conciliación muestra diferencias falsas.
 
-4. AL EQUIPO DE NOTIFICACIONES (EQUIPO 3)
+4. AL EQUIPO DE NOTIFICACIONES (EQUIPO 3) - pendiente NO bloqueante
    La URL a la que debemos enviar el evento de pago acreditado (HU-NOT-05) y,
    si la exigen, la clave para autenticarnos.
-   Por qué: la guía (sección 6) exige emitir este evento. Ya se genera, pero
-   sin esa URL queda pendiente y no se entrega.
+   Por qué: la guía (sección 6) exige emitir este evento. Ya se genera y queda
+   en el outbox; se entrega cuando se configure OUTBOX_DESTINOS en Render.
 
-5. AL PROFESOR O COORDINADOR DEL PROYECTO
-   Qué módulo llamará a POST /escrow/bloquear/{pedido_id} ante una PQR.
-   Por qué: la guía (sección 6) documenta esa ruta, pero no existe un módulo
-   de PQR que la use.
+5. RESUELTO (2026-11-27): POST /escrow/bloquear/{pedido_id} lo llama Órdenes.

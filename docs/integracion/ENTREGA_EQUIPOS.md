@@ -36,6 +36,7 @@ Sin credenciales válidas → `401`. Rol o módulo sin permiso → `403`.
 | Orden cancelada | `POST /api/contabilidad/eventos/orden-cancelada` |
 | Orden devuelta (total o parcial) | `POST /api/contabilidad/eventos/orden-devuelta` |
 | Entrega del pedido (inicia la retención de 72 h) | `POST /api/contabilidad/escrow/marcar-entrega/{pedido_id}` |
+| Bloqueo del pago de un pedido ante una PQR (cuerpo opcional `{ "motivo" }`) | `POST /api/contabilidad/escrow/bloquear/{pedido_id}` |
 
 - Una línea por vendedor; montos como texto con 2 decimales (`"150000.00"`); fechas ISO 8601 con
   zona; moneda `COP`.
@@ -59,7 +60,9 @@ Contabilidad les envía `contabilidad.pago-vendedor.registrado` (v2) al acredita
 vendedor (HU-NOT-05): vendedor, monto, referencia y órdenes asociadas. Formato y cabeceras en
 `contrato-api-v1.md`, sección 3.5. Deben deduplicar por `eventId`.
 
-Necesitamos su URL de recepción (y su clave, si la exigen) para activarlo.
+Necesitamos su URL de recepción (y su clave, si la exigen) para activarlo. Es un pendiente no
+bloqueante: mientras tanto los eventos se guardan en el outbox y se entregan cuando se configure
+la URL.
 
 ## 4. Respuestas
 
