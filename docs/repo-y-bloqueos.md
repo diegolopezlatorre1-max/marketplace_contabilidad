@@ -24,12 +24,11 @@ Cada bloqueo indica de quién depende y qué queda afectado mientras no se resue
 | # | Pendiente | Depende de | Efecto actual |
 |---|---|---|---|
 | B-06 | Hoy no hay una API de Vendedores que consumir. El adaptador ya existe: cuando haya API, basta con configurar `INTEGRATION_MODE=http` y `VENDEDORES_URL` y confirmar la ruta `GET /vendedores?ids=...`. | Equipo de Vendedores, si llega a existir | Ninguno: los nombres salen de `MockSellersGateway`. |
-| B-04 | Falta la URL (y la clave, si la exigen) para enviar el evento de pago acreditado (HU-NOT-05). | Equipo de Notificaciones (Equipo 3) | El evento se genera y queda en el outbox; se entrega cuando se configure `OUTBOX_DESTINOS` en Render. |
 
-**Resueltos:** B-01 (URL de Render), B-02 (BD en un proyecto Supabase propio del módulo) y B-05 (`POST /escrow/bloquear/{pedido_id}` lo llama Órdenes).
+**Resueltos:** B-01 (URL de Render), B-02 (BD en un proyecto Supabase propio del módulo), B-04 (Notificaciones entregó su URL y su clave; el evento de pago acreditado se probó de punta a punta el 2026-11-27) y B-05 (`POST /escrow/bloquear/{pedido_id}` lo llama Órdenes).
 
 ## 3. Orden sugerido
 
 1. B-03: confirmar dónde viene el rol para que los usuarios reales puedan operar en el endpoint desplegado.
 2. B-07: confirmar con Órdenes los supuestos y las llamadas de escrow (`marcar-entrega` y `bloquear`).
-3. B-04 y B-06: cuando Notificaciones y Vendedores publiquen sus URL.
+3. B-06: cuando Vendedores publique su URL.

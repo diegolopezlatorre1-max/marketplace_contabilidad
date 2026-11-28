@@ -60,9 +60,9 @@ Contabilidad les envía `contabilidad.pago-vendedor.registrado` (v2) al acredita
 vendedor (HU-NOT-05): vendedor, monto, referencia y órdenes asociadas. Formato y cabeceras en
 `contrato-api-v1.md`, sección 3.5. Deben deduplicar por `eventId`.
 
-Necesitamos su URL de recepción (y su clave, si la exigen) para activarlo. Es un pendiente no
-bloqueante: mientras tanto los eventos se guardan en el outbox y se entregan cuando se configure
-la URL.
+Destino: `POST https://notificaciones-sprint3.onrender.com/api/eventos/contabilidad`, con su clave en `x-api-key` (la clave no va en
+Git; está en `OUTBOX_API_KEY` en Render). Responden `200` al recibirlo, `202` si el `vendedorId`
+no tiene equivalencia configurada de su lado y `401` si la clave falta o no coincide.
 
 ## 4. Respuestas
 
@@ -82,7 +82,7 @@ Los errores usan `application/problem+json` con `code` y `correlationId`.
 
 | Evento | Destino | Estado |
 |---|---|---|
-| `contabilidad.pago-vendedor.registrado` | Notificaciones | Pendiente de URL de Notificaciones (los eventos quedan en el outbox) |
+| `contabilidad.pago-vendedor.registrado` | Notificaciones | Activo: se entrega a Notificaciones (probado el 2026-11-27) |
 | Demás eventos (`venta.registrada`, `ajuste.registrado`, `conciliacion.cerrada`, `escrow.actualizado`) | Sin consumidor definido | Se guardan en el outbox; no se entregan |
 
 ## 6. Para probar

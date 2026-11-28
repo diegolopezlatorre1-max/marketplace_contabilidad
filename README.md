@@ -127,8 +127,8 @@ falla si alguna queda sin él.
 
 1. Render → _New_ → _Blueprint_ → este repositorio (rama `main`).
 2. Completar los secretos que pide Render: `DATABASE_URL`, `DATABASE_SSL_CA`, `SUPABASE_URL`
-   (`https://<ref>.supabase.co`), `SERVICE_API_KEYS` y, cuando Notificaciones entregue su URL,
-   `OUTBOX_DESTINOS`. Ningún secreto va en Git.
+   (`https://<ref>.supabase.co`), `SERVICE_API_KEYS`, `OUTBOX_DESTINOS` (destino de Notificaciones)
+   y `OUTBOX_API_KEY`. Ningún secreto va en Git.
 3. Cada despliegue ejecuta `node dist/migrate.js` (migraciones pendientes) y luego la API: lo
    hace el `CMD` del Dockerfile, así que el _Docker Command_ de Render debe quedar vacío. Con
    `NODE_ENV=production` el arranque falla si falta `SERVICE_API_KEYS` o si `AUTH_MODE=mock`.
